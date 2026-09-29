@@ -1,137 +1,605 @@
 import { useState } from "react";
 import "./App.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
 function App() {
+  // =========================================================
+  // CHUYỂN LOGIN / REGISTER
+  // =========================================================
+  const [isRegister, setIsRegister] = useState(false);
+
+  // =========================================================
+  // HIỆN / ẨN MẬT KHẨU
+  // =========================================================
   const [showPassword, setShowPassword] = useState(false);
 
- // Validation đăng nhập
-  const [username, setUsername] = useState("");
+  // =========================================================
+  // LOGIN
+  // =========================================================
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState({
-    username: "",
+
+  const [loginErrors, setLoginErrors] = useState({
+    email: "",
     password: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // =========================================================
+  // REGISTER
+  // =========================================================
+  const [hoTen, setHoTen] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [soDienThoai, setSoDienThoai] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [registerErrors, setRegisterErrors] = useState({
+    hoTen: "",
+    email: "",
+    soDienThoai: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  // =========================================================
+  // MESSAGE + LOADING
+  // =========================================================
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+
+  const [loading, setLoading] = useState(false);
+
+  // =========================================================
+  // ĐĂNG NHẬP
+  // =========================================================
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setMessage("");
+    setMessageType("");
+
     const newErrors = {
-      username: "",
+      email: "",
       password: "",
     };
 
-    if (!username.trim()) {
-      newErrors.username = "Vui lòng nhập tên đăng nhập";
+    if (!email.trim()) {
+      newErrors.email = "Vui lòng nhập email";
     }
 
     if (!password.trim()) {
       newErrors.password = "Vui lòng nhập mật khẩu";
     }
 
-    setErrors(newErrors);
+    setLoginErrors(newErrors);
 
-    if (!newErrors.username && !newErrors.password) {
-      console.log("Dữ liệu đăng nhập hợp lệ");
+    if (newErrors.email || newErrors.password) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.detail || "Đăng nhập không thành công");
+
+        setMessageType("error");
+        return;
+      }
+
+      setMessage(data.message || "Đăng nhập thành công");
+      setMessageType("success");
+
+      // Lưu thông tin người dùng tạm thời
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          nguoiDungId: data.nguoiDungId,
+          hoTen: data.hoTen,
+          email: data.email,
+          vaiTro: data.vaiTro,
+        }),
+      );
+
+      console.log("Đăng nhập thành công:", data);
+
+      /*
+        Sau này khi có trang Dashboard:
+        window.location.href = "/dashboard";
+      */
+    } catch (error) {
+      console.error(error);
+
+      setMessage("Không thể kết nối tới máy chủ");
+
+      setMessageType("error");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // =========================================================
+  // ĐĂNG KÝ
+  // =========================================================
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setMessage("");
+    setMessageType("");
+
+    const newErrors = {
+      hoTen: "",
+      email: "",
+      soDienThoai: "",
+      password: "",
+      confirmPassword: "",
+    };
+
+    // Họ tên
+    if (!hoTen.trim()) {
+      newErrors.hoTen = "Vui lòng nhập họ và tên";
+    }
+
+    // Email
+    if (!registerEmail.trim()) {
+      newErrors.email = "Vui lòng nhập email";
+    }
+
+    // Số điện thoại
+    if (!soDienThoai.trim()) {
+      newErrors.soDienThoai = "Vui lòng nhập số điện thoại";
+    } else if (!/^[0-9]{10,11}$/.test(soDienThoai)) {
+      newErrors.soDienThoai = "Số điện thoại không hợp lệ";
+    }
+
+    // Mật khẩu
+    if (!registerPassword.trim()) {
+      newErrors.password = "Vui lòng nhập mật khẩu";
+    } else if (registerPassword.length < 6) {
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+    }
+
+    // Xác nhận mật khẩu
+    if (!confirmPassword.trim()) {
+      newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
+    } else if (registerPassword !== confirmPassword) {
+      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
+    }
+
+    setRegisterErrors(newErrors);
+
+    if (
+      newErrors.hoTen ||
+      newErrors.email ||
+      newErrors.soDienThoai ||
+      newErrors.password ||
+      newErrors.confirmPassword
+    ) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_URL}/register`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          ho_ten: hoTen.trim(),
+          email: registerEmail.trim(),
+          so_dien_thoai: soDienThoai.trim(),
+          password: registerPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.detail || "Đăng ký không thành công");
+
+        setMessageType("error");
+        return;
+      }
+
+      // =====================================================
+      // ĐĂNG KÝ THÀNH CÔNG
+      // =====================================================
+
+      setMessage("Đăng ký thành công. Vui lòng đăng nhập.");
+
+      setMessageType("success");
+
+      // Đưa email vừa đăng ký sang form Login
+      setEmail(registerEmail);
+
+      // Reset form đăng ký
+      setHoTen("");
+      setRegisterEmail("");
+      setSoDienThoai("");
+      setRegisterPassword("");
+      setConfirmPassword("");
+
+      // Chuyển về Login
+      setIsRegister(false);
+
+      setShowPassword(false);
+    } catch (error) {
+      console.error(error);
+
+      setMessage("Không thể kết nối tới máy chủ");
+
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================================================
+  // CHUYỂN FORM
+  // =========================================================
+  const openRegister = () => {
+    setIsRegister(true);
+
+    setMessage("");
+    setMessageType("");
+    setShowPassword(false);
+  };
+
+  const openLogin = () => {
+    setIsRegister(false);
+
+    setMessage("");
+    setMessageType("");
+    setShowPassword(false);
+  };
+
+  // =========================================================
+  // GIAO DIỆN
+  // =========================================================
   return (
     <div className="login-page">
       <div className="login-container">
-        {/* LEFT */}
+        {/* ===================================================
+            LEFT
+        =================================================== */}
         <section className="login-form-section">
           <div className="brand">
             <div className="brand-icon">🎓</div>
+
             <h1>
               Hệ thống quản lý <span>đào tạo</span>
             </h1>
           </div>
 
-          <p className="subtitle">
-            Đăng nhập để truy cập và quản lý các chức năng của hệ thống
+          <p className={`subtitle ${isRegister ? "register-subtitle" : ""}`}>
+            {isRegister
+              ? "Tạo tài khoản để sử dụng hệ thống quản lý đào tạo"
+              : "Đăng nhập để truy cập và quản lý các chức năng của hệ thống"}
           </p>
 
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Tên đăng nhập</label>
+          {/* =================================================
+              MESSAGE
+          ================================================= */}
 
-              <div className="input-wrapper">
-                <span className="input-icon">👤</span>
+          {message && (
+            <div
+              className={
+                messageType === "success"
+                  ? "message success-message"
+                  : "message api-error-message"
+              }
+            >
+              {message}
+            </div>
+          )}
 
-                <input
-                  type="text"
-                  placeholder="Nhập tên đăng nhập"
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    setErrors({ ...errors, username: "" });
-                  }}
-                />
+          {/* =================================================
+              FORM ĐĂNG NHẬP
+          ================================================= */}
+
+          {!isRegister && (
+            <form className="login-form" onSubmit={handleLogin}>
+              {/* EMAIL */}
+              <div className="form-group">
+                <label>Email</label>
+
+                <div className="input-wrapper">
+                  <span className="input-icon">✉️</span>
+
+                  <input
+                    type="email"
+                    placeholder="Nhập email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+
+                      setLoginErrors({
+                        ...loginErrors,
+                        email: "",
+                      });
+                    }}
+                  />
+                </div>
+
+                {loginErrors.email && (
+                  <p className="error-message">{loginErrors.email}</p>
+                )}
               </div>
 
-              {errors.username && (
-                <p className="error-message">{errors.username}</p>
-              )}
-            </div>
+              {/* PASSWORD */}
+              <div className="form-group">
+                <label>Mật khẩu</label>
 
-            <div className="form-group">
-              <label>Mật khẩu</label>
+                <div className="input-wrapper">
+                  <span className="input-icon">🔒</span>
 
-              <div className="input-wrapper">
-                <span className="input-icon">🔒</span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nhập mật khẩu"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
 
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Nhập mật khẩu"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setErrors({ ...errors, password: "" });
-                  }}
-                />
+                      setLoginErrors({
+                        ...loginErrors,
+                        password: "",
+                      });
+                    }}
+                  />
 
-                <button
-                  type="button"
-                  className="show-password"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? "🙈" : "👁"}
+                  <button
+                    type="button"
+                    className="show-password"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? "🙈" : "👁"}
+                  </button>
+                </div>
+
+                {loginErrors.password && (
+                  <p className="error-message">{loginErrors.password}</p>
+                )}
+              </div>
+
+              {/* OPTIONS */}
+              <div className="login-options">
+                <label className="remember">
+                  <input type="checkbox" />
+
+                  <span>Ghi nhớ đăng nhập</span>
+                </label>
+
+                <a href="#">Quên mật khẩu?</a>
+              </div>
+
+              {/* LOGIN BUTTON */}
+              <button type="submit" className="login-button" disabled={loading}>
+                <span>→</span>
+
+                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+              </button>
+
+              {/* REGISTER */}
+              <div className="register-link">
+                <span>Chưa có tài khoản?</span>
+
+                <button type="button" onClick={openRegister}>
+                  Đăng ký ngay
                 </button>
               </div>
 
-              {errors.password && (
-                <p className="error-message">{errors.password}</p>
-              )}
-            </div>
+              <div className="divider">
+                <span></span>
 
-            <div className="login-options">
-              <label className="remember">
-                <input type="checkbox" />
-                <span>Ghi nhớ đăng nhập</span>
-              </label>
+                <p>hoặc</p>
 
-              <a href="#">Quên mật khẩu?</a>
-            </div>
+                <span></span>
+              </div>
 
-            <button type="submit" className="login-button">
-              <span>→</span>
-              Đăng nhập
-            </button>
+              <button type="button" className="school-login">
+                👥
+                <span>Đăng nhập bằng tài khoản trường</span>
+              </button>
+            </form>
+          )}
 
-            <div className="divider">
-              <span></span>
-              <p>hoặc</p>
-              <span></span>
-            </div>
+          {/* =================================================
+              FORM ĐĂNG KÝ
+          ================================================= */}
 
-            <button type="button" className="school-login">
-              👥
-              <span>Đăng nhập bằng tài khoản trường</span>
-            </button>
-          </form>
+          {isRegister && (
+            <form
+              className="login-form register-form"
+              onSubmit={handleRegister}
+            >
+              {/* HỌ TÊN */}
+              <div className="form-group">
+                <label>Họ và tên</label>
+
+                <div className="input-wrapper">
+                  <span className="input-icon">👤</span>
+
+                  <input
+                    type="text"
+                    placeholder="Nhập họ và tên"
+                    value={hoTen}
+                    onChange={(e) => {
+                      setHoTen(e.target.value);
+
+                      setRegisterErrors({
+                        ...registerErrors,
+                        hoTen: "",
+                      });
+                    }}
+                  />
+                </div>
+
+                {registerErrors.hoTen && (
+                  <p className="error-message">{registerErrors.hoTen}</p>
+                )}
+              </div>
+
+              {/* EMAIL */}
+              <div className="form-group">
+                <label>Email</label>
+
+                <div className="input-wrapper">
+                  <span className="input-icon">✉️</span>
+
+                  <input
+                    type="email"
+                    placeholder="Nhập email"
+                    value={registerEmail}
+                    onChange={(e) => {
+                      setRegisterEmail(e.target.value);
+
+                      setRegisterErrors({
+                        ...registerErrors,
+                        email: "",
+                      });
+                    }}
+                  />
+                </div>
+
+                {registerErrors.email && (
+                  <p className="error-message">{registerErrors.email}</p>
+                )}
+              </div>
+
+              {/* SỐ ĐIỆN THOẠI */}
+              <div className="form-group">
+                <label>Số điện thoại</label>
+
+                <div className="input-wrapper">
+                  <span className="input-icon">📱</span>
+
+                  <input
+                    type="tel"
+                    placeholder="Nhập số điện thoại"
+                    value={soDienThoai}
+                    onChange={(e) => {
+                      setSoDienThoai(e.target.value);
+
+                      setRegisterErrors({
+                        ...registerErrors,
+                        soDienThoai: "",
+                      });
+                    }}
+                  />
+                </div>
+
+                {registerErrors.soDienThoai && (
+                  <p className="error-message">{registerErrors.soDienThoai}</p>
+                )}
+              </div>
+
+              {/* PASSWORD */}
+              <div className="form-group">
+                <label>Mật khẩu</label>
+
+                <div className="input-wrapper">
+                  <span className="input-icon">🔒</span>
+
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nhập mật khẩu"
+                    value={registerPassword}
+                    onChange={(e) => {
+                      setRegisterPassword(e.target.value);
+
+                      setRegisterErrors({
+                        ...registerErrors,
+                        password: "",
+                      });
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    className="show-password"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? "🙈" : "👁"}
+                  </button>
+                </div>
+
+                {registerErrors.password && (
+                  <p className="error-message">{registerErrors.password}</p>
+                )}
+              </div>
+
+              {/* CONFIRM PASSWORD */}
+              <div className="form-group">
+                <label>Xác nhận mật khẩu</label>
+
+                <div className="input-wrapper">
+                  <span className="input-icon">🔐</span>
+
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nhập lại mật khẩu"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+
+                      setRegisterErrors({
+                        ...registerErrors,
+                        confirmPassword: "",
+                      });
+                    }}
+                  />
+                </div>
+
+                {registerErrors.confirmPassword && (
+                  <p className="error-message">
+                    {registerErrors.confirmPassword}
+                  </p>
+                )}
+              </div>
+
+              {/* REGISTER BUTTON */}
+              <button type="submit" className="login-button" disabled={loading}>
+                <span>+</span>
+
+                {loading ? "Đang đăng ký..." : "Đăng ký"}
+              </button>
+
+              {/* BACK LOGIN */}
+              <div className="register-link">
+                <span>Đã có tài khoản?</span>
+
+                <button type="button" onClick={openLogin}>
+                  Đăng nhập
+                </button>
+              </div>
+            </form>
+          )}
         </section>
 
-        {/* RIGHT */}
+        {/* ===================================================
+            RIGHT
+        =================================================== */}
+
         <section className="information-section">
           <div className="overlay"></div>
 
@@ -179,6 +647,10 @@ function App() {
   );
 }
 
+// ===========================================================
+// FEATURE COMPONENT
+// ===========================================================
+
 interface FeatureProps {
   icon: string;
   title: string;
@@ -192,6 +664,7 @@ function Feature({ icon, title, description }: FeatureProps) {
 
       <div>
         <h3>{title}</h3>
+
         <p>{description}</p>
       </div>
     </div>
