@@ -1,0 +1,685 @@
+/* ========================================
+   RESET
+======================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+
+  background: #f2f6fc;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+/* ========================================
+   TOÀN BỘ TRANG LOGIN
+======================================== */
+
+.login-page {
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 35px;
+
+  background: #f2f6fc;
+
+  overflow: hidden;
+}
+
+/* ========================================
+   CARD LOGIN
+======================================== */
+
+.login-container {
+  width: min(1180px, 85vw);
+  height: min(680px, 82vh);
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  background: #ffffff;
+
+  border-radius: 22px;
+  overflow: hidden;
+
+  box-shadow:
+    0 20px 50px rgba(28, 62, 105, 0.12),
+    0 4px 12px rgba(28, 62, 105, 0.05);
+}
+
+/* ========================================
+   BÊN TRÁI - FORM LOGIN
+======================================== */
+
+.login-form-section {
+  min-width: 0;
+
+  padding: 35px 48px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  background: #ffffff;
+}
+
+/* ========================================
+   LOGO + TIÊU ĐỀ
+======================================== */
+
+.brand {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+.brand-icon {
+  flex-shrink: 0;
+
+  font-size: 38px;
+}
+
+.brand h1 {
+  margin: 0;
+
+  font-size: 30px;
+  line-height: 1.15;
+
+  font-weight: 750;
+
+  color: #102347;
+}
+
+.brand h1 span {
+  color: #1769ed;
+}
+
+/* ========================================
+   DÒNG MÔ TẢ
+======================================== */
+
+.subtitle {
+  margin: 15px 0 25px;
+
+  font-size: 14px;
+  line-height: 1.5;
+
+  color: #64748b;
+}
+
+/* ========================================
+   FORM
+======================================== */
+
+.login-form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  color: #111827;
+}
+
+/* ========================================
+   INPUT
+======================================== */
+
+.input-wrapper {
+  width: 100%;
+  height: 50px;
+
+  display: flex;
+  align-items: center;
+
+  border: 1px solid #d3dce8;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  overflow: hidden;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.input-wrapper:hover {
+  border-color: #afbed1;
+}
+
+.input-wrapper:focus-within {
+  border-color: #1769ed;
+
+  box-shadow: 0 0 0 3px rgba(23, 105, 237, 0.1);
+}
+
+.input-icon {
+  width: 50px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 17px;
+}
+
+.input-wrapper input {
+  flex: 1;
+
+  width: 100%;
+  height: 100%;
+
+  padding: 0 8px;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: #172554;
+
+  font-size: 14px;
+}
+
+.input-wrapper input::placeholder {
+  color: #94a3b8;
+}
+
+/* ========================================
+   HIỆN / ẨN MẬT KHẨU
+======================================== */
+
+.show-password {
+  width: 50px;
+  height: 100%;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+/* ========================================
+   GHI NHỚ + QUÊN MẬT KHẨU
+======================================== */
+
+.login-options {
+  margin: 3px 0 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  font-size: 13px;
+
+  color: #334155;
+
+  cursor: pointer;
+}
+
+.remember input {
+  width: 16px;
+  height: 16px;
+
+  margin: 0;
+}
+
+.login-options a {
+  font-size: 13px;
+  font-weight: 500;
+
+  color: #1769ed;
+
+  text-decoration: none;
+}
+
+.login-options a:hover {
+  text-decoration: underline;
+}
+
+/* ========================================
+   NÚT ĐĂNG NHẬP
+======================================== */
+
+.login-button {
+  width: 100%;
+  height: 50px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: linear-gradient(135deg, #1672f9, #1d5fe0);
+
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-1px);
+
+  box-shadow: 0 8px 20px rgba(23, 105, 237, 0.24);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   HOẶC
+======================================== */
+
+.divider {
+  margin: 14px 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.divider span {
+  flex: 1;
+
+  height: 1px;
+
+  background: #dce3ec;
+}
+
+.divider p {
+  margin: 0;
+}
+
+/* ========================================
+   ĐĂNG NHẬP TÀI KHOẢN TRƯỜNG
+======================================== */
+
+.school-login {
+  width: 100%;
+  height: 50px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  border: 1px solid #d3dce8;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #1e293b;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.school-login:hover {
+  border-color: #1769ed;
+
+  color: #1769ed;
+
+  background: #f8fbff;
+}
+
+/* ========================================
+   BÊN PHẢI
+======================================== */
+
+.information-section {
+  position: relative;
+
+  min-width: 0;
+  height: 100%;
+
+  background:
+    linear-gradient(rgba(20, 100, 210, 0.7), rgba(7, 67, 150, 0.8)),
+    url("/campus.jpg") center / cover no-repeat;
+}
+
+/* ========================================
+   LỚP PHỦ ẢNH
+======================================== */
+
+.overlay {
+  position: absolute;
+
+  inset: 0;
+
+  background: linear-gradient(
+    135deg,
+    rgba(22, 105, 220, 0.12),
+    rgba(4, 47, 110, 0.15)
+  );
+}
+
+/* ========================================
+   NỘI DUNG BÊN PHẢI
+======================================== */
+
+.information-content {
+  position: relative;
+
+  z-index: 2;
+
+  width: 100%;
+  height: 100%;
+
+  padding: 40px 50px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  color: #ffffff;
+}
+
+.information-content h2 {
+  margin: 0 0 13px;
+
+  font-size: 38px;
+  line-height: 1.15;
+
+  font-weight: 750;
+
+  color: #ffffff;
+}
+
+.description {
+  max-width: 500px;
+
+  margin: 0 0 25px;
+
+  font-size: 14px;
+  line-height: 1.55;
+
+  color: rgba(255, 255, 255, 0.94);
+}
+
+/* ========================================
+   DANH SÁCH CHỨC NĂNG
+======================================== */
+
+.features {
+  display: flex;
+  flex-direction: column;
+
+  gap: 16px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #ffffff;
+
+  font-size: 20px;
+
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.feature h3 {
+  margin: 0 0 3px;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  color: #ffffff;
+}
+
+.feature p {
+  margin: 0;
+
+  font-size: 13px;
+  line-height: 1.4;
+
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ========================================
+   LAPTOP MÀN HÌNH THẤP
+======================================== */
+
+@media (max-height: 760px) and (min-width: 1001px) {
+  .login-container {
+    width: min(1120px, 84vw);
+    height: min(620px, 80vh);
+  }
+
+  .login-form-section {
+    padding: 25px 42px;
+  }
+
+  .brand h1 {
+    font-size: 27px;
+  }
+
+  .brand-icon {
+    font-size: 34px;
+  }
+
+  .subtitle {
+    margin: 10px 0 17px;
+
+    font-size: 13px;
+  }
+
+  .form-group {
+    margin-bottom: 11px;
+  }
+
+  .input-wrapper {
+    height: 45px;
+  }
+
+  .login-options {
+    margin-bottom: 12px;
+  }
+
+  .login-button,
+  .school-login {
+    height: 45px;
+  }
+
+  .divider {
+    margin: 10px 0;
+  }
+
+  .information-content {
+    padding: 30px 45px;
+  }
+
+  .information-content h2 {
+    font-size: 34px;
+  }
+
+  .description {
+    margin-bottom: 18px;
+  }
+
+  .features {
+    gap: 11px;
+  }
+
+  .feature-icon {
+    width: 43px;
+    height: 43px;
+
+    flex-basis: 43px;
+
+    font-size: 18px;
+  }
+}
+
+/* ========================================
+   TABLET
+======================================== */
+
+@media (max-width: 1000px) {
+  body {
+    overflow: auto;
+  }
+
+  .login-page {
+    min-height: 100vh;
+    height: auto;
+
+    padding: 25px;
+  }
+
+  .login-container {
+    width: min(580px, 100%);
+    height: auto;
+
+    grid-template-columns: 1fr;
+  }
+
+  .information-section {
+    display: none;
+  }
+
+  .login-form-section {
+    padding: 50px;
+  }
+}
+
+/* ========================================
+   MOBILE
+======================================== */
+
+@media (max-width: 600px) {
+  .login-page {
+    padding: 0;
+
+    background: #ffffff;
+  }
+
+  .login-container {
+    width: 100%;
+    min-height: 100vh;
+
+    border-radius: 0;
+
+    box-shadow: none;
+  }
+
+  .login-form-section {
+    padding: 35px 24px;
+  }
+
+  .brand h1 {
+    font-size: 25px;
+  }
+
+  .brand-icon {
+    font-size: 34px;
+  }
+
+  .subtitle {
+    margin-bottom: 25px;
+  }
+
+  .login-options {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 12px;
+  }
+}
