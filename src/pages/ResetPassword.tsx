@@ -1,198 +1,397 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export const ResetPassword: React.FC = () => {
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // ============================================================
+  // LẤY TOKEN TỪ LINK EMAIL
+  // Ví dụ:
+  // http://localhost:5173/reset-password?token=abc123
+  // ============================================================
 
   const queryParams = new URLSearchParams(window.location.search);
-  const token = queryParams.get('token');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const token = queryParams.get("token");
+
+  // ============================================================
+  // XỬ LÝ ĐẶT LẠI MẬT KHẨU
+  // ============================================================
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    setMessage(null);
+
+    // ----------------------------------------------------------
+    // Kiểm tra token
+    // ----------------------------------------------------------
 
     if (!token) {
       setMessage({
-        type: 'error',
-        text: 'Mã xác nhận không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại yêu cầu mới!',
+        type: "error",
+        text: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.",
       });
+
       return;
     }
+
+    // ----------------------------------------------------------
+    // Kiểm tra độ dài mật khẩu
+    // ----------------------------------------------------------
+
+    if (newPassword.length < 8) {
+      setMessage({
+        type: "error",
+        text: "Mật khẩu phải có ít nhất 8 ký tự.",
+      });
+
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Kiểm tra có chữ cái
+    // ----------------------------------------------------------
+
+    if (!/[A-Za-zÀ-ỹ]/.test(newPassword)) {
+      setMessage({
+        type: "error",
+        text: "Mật khẩu phải có ít nhất một chữ cái.",
+      });
+
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Kiểm tra có chữ số
+    // ----------------------------------------------------------
+
+    if (!/[0-9]/.test(newPassword)) {
+      setMessage({
+        type: "error",
+        text: "Mật khẩu phải có ít nhất một chữ số.",
+      });
+
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Kiểm tra xác nhận mật khẩu
+    // ----------------------------------------------------------
 
     if (newPassword !== confirmPassword) {
       setMessage({
-        type: 'error',
-        text: 'Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại!',
+        type: "error",
+        text: "Mật khẩu xác nhận không khớp.",
       });
+
       return;
     }
 
-    if (newPassword.length < 6) {
-      setMessage({
-        type: 'error',
-        text: 'Mật khẩu phải có ít nhất 6 ký tự!',
-      });
-      return;
-    }
+    // ----------------------------------------------------------
+    // Bắt đầu gọi API
+    // ----------------------------------------------------------
 
     setLoading(true);
-    setMessage(null);
 
     try {
-      const response = await fetch('/api/v1/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, new_password: newPassword }),
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          token: token,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        }),
       });
 
       const res = await response.json();
 
+      // --------------------------------------------------------
+      // API thành công
+      // --------------------------------------------------------
+
       if (response.ok) {
         setMessage({
-          type: 'success',
-          text: 'Đặt lại mật khẩu thành công! Đang chuyển hướng đến trang đăng nhập...',
+          type: "success",
+          text: "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.",
         });
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2500);
-      } else {
-        setMessage({
-          type: 'error',
-          text: res.message || 'Mã xác thực đã hết hạn. Vui lòng thử lại!',
-        });
+
+        setNewPassword("");
+        setConfirmPassword("");
+
+        return;
       }
-    } catch (err) {
+
+      // --------------------------------------------------------
+      // API lỗi
+      // --------------------------------------------------------
+
+      let errorMessage = "Không thể đặt lại mật khẩu.";
+
+      if (res?.detail) {
+        if (Array.isArray(res.detail)) {
+          errorMessage = res.detail
+            .map((item: any) => item.msg || "Dữ liệu không hợp lệ.")
+            .join(", ");
+        } else {
+          errorMessage = res.detail;
+        }
+      } else if (res?.message) {
+        errorMessage = res.message;
+      }
+
       setMessage({
-        type: 'error',
-        text: 'Có lỗi xảy ra khi cập nhật mật khẩu!',
+        type: "error",
+        text: errorMessage,
+      });
+    } catch (error) {
+      console.error("RESET PASSWORD ERROR:", error);
+
+      setMessage({
+        type: "error",
+        text: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend.",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // ============================================================
+  // GIAO DIỆN
+  // ============================================================
+
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={styles.title}>Tạo mật khẩu mới</h2>
-        <p style={styles.subtitle}>Vui lòng nhập mật khẩu mới cho tài khoản của bạn.</p>
+        {/* ================================================== */}
+        {/* TIÊU ĐỀ */}
+        {/* ================================================== */}
+
+        <h2 style={styles.title}>Đặt lại mật khẩu</h2>
+
+        <p style={styles.subtitle}>Nhập mật khẩu mới cho tài khoản của bạn.</p>
+
+        {/* ================================================== */}
+        {/* THÔNG BÁO */}
+        {/* ================================================== */}
 
         {message && (
           <div
             style={{
               ...styles.alert,
-              backgroundColor: message.type === 'success' ? '#e6f4ea' : '#fce8e6',
-              color: message.type === 'success' ? '#137333' : '#c5221f',
-              borderColor: message.type === 'success' ? '#ceead6' : '#fad2cf',
+
+              backgroundColor:
+                message.type === "success" ? "#e6f4ea" : "#fce8e6",
+
+              color: message.type === "success" ? "#137333" : "#c5221f",
+
+              borderColor: message.type === "success" ? "#ceead6" : "#fad2cf",
             }}
           >
             {message.text}
           </div>
         )}
 
+        {/* ================================================== */}
+        {/* FORM */}
+        {/* ================================================== */}
+
         <form onSubmit={handleSubmit} style={styles.form}>
+          {/* Mật khẩu mới */}
+
           <div style={styles.formGroup}>
             <label style={styles.label}>Mật khẩu mới</label>
+
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Mật khẩu tối thiểu 6 ký tự"
+              placeholder="Nhập mật khẩu mới"
               required
+              disabled={loading}
               style={styles.input}
             />
           </div>
 
+          {/* Xác nhận mật khẩu */}
+
           <div style={styles.formGroup}>
             <label style={styles.label}>Xác nhận mật khẩu mới</label>
+
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Nhập lại mật khẩu mới"
               required
+              disabled={loading}
               style={styles.input}
             />
           </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+          {/* Yêu cầu mật khẩu */}
+
+          <p style={styles.passwordHint}>
+            Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái và chữ số.
+          </p>
+
+          {/* Nút */}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              ...styles.button,
+
+              backgroundColor: loading ? "#9ca3af" : "#0066cc",
+
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loading ? "Đang cập nhật..." : "Đặt lại mật khẩu"}
           </button>
         </form>
+
+        {/* ================================================== */}
+        {/* QUAY LẠI */}
+        {/* ================================================== */}
+
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "/";
+          }}
+          style={styles.backButton}
+        >
+          Quay lại trang đăng nhập
+        </button>
       </div>
     </div>
   );
 };
 
-const styles: { [key: string]: React.CSSProperties } = {
+// ============================================================
+// CSS
+// ============================================================
+
+const styles: {
+  [key: string]: React.CSSProperties;
+} = {
   container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '80vh',
-    padding: '20px',
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "100vh",
+    padding: "20px",
+    backgroundColor: "#f5f7fb",
+    boxSizing: "border-box",
   },
+
   card: {
-    width: '100%',
-    maxWidth: '420px',
-    backgroundColor: '#ffffff',
-    padding: '32px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-    border: '1px solid #eaeaea',
+    width: "100%",
+    maxWidth: "420px",
+    backgroundColor: "#ffffff",
+    padding: "32px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+    border: "1px solid #eaeaea",
+    boxSizing: "border-box",
   },
+
   title: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: '8px',
-    textAlign: 'center',
+    fontSize: "24px",
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: "8px",
+    textAlign: "center",
   },
+
   subtitle: {
-    fontSize: '14px',
-    color: '#666666',
-    marginBottom: '24px',
-    textAlign: 'center',
+    fontSize: "14px",
+    color: "#666666",
+    marginBottom: "24px",
+    textAlign: "center",
+    lineHeight: "1.5",
   },
+
   alert: {
-    padding: '12px 16px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    fontSize: '14px',
-    border: '1px solid',
+    padding: "12px 16px",
+    borderRadius: "8px",
+    marginBottom: "20px",
+    fontSize: "14px",
+    border: "1px solid",
+    lineHeight: "1.5",
   },
+
   form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
   },
+
   formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
   },
+
   label: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333333',
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#333333",
   },
+
   input: {
-    padding: '12px',
-    fontSize: '14px',
-    borderRadius: '8px',
-    border: '1px solid #cccccc',
-    outline: 'none',
+    padding: "12px",
+    fontSize: "14px",
+    borderRadius: "8px",
+    border: "1px solid #cccccc",
+    outline: "none",
+    boxSizing: "border-box",
+    width: "100%",
   },
+
+  passwordHint: {
+    fontSize: "13px",
+    color: "#666666",
+    margin: "-4px 0 0 0",
+    lineHeight: "1.5",
+  },
+
   button: {
-    padding: '12px',
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#ffffff',
-    backgroundColor: '#0066cc',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    marginTop: '8px',
+    padding: "12px",
+    fontSize: "15px",
+    fontWeight: "600",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "8px",
+    marginTop: "8px",
+  },
+
+  backButton: {
+    width: "100%",
+    marginTop: "16px",
+    padding: "11px",
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#0066cc",
+    backgroundColor: "#ffffff",
+    border: "1px solid #0066cc",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
 };

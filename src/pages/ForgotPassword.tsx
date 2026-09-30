@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 export const ForgotPassword: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -11,29 +14,51 @@ export const ForgotPassword: React.FC = () => {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/v1/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+      const response = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+        }),
       });
+
       const res = await response.json();
 
       if (response.ok) {
         setMessage({
-          type: 'success',
-          text: 'Yêu cầu đã được gửi! Vui lòng kiểm tra Gmail để lấy liên kết đặt lại mật khẩu.',
+          type: "success",
+          text: "Yêu cầu đã được gửi! Vui lòng kiểm tra Gmail để lấy liên kết đặt lại mật khẩu.",
         });
-        setEmail('');
+
+        setEmail("");
       } else {
+        let errorMessage = "Không thể gửi yêu cầu đặt lại mật khẩu.";
+
+        if (res?.detail) {
+          if (Array.isArray(res.detail)) {
+            errorMessage = res.detail.map((item: any) => item.msg).join(", ");
+          } else {
+            errorMessage = res.detail;
+          }
+        } else if (res?.message) {
+          errorMessage = res.message;
+        }
+
         setMessage({
-          type: 'error',
-          text: res.message || 'Email không tồn tại trong hệ thống.',
+          type: "error",
+          text: errorMessage,
         });
       }
     } catch (err) {
+      console.error("FORGOT PASSWORD ERROR:", err);
+
       setMessage({
-        type: 'error',
-        text: 'Có lỗi xảy ra khi gửi yêu cầu. Vui lòng thử lại sau!',
+        type: "error",
+        text: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend.",
       });
     } finally {
       setLoading(false);
@@ -45,16 +70,18 @@ export const ForgotPassword: React.FC = () => {
       <div style={styles.card}>
         <h2 style={styles.title}>Quên mật khẩu?</h2>
         <p style={styles.subtitle}>
-          Nhập địa chỉ Gmail đăng ký tài khoản. Hệ thống sẽ tự động gửi liên kết khôi phục.
+          Nhập địa chỉ Gmail đăng ký tài khoản. Hệ thống sẽ tự động gửi liên kết
+          khôi phục.
         </p>
 
         {message && (
           <div
             style={{
               ...styles.alert,
-              backgroundColor: message.type === 'success' ? '#e6f4ea' : '#fce8e6',
-              color: message.type === 'success' ? '#137333' : '#c5221f',
-              borderColor: message.type === 'success' ? '#ceead6' : '#fad2cf',
+              backgroundColor:
+                message.type === "success" ? "#e6f4ea" : "#fce8e6",
+              color: message.type === "success" ? "#137333" : "#c5221f",
+              borderColor: message.type === "success" ? "#ceead6" : "#fad2cf",
             }}
           >
             {message.text}
@@ -78,7 +105,7 @@ export const ForgotPassword: React.FC = () => {
           </div>
 
           <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? 'Đang gửi...' : 'Gửi liên kết khôi phục'}
+            {loading ? "Đang gửi..." : "Gửi liên kết khôi phục"}
           </button>
         </form>
 
@@ -94,82 +121,82 @@ export const ForgotPassword: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '80vh',
-    padding: '20px',
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "80vh",
+    padding: "20px",
   },
   card: {
-    width: '100%',
-    maxWidth: '420px',
-    backgroundColor: '#ffffff',
-    padding: '32px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-    border: '1px solid #eaeaea',
+    width: "100%",
+    maxWidth: "420px",
+    backgroundColor: "#ffffff",
+    padding: "32px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+    border: "1px solid #eaeaea",
   },
   title: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: '8px',
-    textAlign: 'center',
+    fontSize: "24px",
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: "8px",
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: '14px',
-    color: '#666666',
-    marginBottom: '24px',
-    textAlign: 'center',
-    lineHeight: '1.5',
+    fontSize: "14px",
+    color: "#666666",
+    marginBottom: "24px",
+    textAlign: "center",
+    lineHeight: "1.5",
   },
   alert: {
-    padding: '12px 16px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    fontSize: '14px',
-    border: '1px solid',
+    padding: "12px 16px",
+    borderRadius: "8px",
+    marginBottom: "20px",
+    fontSize: "14px",
+    border: "1px solid",
   },
   form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
   },
   formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
   },
   label: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333333',
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#333333",
   },
   input: {
-    padding: '12px',
-    fontSize: '14px',
-    borderRadius: '8px',
-    border: '1px solid #cccccc',
-    outline: 'none',
+    padding: "12px",
+    fontSize: "14px",
+    borderRadius: "8px",
+    border: "1px solid #cccccc",
+    outline: "none",
   },
   button: {
-    padding: '12px',
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#ffffff',
-    backgroundColor: '#0066cc',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    marginTop: '8px',
+    padding: "12px",
+    fontSize: "15px",
+    fontWeight: "600",
+    color: "#ffffff",
+    backgroundColor: "#0066cc",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    marginTop: "8px",
   },
   footer: {
-    marginTop: '24px',
-    textAlign: 'center',
+    marginTop: "24px",
+    textAlign: "center",
   },
   link: {
-    fontSize: '14px',
-    color: '#0066cc',
-    textDecoration: 'none',
+    fontSize: "14px",
+    color: "#0066cc",
+    textDecoration: "none",
   },
 };
