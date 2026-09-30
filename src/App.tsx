@@ -1,9 +1,24 @@
 import { useState } from "react";
 import "./App.css";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 function App() {
+    const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(savedUser);
+    } catch {
+      localStorage.removeItem("user");
+      return null;
+    }
+  });
   // =========================================================
   // CHUYỂN LOGIN / REGISTER
   // =========================================================
@@ -116,7 +131,12 @@ function App() {
           vaiTro: data.vaiTro,
         }),
       );
-
+       setUser({
+          nguoiDungId: data.nguoiDungId,
+          hoTen: data.hoTen,
+          email: data.email,
+            vaiTro: data.vaiTro,
+       });
       console.log("Đăng nhập thành công:", data);
 
       /*
@@ -273,45 +293,70 @@ function App() {
     setShowPassword(false);
   };
 
-  // =========================================================
-  // GIAO DIỆN
-  // =========================================================
+  // ========================================================= 
+// GIAO DIỆN 
+ 
+// ========================================================= 
+
+if (user) {
   return (
-    <div className="login-page">
-      <div className="login-container">
-        {/* ===================================================
-            LEFT
-        =================================================== */}
-        <section className="login-form-section">
-          <div className="brand">
-            <div className="brand-icon">🎓</div>
+    <ProtectedRoute>
+      <div style={{ padding: "40px" }}>
+        <h1>Hệ thống quản lý đào tạo</h1>
 
-            <h1>
-              Hệ thống quản lý <span>đào tạo</span>
-            </h1>
-          </div>
+        <p>Xin chào, {user.hoTen}</p>
+        <p>Email: {user.email}</p>
+        <p>Vai trò: {user.vaiTro}</p>
 
-          <p className={`subtitle ${isRegister ? "register-subtitle" : ""}`}>
-            {isRegister
-              ? "Tạo tài khoản để sử dụng hệ thống quản lý đào tạo"
-              : "Đăng nhập để truy cập và quản lý các chức năng của hệ thống"}
-          </p>
+        <button
+          onClick={() => {
+            localStorage.removeItem("user");
+            setUser(null);
+          }}
+        >
+          Đăng xuất
+        </button>
+      </div>
+    </ProtectedRoute>
+  );
+}
 
-          {/* =================================================
-              MESSAGE
-          ================================================= */}
+return (
+  <div className="login-page"> 
+    <div className="login-container"> 
+      {/* =================================================== 
+          LEFT 
+      =================================================== */} 
+      <section className="login-form-section"> 
+        <div className="brand"> 
+          <div className="brand-icon">🎓</div> 
 
-          {message && (
-            <div
-              className={
-                messageType === "success"
-                  ? "message success-message"
-                  : "message api-error-message"
-              }
-            >
-              {message}
-            </div>
-          )}
+          <h1> 
+            Hệ thống quản lý <span>đào tạo</span> 
+          </h1> 
+        </div> 
+
+        <p className={`subtitle ${isRegister ? "register-subtitle" : ""}`}> 
+          {isRegister 
+            ? "Tạo tài khoản để sử dụng hệ thống quản lý đào tạo" 
+            : "Đăng nhập để truy cập và quản lý các chức năng của hệ thống"} 
+        </p> 
+
+        {/* ================================================= 
+            MESSAGE 
+        ================================================= */} 
+
+        {message && ( 
+          <div 
+            className={ 
+              messageType === "success" 
+                ? "message success-message" 
+                : "message api-error-message" 
+            } 
+          > 
+            {message} 
+          </div> 
+        )}
 
           {/* =================================================
               FORM ĐĂNG NHẬP
