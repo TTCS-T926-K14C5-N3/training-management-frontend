@@ -3,6 +3,7 @@ import "./App.css";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
+import ChangePassword from "./pages/ChangePassword";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -304,27 +305,42 @@ function App() {
 // ========================================================= 
 
 if (user) {
-  return (
-    <ProtectedRoute>
-      <div style={{ padding: "40px" }}>
-        <h1>Hệ thống quản lý đào tạo</h1>
+    if (window.location.pathname === "/change-password") {
+      return (
+        <ProtectedRoute>
+          <ChangePassword />
+        </ProtectedRoute>
+      );
+    }
 
-        <p>Xin chào, {user.hoTen}</p>
-        <p>Email: {user.email}</p>
-        <p>Vai trò: {user.vaiTro}</p>
+    return (
+      <ProtectedRoute>
+        <div style={{ padding: "40px" }}>
+          <h1>Hệ thống quản lý đào tạo</h1>
+          <p>Xin chào, {user.hoTen}</p>
+          <p>Email: {user.email}</p>
+          <p>Vai trò: {user.vaiTro}</p>
+          
+          <button
+            onClick={() => {
+              localStorage.removeItem("user");
+              setUser(null);
+            }}
+          >
+            Đăng xuất
+          </button>
 
-        <button
-          onClick={() => {
-            localStorage.removeItem("user");
-            setUser(null);
-          }}
-        >
-          Đăng xuất
-        </button>
-      </div>
-    </ProtectedRoute>
-  );
-}
+          <button
+            style={{ marginLeft: '10px' }}
+            onClick={() => window.location.href = "/change-password"}
+          >
+            Đổi mật khẩu
+          </button>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+  
 if (isForgotPassword) {
   return (
     <div style={{ position: 'relative' }}>
