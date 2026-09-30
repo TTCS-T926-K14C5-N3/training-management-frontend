@@ -8,7 +8,7 @@ import ChangePassword from "./pages/ChangePassword";
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 function App() {
-    const [user, setUser] = useState(() => {
+  const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
@@ -133,16 +133,16 @@ function App() {
           hoTen: data.hoTen,
           email: data.email,
           vaiTro: data.vaiTro,
-       // phiên hết hạn sau 30 phút
+          // phiên hết hạn sau 30 phút
           expiresAt: Date.now() + 30 * 60 * 1000,
         }),
       );
-       setUser({
-          nguoiDungId: data.nguoiDungId,
-          hoTen: data.hoTen,
-          email: data.email,
-            vaiTro: data.vaiTro,
-       });
+      setUser({
+        nguoiDungId: data.nguoiDungId,
+        hoTen: data.hoTen,
+        email: data.email,
+        vaiTro: data.vaiTro,
+      });
       console.log("Đăng nhập thành công:", data);
 
       /*
@@ -299,12 +299,19 @@ function App() {
     setShowPassword(false);
   };
 
-  // ========================================================= 
-// GIAO DIỆN 
- 
-// ========================================================= 
+  // =========================================================
+  // RESET PASSWORD
+  // =========================================================
 
-if (user) {
+  if (window.location.pathname === "/reset-password") {
+    return <ResetPassword />;
+  }
+
+  // =========================================================
+  // GIAO DIỆN
+  // =========================================================
+
+  if (user) {
     if (window.location.pathname === "/change-password") {
       return (
         <ProtectedRoute>
@@ -320,7 +327,7 @@ if (user) {
           <p>Xin chào, {user.hoTen}</p>
           <p>Email: {user.email}</p>
           <p>Vai trò: {user.vaiTro}</p>
-          
+
           <button
             onClick={() => {
               localStorage.removeItem("user");
@@ -331,8 +338,8 @@ if (user) {
           </button>
 
           <button
-            style={{ marginLeft: '10px' }}
-            onClick={() => window.location.href = "/change-password"}
+            style={{ marginLeft: "10px" }}
+            onClick={() => (window.location.href = "/change-password")}
           >
             Đổi mật khẩu
           </button>
@@ -340,68 +347,47 @@ if (user) {
       </ProtectedRoute>
     );
   }
-  
-if (isForgotPassword) {
+
+  if (isForgotPassword) {
+    return <ForgotPassword />;
+  }
+
   return (
-    <div style={{ position: 'relative' }}>
-      <button 
-        onClick={() => setIsForgotPassword(false)}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          left: '20px',
-          padding: '8px 16px',
-          cursor: 'pointer',
-          backgroundColor: '#f0f0f0',
-          border: '1px solid #ccc',
-          borderRadius: '6px',
-          fontSize: '14px',
-          zIndex: 10
-        }}
-      >
-        ← Quay lại đăng nhập
-      </button>
-      <ForgotPassword />
-    </div>
-  );
-}
-
-return (
-  <div className="login-page"> 
-    <div className="login-container"> 
-      {/* =================================================== 
+    <div className="login-page">
+      <div className="login-container">
+        {/* =================================================== 
           LEFT 
-      =================================================== */} 
-      <section className="login-form-section"> 
-        <div className="brand"> 
-          <div className="brand-icon">🎓</div> 
+      =================================================== */}
+        <section className="login-form-section">
+          <div className="brand">
+            <div className="brand-icon">🎓</div>
 
-          <h1> 
-            Hệ thống quản lý <span>đào tạo</span> 
-          </h1> 
-        </div> 
+            <h1>
+              Hệ thống quản lý <span>đào tạo</span>
+            </h1>
+          </div>
 
-        <p className={`subtitle ${isRegister ? "register-subtitle" : ""}`}> 
-          {isRegister 
-            ? "Tạo tài khoản để sử dụng hệ thống quản lý đào tạo" 
-            : "Đăng nhập để truy cập và quản lý các chức năng của hệ thống"} 
-        </p> 
+          <p className={`subtitle ${isRegister ? "register-subtitle" : ""}`}>
+            {isRegister
+              ? "Tạo tài khoản để sử dụng hệ thống quản lý đào tạo"
+              : "Đăng nhập để truy cập và quản lý các chức năng của hệ thống"}
+          </p>
 
-        {/* ================================================= 
+          {/* ================================================= 
             MESSAGE 
-        ================================================= */} 
+        ================================================= */}
 
-        {message && ( 
-          <div 
-            className={ 
-              messageType === "success" 
-                ? "message success-message" 
-                : "message api-error-message" 
-            } 
-          > 
-            {message} 
-          </div> 
-        )}
+          {message && (
+            <div
+              className={
+                messageType === "success"
+                  ? "message success-message"
+                  : "message api-error-message"
+              }
+            >
+              {message}
+            </div>
+          )}
 
           {/* =================================================
               FORM ĐĂNG NHẬP
@@ -479,15 +465,15 @@ return (
                   <span>Ghi nhớ đăng nhập</span>
                 </label>
 
-               <a 
-  href="#" 
-  onClick={(e) => {
-    e.preventDefault();
-    setIsForgotPassword(true);
-  }}
->
-  Quên mật khẩu?
-</a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsForgotPassword(true);
+                  }}
+                >
+                  Quên mật khẩu?
+                </a>
               </div>
 
               {/* LOGIN BUTTON */}
