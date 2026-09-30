@@ -129,6 +129,8 @@ function App() {
           hoTen: data.hoTen,
           email: data.email,
           vaiTro: data.vaiTro,
+       // phiên hết hạn sau 30 phút
+          expiresAt: Date.now() + 30 * 60 * 1000,
         }),
       );
        setUser({
