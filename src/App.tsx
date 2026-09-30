@@ -25,6 +25,7 @@ function App() {
   // CHUYỂN LOGIN / REGISTER
   // =========================================================
   const [isRegister, setIsRegister] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   // =========================================================
   // HIỆN / ẨN MẬT KHẨU
@@ -324,6 +325,30 @@ if (user) {
     </ProtectedRoute>
   );
 }
+if (isForgotPassword) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <button 
+        onClick={() => setIsForgotPassword(false)}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          left: '20px',
+          padding: '8px 16px',
+          cursor: 'pointer',
+          backgroundColor: '#f0f0f0',
+          border: '1px solid #ccc',
+          borderRadius: '6px',
+          fontSize: '14px',
+          zIndex: 10
+        }}
+      >
+        ← Quay lại đăng nhập
+      </button>
+      <ForgotPassword />
+    </div>
+  );
+}
 
 return (
   <div className="login-page"> 
@@ -438,7 +463,15 @@ return (
                   <span>Ghi nhớ đăng nhập</span>
                 </label>
 
-                <a href="/forgot-password">Quên mật khẩu?</a>
+               <a 
+  href="#" 
+  onClick={(e) => {
+    e.preventDefault();
+    setIsForgotPassword(true);
+  }}
+>
+  Quên mật khẩu?
+</a>
               </div>
 
               {/* LOGIN BUTTON */}
