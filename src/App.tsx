@@ -1,6 +1,8 @@
 import { useState } from "react";
 import "./App.css";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ResetPassword } from "./pages/ResetPassword";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -436,7 +438,7 @@ return (
                   <span>Ghi nhớ đăng nhập</span>
                 </label>
 
-                <a href="#">Quên mật khẩu?</a>
+                <a href="/forgot-password">Quên mật khẩu?</a>
               </div>
 
               {/* LOGIN BUTTON */}
