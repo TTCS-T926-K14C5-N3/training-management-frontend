@@ -9,6 +9,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
+import { testPermission } from "./services/permissionService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -62,7 +63,14 @@ function isAdminUser(user: User | null): boolean {
     return false;
   }
 
-  return user.vaiTro.some((role) => role.tenVaiTro.toLowerCase() === "admin");
+  return user.vaiTro.some((role) => {
+    const roleName = role.tenVaiTro.trim().toLowerCase();
+
+    return (
+      roleName === "admin" ||
+      roleName === "quản trị hệ thống"
+    );
+  });
 }
 
 // ===========================================================
@@ -165,9 +173,24 @@ function App() {
   // KIỂM TRA QUYỀN
   // =========================================================
 
-  const checkPermission = (maQuyen: string): boolean => {
-    return hasPermission(user, maQuyen);
-  };
+  const handleTestPermission = async () => {
+  if (!user) return;
+
+  try {
+    const data = await testPermission(user.token);
+
+    setMessage(data.message || "Bạn có quyền USER_CREATE");
+    setMessageType("success");
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Đã xảy ra lỗi.";
+
+    setMessage(errorMessage);
+    setMessageType("error");
+  }
+};
 
   // =========================================================
   // ĐĂNG NHẬP
@@ -410,12 +433,34 @@ function App() {
         ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
         : "Chưa có vai trò";
 
+ // =======================================================
+// KIỂM TRA QUYỀN THEO URL
+// =======================================================
+
+const currentPath = window.location.pathname;
+
+let requiredPermission: string | undefined;
+
+if (currentPath === "/quan-ly-diem") {
+  requiredPermission = "QUAN_LY_DIEM";
+}
+
+if (currentPath === "/quan-ly-lop") {
+  requiredPermission = "QUAN_LY_LOP";
+}
+
+if (currentPath === "/quan-ly-hoc-phi") {
+  requiredPermission = "QUAN_LY_HOC_PHI";
+}
+
     // =======================================================
     // KIỂM TRA ADMIN
     // =======================================================
 
     const isAdmin = isAdminUser(user);
 
+    console.log("ROLE:", user.vaiTro);
+    console.log("IS ADMIN:", isAdmin);  
     // =======================================================
     // ADMIN LAYOUT
     // =======================================================
@@ -426,191 +471,77 @@ function App() {
           <AdminLayout
             userName={user.hoTen}
             roleName={roleName}
+            permissions={user.quyen.map((q) => q.maQuyen)}
             onLogout={handleLogout}
           >
-            {/* =================================================
-                DASHBOARD ADMIN
-            ================================================= */}
+            <div className="admin-welcome">
+              <div>
+                <div className="admin-welcome-label">TỔNG QUAN HỆ THỐNG</div>
+                <h2>Xin chào, Admin {user.hoTen}!</h2>
+                <p>Chào mừng bạn đến với trang quản trị hệ thống quản lý đào tạo.</p>
+              </div>
+              <div className="admin-welcome-icon">🎓</div>
+            </div>
 
-            <div className="dashboard-welcome">
-              <h2>Xin chào, Admin {user.hoTen}!</h2>
+            <div className="admin-stat-grid">
+              <div className="admin-stat-card">
+                <div className="admin-stat-icon blue">👥</div>
+                <div><span>Người dùng</span><strong>--</strong><small>Dữ liệu hệ thống</small></div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-icon purple">🛡️</div>
+                <div><span>Vai trò</span><strong>{user.vaiTro.length}</strong><small>Vai trò hiện tại</small></div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-icon green">🔐</div>
+                <div><span>Quyền</span><strong>{user.quyen.length}</strong><small>Quyền được cấp</small></div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-icon orange">⚙️</div>
+                <div><span>Trạng thái</span><strong>Hoạt động</strong><small>Tài khoản hiện tại</small></div>
+              </div>
+            </div>
 
-              <p>
-                Chào mừng bạn đến với trang quản trị hệ thống quản lý đào tạo.
-              </p>
-
-              {/* ===============================================
-                  THÔNG TIN ADMIN
-              =============================================== */}
-
-              <div
-                style={{
-                  marginTop: "25px",
-
-                  padding: "20px",
-
-                  background: "white",
-
-                  borderRadius: "10px",
-
-                  border: "1px solid #e5e7eb",
-                }}
-              >
-                <h3>Thông tin tài khoản</h3>
-
-                <p>
-                  <strong>Họ tên:</strong> {user.hoTen}
-                </p>
-
-                <p>
-                  <strong>Email:</strong> {user.email}
-                </p>
-
-                <p>
-                  <strong>Vai trò:</strong> {roleName}
-                </p>
-
-                <p>
-                  <strong>Số quyền:</strong> {user.quyen.length}
-                </p>
+            <div className="admin-dashboard-grid">
+              <div className="admin-panel">
+                <div className="admin-panel-header">
+                  <div><h3>Hoạt động gần đây</h3><p>Thông tin hoạt động của hệ thống</p></div>
+                </div>
+                <div className="admin-activity">
+                  <div className="admin-activity-item">
+                    <div className="activity-icon blue">🔑</div>
+                    <div><strong>Đăng nhập hệ thống</strong><span>{user.hoTen} đã đăng nhập</span><small>Vừa mới đây</small></div>
+                  </div>
+                  <div className="admin-activity-item">
+                    <div className="activity-icon green">👤</div>
+                    <div><strong>Tài khoản đang hoạt động</strong><span>Tài khoản đang ở trạng thái hoạt động</span><small>Hiện tại</small></div>
+                  </div>
+                  <div className="admin-activity-item">
+                    <div className="activity-icon purple">🛡️</div>
+                    <div><strong>Phân quyền</strong><span>{user.quyen.length} quyền được cấp</span><small>Hiện tại</small></div>
+                  </div>
+                </div>
               </div>
 
-              {/* ===============================================
-                  QUYỀN ADMIN
-              =============================================== */}
-
-              <div
-                style={{
-                  marginTop: "20px",
-
-                  padding: "20px",
-
-                  background: "white",
-
-                  borderRadius: "10px",
-
-                  border: "1px solid #e5e7eb",
-                }}
-              >
-                <h3>Quyền quản trị</h3>
-
-                <p>
-                  USER_VIEW:{" "}
-                  {checkPermission("USER_VIEW") ? "Có quyền" : "Không có quyền"}
-                </p>
-
-                <p>
-                  USER_CREATE:{" "}
-                  {checkPermission("USER_CREATE")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  USER_UPDATE:{" "}
-                  {checkPermission("USER_UPDATE")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  USER_LOCK:{" "}
-                  {checkPermission("USER_LOCK") ? "Có quyền" : "Không có quyền"}
-                </p>
-
-                <p>
-                  USER_UNLOCK:{" "}
-                  {checkPermission("USER_UNLOCK")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  USER_IMPORT:{" "}
-                  {checkPermission("USER_IMPORT")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  ROLE_VIEW:{" "}
-                  {checkPermission("ROLE_VIEW") ? "Có quyền" : "Không có quyền"}
-                </p>
-
-                <p>
-                  ROLE_CREATE:{" "}
-                  {checkPermission("ROLE_CREATE")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  ROLE_UPDATE:{" "}
-                  {checkPermission("ROLE_UPDATE")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  ROLE_DELETE:{" "}
-                  {checkPermission("ROLE_DELETE")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  PERMISSION_ASSIGN:{" "}
-                  {checkPermission("PERMISSION_ASSIGN")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  PERMISSION_REVOKE:{" "}
-                  {checkPermission("PERMISSION_REVOKE")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  PROFILE_VIEW_SELF:{" "}
-                  {checkPermission("PROFILE_VIEW_SELF")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
-
-                <p>
-                  PROFILE_UPDATE_SELF:{" "}
-                  {checkPermission("PROFILE_UPDATE_SELF")
-                    ? "Có quyền"
-                    : "Không có quyền"}
-                </p>
+              <div className="admin-panel">
+                <div className="admin-panel-header">
+                  <div><h3>Thao tác nhanh</h3><p>Các chức năng thường dùng</p></div>
+                </div>
+                <div className="admin-quick-actions">
+                  <button type="button" onClick={() => { window.location.href = "/change-password"; }}>
+                    <span className="quick-blue">🔐</span><div><strong>Đổi mật khẩu</strong><small>Cập nhật mật khẩu tài khoản</small></div><b>→</b>
+                  </button>
+                  <button type="button">
+                    <span className="quick-purple">👥</span><div><strong>Quản lý người dùng</strong><small>Quản lý tài khoản hệ thống</small></div><b>→</b>
+                  </button>
+                  <button type="button">
+                    <span className="quick-green">🛡️</span><div><strong>Vai trò & quyền</strong><small>Quản lý phân quyền</small></div><b>→</b>
+                  </button>
+                  <button type="button">
+                    <span className="quick-orange">📊</span><div><strong>Báo cáo</strong><small>Xem báo cáo hệ thống</small></div><b>→</b>
+                  </button>
+                </div>
               </div>
-
-              {/* ===============================================
-                  ĐỔI MẬT KHẨU
-              =============================================== */}
-
-              <button
-                style={{
-                  marginTop: "20px",
-
-                  padding: "10px 18px",
-
-                  border: "none",
-
-                  borderRadius: "7px",
-
-                  background: "#2563eb",
-
-                  color: "white",
-
-                  cursor: "pointer",
-                }}
-                onClick={() => (window.location.href = "/change-password")}
-              >
-                Đổi mật khẩu
-              </button>
             </div>
           </AdminLayout>
         </ProtectedRoute>
@@ -622,12 +553,15 @@ function App() {
     // =======================================================
 
     return (
-      <ProtectedRoute>
-        <MainLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          onLogout={handleLogout}
-        >
+  <ProtectedRoute
+    requiredPermission={requiredPermission}
+  >
+    <MainLayout
+      userName={user.hoTen}
+      roleName={roleName}
+      permissions={user.quyen.map((q) => q.maQuyen)}
+      onLogout={handleLogout}
+    >
           <div className="dashboard-welcome">
             <h2>Xin chào, {user.hoTen}!</h2>
 

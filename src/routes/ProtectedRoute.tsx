@@ -2,26 +2,37 @@ import { useEffect, type ReactNode } from "react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  requiredPermission?: string;
 }
 
-function ProtectedRoute({ children }: ProtectedRouteProps) {
+interface SessionPermission {
+  maQuyen: string;
+  tenQuyen?: string;
+}
+
+interface SessionUser {
+  expiresAt?: number;
+  quyen?: SessionPermission[];
+}
+
+function ProtectedRoute({
+  children,
+  requiredPermission,
+}: ProtectedRouteProps) {
   const user = localStorage.getItem("user");
 
   // =========================================================
-  //  GIA HẠN PHIÊN KHI NGƯỜI DÙNG CÒN HOẠT ĐỘNG
+  // GIA HẠN PHIÊN KHI NGƯỜI DÙNG CÒN HOẠT ĐỘNG
   // =========================================================
   useEffect(() => {
-    // Không có phiên đăng nhập thì không cần gia hạn
     if (!user) return;
 
     let isActive = false;
 
-    // Ghi nhận người dùng đang hoạt động
     const handleActivity = () => {
       isActive = true;
     };
 
-    // Các thao tác được xem là người dùng đang hoạt động
     const events = [
       "click",
       "mousemove",
@@ -34,7 +45,6 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
       window.addEventListener(event, handleActivity);
     });
 
-    // Kiểm tra hoạt động mỗi 1 phút
     const interval = setInterval(() => {
       if (!isActive) return;
 
@@ -43,23 +53,22 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
       if (!currentUser) return;
 
       try {
-        const session = JSON.parse(currentUser);
+        const session: SessionUser = JSON.parse(currentUser);
 
-        // Gia hạn thêm 30 phút
-        session.expiresAt = Date.now() + 30 * 60 * 1000;
+        session.expiresAt =
+          Date.now() + 30 * 60 * 1000;
 
-        // Lưu lại phiên mới
-        localStorage.setItem("user", JSON.stringify(session));
+        localStorage.setItem(
+          "user",
+          JSON.stringify(session)
+        );
 
-        // Đặt lại trạng thái hoạt động
         isActive = false;
       } catch {
-        // Phiên không hợp lệ thì xóa phiên
         localStorage.removeItem("user");
       }
     }, 60 * 1000);
 
-    // Dọn dẹp khi component bị hủy
     return () => {
       events.forEach((event) => {
         window.removeEventListener(event, handleActivity);
@@ -70,7 +79,7 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [user]);
 
   // =========================================================
-  //  KIỂM TRA CÓ PHIÊN ĐĂNG NHẬP
+  // KHÔNG CÓ PHIÊN ĐĂNG NHẬP
   // =========================================================
   if (!user) {
     window.location.href = "/";
@@ -78,28 +87,98 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // =========================================================
-  //  KIỂM TRA PHIÊN CÓ HẾT HẠN KHÔNG
+  // KIỂM TRA PHIÊN
   // =========================================================
+  let session: SessionUser;
+
   try {
-    const session = JSON.parse(user);
+    session = JSON.parse(user);
 
-    if (session.expiresAt && Date.now() >= session.expiresAt) {
-      // Xóa thông tin phiên đã hết hạn
+    if (
+      session.expiresAt &&
+      Date.now() >= session.expiresAt
+    ) {
       localStorage.removeItem("user");
-
-      // Quay về trang đăng nhập
       window.location.href = "/";
       return null;
     }
   } catch {
-    // Dữ liệu phiên không hợp lệ
     localStorage.removeItem("user");
     window.location.href = "/";
     return null;
   }
 
   // =========================================================
-  // Cho phép truy cập nội dung được bảo vệ
+  // KIỂM TRA QUYỀN TRUY CẬP URL
+  // =========================================================
+  if (requiredPermission) {
+    const permissions = Array.isArray(session.quyen)
+      ? session.quyen
+      : [];
+
+    const hasPermission = permissions.some(
+      (permission) =>
+        permission.maQuyen === requiredPermission
+    );
+
+    if (!hasPermission) {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f5f7fb",
+            padding: "20px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+              padding: "35px",
+              background: "white",
+              borderRadius: "12px",
+              border: "1px solid #e5e7eb",
+              textAlign: "center",
+              boxSizing: "border-box",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>
+              Không có quyền truy cập
+            </h2>
+
+            <p>
+              Bạn không có quyền thực hiện chức năng này.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/";
+              }}
+              style={{
+                marginTop: "15px",
+                padding: "10px 20px",
+                border: "none",
+                borderRadius: "8px",
+                background: "#2563eb",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              Quay lại
+            </button>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // =========================================================
+  // CHO PHÉP TRUY CẬP
   // =========================================================
   return <>{children}</>;
 }

@@ -1,9 +1,13 @@
+
+
 import React from "react";
+import "./MainLayout.css";
 
 interface MainLayoutProps {
   children: React.ReactNode;
   userName: string;
   roleName: string;
+  permissions: string[];
   onLogout: () => void;
 }
 
@@ -11,8 +15,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   children,
   userName,
   roleName,
+  permissions,
   onLogout,
 }) => {
+  const hasPermission = (maQuyen: string) =>
+  permissions.includes(maQuyen);
   return (
     <div className="main-layout">
       {/* SIDEBAR */}
@@ -23,17 +30,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
 
         <nav className="sidebar-menu">
-          <button className="sidebar-item active">
-            <span>⌂</span>
-            <span>Dashboard</span>
-          </button>
+  {/* Dashboard */}
+  <button className="sidebar-item active">
+    <span>⌂</span>
+    <span>Dashboard</span>
+  </button>
 
-          <button className="sidebar-item">
-            <span>👤</span>
-            <span>Hồ sơ cá nhân</span>
-          </button>
-        </nav>
+  {/* Quản lý điểm */}
+  {hasPermission("QUAN_LY_DIEM") && (
+    <button className="sidebar-item">
+      <span>📊</span>
+      <span>Quản lý điểm</span>
+    </button>
+  )}
 
+  {/* Quản lý lớp */}
+  {hasPermission("QUAN_LY_LOP") && (
+    <button className="sidebar-item">
+      <span>🏫</span>
+      <span>Quản lý lớp</span>
+    </button>
+  )}
+
+  {/* Hồ sơ cá nhân */}
+  <button className="sidebar-item">
+    <span>👤</span>
+    <span>Hồ sơ cá nhân</span>
+  </button>
+</nav>
         <div className="sidebar-bottom">
           <div className="sidebar-user">
             <div className="user-avatar">
