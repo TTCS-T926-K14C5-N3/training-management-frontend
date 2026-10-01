@@ -1,14 +1,80 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import "./App.css";
+
+import MainLayout from "./layouts/MainLayout";
+import AdminLayout from "./layouts/AdminLayout";
+
 import ProtectedRoute from "./routes/ProtectedRoute";
+
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+// ===========================================================
+// TYPES
+// ===========================================================
+
+interface VaiTro {
+  vaiTroId: number;
+  tenVaiTro: string;
+}
+
+interface Quyen {
+  quyenId: number;
+  maQuyen: string;
+  tenQuyen: string;
+}
+
+interface User {
+  nguoiDungId: number;
+  hoTen: string;
+  email: string;
+
+  vaiTro: VaiTro[];
+
+  quyen: Quyen[];
+
+  token: string;
+
+  expiresAt: number;
+}
+
+// ===========================================================
+// KIỂM TRA QUYỀN
+// ===========================================================
+
+function hasPermission(user: User | null, maQuyen: string): boolean {
+  if (!user) {
+    return false;
+  }
+
+  return user.quyen.some((quyen) => quyen.maQuyen === maQuyen);
+}
+
+// ===========================================================
+// KIỂM TRA ADMIN
+// ===========================================================
+
+function isAdminUser(user: User | null): boolean {
+  if (!user) {
+    return false;
+  }
+
+  return user.vaiTro.some((role) => role.tenVaiTro.toLowerCase() === "admin");
+}
+
+// ===========================================================
+// APP
+// ===========================================================
+
 function App() {
-  const [user, setUser] = useState(() => {
+  // =========================================================
+  // USER HIỆN TẠI
+  // =========================================================
+
+  const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
@@ -16,27 +82,64 @@ function App() {
     }
 
     try {
-      return JSON.parse(savedUser);
-    } catch {
+      const parsedUser = JSON.parse(savedUser);
+
+      // -----------------------------------------------------
+      // KIỂM TRA PHIÊN ĐĂNG NHẬP
+      // -----------------------------------------------------
+
+      if (parsedUser.expiresAt && Date.now() >= parsedUser.expiresAt) {
+        localStorage.removeItem("user");
+
+        return null;
+      }
+
+      // -----------------------------------------------------
+      // CHUẨN HÓA USER
+      // -----------------------------------------------------
+
+      return {
+        nguoiDungId: parsedUser.nguoiDungId,
+
+        hoTen: parsedUser.hoTen,
+
+        email: parsedUser.email,
+
+        vaiTro: Array.isArray(parsedUser.vaiTro) ? parsedUser.vaiTro : [],
+
+        quyen: Array.isArray(parsedUser.quyen) ? parsedUser.quyen : [],
+
+        token: parsedUser.token || "",
+
+        expiresAt: parsedUser.expiresAt || 0,
+      };
+    } catch (error) {
+      console.error("Không thể đọc thông tin đăng nhập:", error);
+
       localStorage.removeItem("user");
+
       return null;
     }
   });
+
   // =========================================================
-  // CHUYỂN LOGIN / REGISTER
+  // QUÊN MẬT KHẨU
   // =========================================================
-  const [isRegister, setIsRegister] = useState(false);
+
   const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   // =========================================================
-  // HIỆN / ẨN MẬT KHẨU
+  // HIỆN / ẨN PASSWORD
   // =========================================================
+
   const [showPassword, setShowPassword] = useState(false);
 
   // =========================================================
   // LOGIN
   // =========================================================
+
   const [email, setEmail] = useState("");
+
   const [password, setPassword] = useState("");
 
   const [loginErrors, setLoginErrors] = useState({
@@ -45,38 +148,40 @@ function App() {
   });
 
   // =========================================================
-  // REGISTER
+  // MESSAGE
   // =========================================================
-  const [hoTen, setHoTen] = useState("");
-  const [registerEmail, setRegisterEmail] = useState("");
-  const [soDienThoai, setSoDienThoai] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [registerErrors, setRegisterErrors] = useState({
-    hoTen: "",
-    email: "",
-    soDienThoai: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  // =========================================================
-  // MESSAGE + LOADING
-  // =========================================================
   const [message, setMessage] = useState("");
+
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+
+  // =========================================================
+  // LOADING
+  // =========================================================
 
   const [loading, setLoading] = useState(false);
 
   // =========================================================
+  // KIỂM TRA QUYỀN
+  // =========================================================
+
+  const checkPermission = (maQuyen: string): boolean => {
+    return hasPermission(user, maQuyen);
+  };
+
+  // =========================================================
   // ĐĂNG NHẬP
   // =========================================================
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setMessage("");
     setMessageType("");
+
+    // -------------------------------------------------------
+    // VALIDATE
+    // -------------------------------------------------------
 
     const newErrors = {
       email: "",
@@ -97,6 +202,10 @@ function App() {
       return;
     }
 
+    // -------------------------------------------------------
+    // GỌI API LOGIN
+    // -------------------------------------------------------
+
     try {
       setLoading(true);
 
@@ -115,162 +224,98 @@ function App() {
 
       const data = await response.json();
 
+      // -----------------------------------------------------
+      // LOGIN THẤT BẠI
+      // -----------------------------------------------------
+
       if (!response.ok) {
         setMessage(data.detail || "Đăng nhập không thành công");
 
         setMessageType("error");
+
         return;
       }
 
-      setMessage(data.message || "Đăng nhập thành công");
-      setMessageType("success");
+      // -----------------------------------------------------
+      // KIỂM TRA TOKEN
+      // -----------------------------------------------------
 
-      // Lưu thông tin người dùng tạm thời
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          nguoiDungId: data.nguoiDungId,
-          hoTen: data.hoTen,
-          email: data.email,
-          vaiTro: data.vaiTro,
-          // phiên hết hạn sau 30 phút
-          expiresAt: Date.now() + 30 * 60 * 1000,
-        }),
-      );
-      setUser({
-        nguoiDungId: data.nguoiDungId,
-        hoTen: data.hoTen,
-        email: data.email,
-        vaiTro: data.vaiTro,
-      });
-      console.log("Đăng nhập thành công:", data);
-
-      /*
-        Sau này khi có trang Dashboard:
-        window.location.href = "/dashboard";
-      */
-    } catch (error) {
-      console.error(error);
-
-      setMessage("Không thể kết nối tới máy chủ");
-
-      setMessageType("error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // =========================================================
-  // ĐĂNG KÝ
-  // =========================================================
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    setMessage("");
-    setMessageType("");
-
-    const newErrors = {
-      hoTen: "",
-      email: "",
-      soDienThoai: "",
-      password: "",
-      confirmPassword: "",
-    };
-
-    // Họ tên
-    if (!hoTen.trim()) {
-      newErrors.hoTen = "Vui lòng nhập họ và tên";
-    }
-
-    // Email
-    if (!registerEmail.trim()) {
-      newErrors.email = "Vui lòng nhập email";
-    }
-
-    // Số điện thoại
-    if (!soDienThoai.trim()) {
-      newErrors.soDienThoai = "Vui lòng nhập số điện thoại";
-    } else if (!/^[0-9]{10,11}$/.test(soDienThoai)) {
-      newErrors.soDienThoai = "Số điện thoại không hợp lệ";
-    }
-
-    // Mật khẩu
-    if (!registerPassword.trim()) {
-      newErrors.password = "Vui lòng nhập mật khẩu";
-    } else if (registerPassword.length < 6) {
-      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
-    }
-
-    // Xác nhận mật khẩu
-    if (!confirmPassword.trim()) {
-      newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
-    } else if (registerPassword !== confirmPassword) {
-      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
-    }
-
-    setRegisterErrors(newErrors);
-
-    if (
-      newErrors.hoTen ||
-      newErrors.email ||
-      newErrors.soDienThoai ||
-      newErrors.password ||
-      newErrors.confirmPassword
-    ) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await fetch(`${API_URL}/register`, {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          ho_ten: hoTen.trim(),
-          email: registerEmail.trim(),
-          so_dien_thoai: soDienThoai.trim(),
-          password: registerPassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(data.detail || "Đăng ký không thành công");
+      if (!data.access_token) {
+        setMessage("Đăng nhập thành công nhưng không nhận được access token");
 
         setMessageType("error");
+
         return;
       }
 
-      // =====================================================
-      // ĐĂNG KÝ THÀNH CÔNG
-      // =====================================================
+      // -----------------------------------------------------
+      // LẤY VAI TRÒ
+      // -----------------------------------------------------
 
-      setMessage("Đăng ký thành công. Vui lòng đăng nhập.");
+      const vaiTro: VaiTro[] = Array.isArray(data.vaiTro) ? data.vaiTro : [];
+
+      // -----------------------------------------------------
+      // LẤY QUYỀN
+      // -----------------------------------------------------
+
+      const quyen: Quyen[] = Array.isArray(data.quyen) ? data.quyen : [];
+
+      // -----------------------------------------------------
+      // TẠO USER
+      // -----------------------------------------------------
+
+      const loggedInUser: User = {
+        nguoiDungId: data.nguoiDungId,
+
+        hoTen: data.hoTen,
+
+        email: data.email,
+
+        vaiTro: vaiTro,
+
+        quyen: quyen,
+
+        token: data.access_token,
+
+        // Backend JWT hiện tại hết hạn sau 30 phút
+        expiresAt: Date.now() + 30 * 60 * 1000,
+      };
+
+      // -----------------------------------------------------
+      // LƯU LOCAL STORAGE
+      // -----------------------------------------------------
+
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+
+      // -----------------------------------------------------
+      // CẬP NHẬT STATE
+      // -----------------------------------------------------
+
+      setUser(loggedInUser);
+
+      // -----------------------------------------------------
+      // THÔNG BÁO
+      // -----------------------------------------------------
+
+      setMessage(data.message || "Đăng nhập thành công");
 
       setMessageType("success");
 
-      // Đưa email vừa đăng ký sang form Login
-      setEmail(registerEmail);
+      // -----------------------------------------------------
+      // DEBUG
+      // -----------------------------------------------------
 
-      // Reset form đăng ký
-      setHoTen("");
-      setRegisterEmail("");
-      setSoDienThoai("");
-      setRegisterPassword("");
-      setConfirmPassword("");
+      console.log("Đăng nhập thành công:", data);
 
-      // Chuyển về Login
-      setIsRegister(false);
+      console.log("Vai trò:", vaiTro);
 
-      setShowPassword(false);
+      console.log("Số quyền:", quyen.length);
+
+      console.log("Danh sách quyền:", quyen);
+
+      console.log("Có phải Admin:", isAdminUser(loggedInUser));
     } catch (error) {
-      console.error(error);
+      console.error("Lỗi đăng nhập:", error);
 
       setMessage("Không thể kết nối tới máy chủ");
 
@@ -281,22 +326,54 @@ function App() {
   };
 
   // =========================================================
-  // CHUYỂN FORM
+  // ĐĂNG XUẤT
   // =========================================================
-  const openRegister = () => {
-    setIsRegister(true);
 
-    setMessage("");
-    setMessageType("");
-    setShowPassword(false);
-  };
+  const handleLogout = async () => {
+    try {
+      // -----------------------------------------------------
+      // GỌI API LOGOUT
+      // -----------------------------------------------------
 
-  const openLogin = () => {
-    setIsRegister(false);
+      if (user?.token) {
+        await fetch(`${API_URL}/logout`, {
+          method: "POST",
 
-    setMessage("");
-    setMessageType("");
-    setShowPassword(false);
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi đăng xuất:", error);
+    } finally {
+      // -----------------------------------------------------
+      // XÓA USER
+      // -----------------------------------------------------
+
+      localStorage.removeItem("user");
+
+      // -----------------------------------------------------
+      // RESET STATE
+      // -----------------------------------------------------
+
+      setUser(null);
+
+      setEmail("");
+
+      setPassword("");
+
+      setMessage("");
+
+      setMessageType("");
+
+      setLoginErrors({
+        email: "",
+        password: "",
+      });
+
+      setShowPassword(false);
+    }
   };
 
   // =========================================================
@@ -308,10 +385,14 @@ function App() {
   }
 
   // =========================================================
-  // GIAO DIỆN
+  // ĐÃ ĐĂNG NHẬP
   // =========================================================
 
   if (user) {
+    // =======================================================
+    // ĐỔI MẬT KHẨU
+    // =======================================================
+
     if (window.location.pathname === "/change-password") {
       return (
         <ProtectedRoute>
@@ -320,44 +401,290 @@ function App() {
       );
     }
 
+    // =======================================================
+    // LẤY TÊN VAI TRÒ
+    // =======================================================
+
+    const roleName =
+      user.vaiTro && user.vaiTro.length > 0
+        ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
+        : "Chưa có vai trò";
+
+    // =======================================================
+    // KIỂM TRA ADMIN
+    // =======================================================
+
+    const isAdmin = isAdminUser(user);
+
+    // =======================================================
+    // ADMIN LAYOUT
+    // =======================================================
+
+    if (isAdmin) {
+      return (
+        <ProtectedRoute>
+          <AdminLayout
+            userName={user.hoTen}
+            roleName={roleName}
+            onLogout={handleLogout}
+          >
+            {/* =================================================
+                DASHBOARD ADMIN
+            ================================================= */}
+
+            <div className="dashboard-welcome">
+              <h2>Xin chào, Admin {user.hoTen}!</h2>
+
+              <p>
+                Chào mừng bạn đến với trang quản trị hệ thống quản lý đào tạo.
+              </p>
+
+              {/* ===============================================
+                  THÔNG TIN ADMIN
+              =============================================== */}
+
+              <div
+                style={{
+                  marginTop: "25px",
+
+                  padding: "20px",
+
+                  background: "white",
+
+                  borderRadius: "10px",
+
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <h3>Thông tin tài khoản</h3>
+
+                <p>
+                  <strong>Họ tên:</strong> {user.hoTen}
+                </p>
+
+                <p>
+                  <strong>Email:</strong> {user.email}
+                </p>
+
+                <p>
+                  <strong>Vai trò:</strong> {roleName}
+                </p>
+
+                <p>
+                  <strong>Số quyền:</strong> {user.quyen.length}
+                </p>
+              </div>
+
+              {/* ===============================================
+                  QUYỀN ADMIN
+              =============================================== */}
+
+              <div
+                style={{
+                  marginTop: "20px",
+
+                  padding: "20px",
+
+                  background: "white",
+
+                  borderRadius: "10px",
+
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <h3>Quyền quản trị</h3>
+
+                <p>
+                  USER_VIEW:{" "}
+                  {checkPermission("USER_VIEW") ? "Có quyền" : "Không có quyền"}
+                </p>
+
+                <p>
+                  USER_CREATE:{" "}
+                  {checkPermission("USER_CREATE")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  USER_UPDATE:{" "}
+                  {checkPermission("USER_UPDATE")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  USER_LOCK:{" "}
+                  {checkPermission("USER_LOCK") ? "Có quyền" : "Không có quyền"}
+                </p>
+
+                <p>
+                  USER_UNLOCK:{" "}
+                  {checkPermission("USER_UNLOCK")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  USER_IMPORT:{" "}
+                  {checkPermission("USER_IMPORT")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  ROLE_VIEW:{" "}
+                  {checkPermission("ROLE_VIEW") ? "Có quyền" : "Không có quyền"}
+                </p>
+
+                <p>
+                  ROLE_CREATE:{" "}
+                  {checkPermission("ROLE_CREATE")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  ROLE_UPDATE:{" "}
+                  {checkPermission("ROLE_UPDATE")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  ROLE_DELETE:{" "}
+                  {checkPermission("ROLE_DELETE")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  PERMISSION_ASSIGN:{" "}
+                  {checkPermission("PERMISSION_ASSIGN")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  PERMISSION_REVOKE:{" "}
+                  {checkPermission("PERMISSION_REVOKE")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  PROFILE_VIEW_SELF:{" "}
+                  {checkPermission("PROFILE_VIEW_SELF")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+
+                <p>
+                  PROFILE_UPDATE_SELF:{" "}
+                  {checkPermission("PROFILE_UPDATE_SELF")
+                    ? "Có quyền"
+                    : "Không có quyền"}
+                </p>
+              </div>
+
+              {/* ===============================================
+                  ĐỔI MẬT KHẨU
+              =============================================== */}
+
+              <button
+                style={{
+                  marginTop: "20px",
+
+                  padding: "10px 18px",
+
+                  border: "none",
+
+                  borderRadius: "7px",
+
+                  background: "#2563eb",
+
+                  color: "white",
+
+                  cursor: "pointer",
+                }}
+                onClick={() => (window.location.href = "/change-password")}
+              >
+                Đổi mật khẩu
+              </button>
+            </div>
+          </AdminLayout>
+        </ProtectedRoute>
+      );
+    }
+
+    // =======================================================
+    // MAIN LAYOUT CHO USER KHÔNG PHẢI ADMIN
+    // =======================================================
+
     return (
       <ProtectedRoute>
-        <div style={{ padding: "40px" }}>
-          <h1>Hệ thống quản lý đào tạo</h1>
-          <p>Xin chào, {user.hoTen}</p>
-          <p>Email: {user.email}</p>
-          <p>Vai trò: {user.vaiTro}</p>
+        <MainLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          onLogout={handleLogout}
+        >
+          <div className="dashboard-welcome">
+            <h2>Xin chào, {user.hoTen}!</h2>
 
-          <button
-            onClick={() => {
-              localStorage.removeItem("user");
-              setUser(null);
-            }}
-          >
-            Đăng xuất
-          </button>
+            <p>Chào mừng bạn đến với hệ thống quản lý đào tạo.</p>
 
-          <button
-            style={{ marginLeft: "10px" }}
-            onClick={() => (window.location.href = "/change-password")}
-          >
-            Đổi mật khẩu
-          </button>
-        </div>
+            <div
+              style={{
+                marginTop: "25px",
+
+                padding: "20px",
+
+                background: "white",
+
+                borderRadius: "10px",
+
+                border: "1px solid #e5e7eb",
+              }}
+            >
+              <h3>Thông tin tài khoản</h3>
+
+              <p>
+                <strong>Email:</strong> {user.email}
+              </p>
+
+              <p>
+                <strong>Vai trò:</strong> {roleName}
+              </p>
+
+              <p>
+                <strong>Số quyền:</strong> {user.quyen.length}
+              </p>
+            </div>
+          </div>
+        </MainLayout>
       </ProtectedRoute>
     );
   }
+
+  // =========================================================
+  // QUÊN MẬT KHẨU
+  // =========================================================
 
   if (isForgotPassword) {
     return <ForgotPassword />;
   }
 
+  // =========================================================
+  // GIAO DIỆN ĐĂNG NHẬP
+  // =========================================================
+
   return (
     <div className="login-page">
       <div className="login-container">
-        {/* =================================================== 
-          LEFT 
-      =================================================== */}
+        {/* =================================================
+            LEFT - LOGIN
+        ================================================= */}
+
         <section className="login-form-section">
           <div className="brand">
             <div className="brand-icon">🎓</div>
@@ -367,15 +694,13 @@ function App() {
             </h1>
           </div>
 
-          <p className={`subtitle ${isRegister ? "register-subtitle" : ""}`}>
-            {isRegister
-              ? "Tạo tài khoản để sử dụng hệ thống quản lý đào tạo"
-              : "Đăng nhập để truy cập và quản lý các chức năng của hệ thống"}
+          <p className="subtitle">
+            Đăng nhập để truy cập và quản lý các chức năng của hệ thống
           </p>
 
-          {/* ================================================= 
-            MESSAGE 
-        ================================================= */}
+          {/* =================================================
+              MESSAGE
+          ================================================= */}
 
           {message && (
             <div
@@ -390,299 +715,135 @@ function App() {
           )}
 
           {/* =================================================
-              FORM ĐĂNG NHẬP
+              LOGIN FORM
           ================================================= */}
 
-          {!isRegister && (
-            <form className="login-form" onSubmit={handleLogin}>
-              {/* EMAIL */}
-              <div className="form-group">
-                <label>Email</label>
+          <form className="login-form" onSubmit={handleLogin}>
+            {/* =================================================
+                EMAIL
+            ================================================= */}
 
-                <div className="input-wrapper">
-                  <span className="input-icon">✉️</span>
+            <div className="form-group">
+              <label>Email</label>
 
-                  <input
-                    type="email"
-                    placeholder="Nhập email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
+              <div className="input-wrapper">
+                <span className="input-icon">✉️</span>
 
-                      setLoginErrors({
-                        ...loginErrors,
-                        email: "",
-                      });
-                    }}
-                  />
-                </div>
+                <input
+                  type="email"
+                  placeholder="Nhập email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
 
-                {loginErrors.email && (
-                  <p className="error-message">{loginErrors.email}</p>
-                )}
-              </div>
+                    setLoginErrors({
+                      ...loginErrors,
 
-              {/* PASSWORD */}
-              <div className="form-group">
-                <label>Mật khẩu</label>
-
-                <div className="input-wrapper">
-                  <span className="input-icon">🔒</span>
-
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Nhập mật khẩu"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-
-                      setLoginErrors({
-                        ...loginErrors,
-                        password: "",
-                      });
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    className="show-password"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? "🙈" : "👁"}
-                  </button>
-                </div>
-
-                {loginErrors.password && (
-                  <p className="error-message">{loginErrors.password}</p>
-                )}
-              </div>
-
-              {/* OPTIONS */}
-              <div className="login-options">
-                <label className="remember">
-                  <input type="checkbox" />
-
-                  <span>Ghi nhớ đăng nhập</span>
-                </label>
-
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsForgotPassword(true);
+                      email: "",
+                    });
                   }}
+                />
+              </div>
+
+              {loginErrors.email && (
+                <p className="error-message">{loginErrors.email}</p>
+              )}
+            </div>
+
+            {/* =================================================
+                PASSWORD
+            ================================================= */}
+
+            <div className="form-group">
+              <label>Mật khẩu</label>
+
+              <div className="input-wrapper">
+                <span className="input-icon">🔒</span>
+
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Nhập mật khẩu"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+
+                    setLoginErrors({
+                      ...loginErrors,
+
+                      password: "",
+                    });
+                  }}
+                />
+
+                <button
+                  type="button"
+                  className="show-password"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  Quên mật khẩu?
-                </a>
-              </div>
-
-              {/* LOGIN BUTTON */}
-              <button type="submit" className="login-button" disabled={loading}>
-                <span>→</span>
-
-                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-              </button>
-
-              {/* REGISTER */}
-              <div className="register-link">
-                <span>Chưa có tài khoản?</span>
-
-                <button type="button" onClick={openRegister}>
-                  Đăng ký ngay
+                  {showPassword ? "🙈" : "👁"}
                 </button>
               </div>
 
-              <div className="divider">
-                <span></span>
+              {loginErrors.password && (
+                <p className="error-message">{loginErrors.password}</p>
+              )}
+            </div>
 
-                <p>hoặc</p>
+            {/* =================================================
+                OPTIONS
+            ================================================= */}
 
-                <span></span>
-              </div>
+            <div className="login-options">
+              <label className="remember">
+                <input type="checkbox" />
 
-              <button type="button" className="school-login">
-                👥
-                <span>Đăng nhập bằng tài khoản trường</span>
-              </button>
-            </form>
-          )}
+                <span>Ghi nhớ đăng nhập</span>
+              </label>
 
-          {/* =================================================
-              FORM ĐĂNG KÝ
-          ================================================= */}
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
 
-          {isRegister && (
-            <form
-              className="login-form register-form"
-              onSubmit={handleRegister}
-            >
-              {/* HỌ TÊN */}
-              <div className="form-group">
-                <label>Họ và tên</label>
+                  setIsForgotPassword(true);
+                }}
+              >
+                Quên mật khẩu?
+              </a>
+            </div>
 
-                <div className="input-wrapper">
-                  <span className="input-icon">👤</span>
+            {/* =================================================
+                LOGIN BUTTON
+            ================================================= */}
 
-                  <input
-                    type="text"
-                    placeholder="Nhập họ và tên"
-                    value={hoTen}
-                    onChange={(e) => {
-                      setHoTen(e.target.value);
+            <button type="submit" className="login-button" disabled={loading}>
+              <span>→</span>
 
-                      setRegisterErrors({
-                        ...registerErrors,
-                        hoTen: "",
-                      });
-                    }}
-                  />
-                </div>
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            </button>
 
-                {registerErrors.hoTen && (
-                  <p className="error-message">{registerErrors.hoTen}</p>
-                )}
-              </div>
+            {/* =================================================
+                SCHOOL LOGIN
+            ================================================= */}
 
-              {/* EMAIL */}
-              <div className="form-group">
-                <label>Email</label>
+            <div className="divider">
+              <span></span>
 
-                <div className="input-wrapper">
-                  <span className="input-icon">✉️</span>
+              <p>hoặc</p>
 
-                  <input
-                    type="email"
-                    placeholder="Nhập email"
-                    value={registerEmail}
-                    onChange={(e) => {
-                      setRegisterEmail(e.target.value);
+              <span></span>
+            </div>
 
-                      setRegisterErrors({
-                        ...registerErrors,
-                        email: "",
-                      });
-                    }}
-                  />
-                </div>
-
-                {registerErrors.email && (
-                  <p className="error-message">{registerErrors.email}</p>
-                )}
-              </div>
-
-              {/* SỐ ĐIỆN THOẠI */}
-              <div className="form-group">
-                <label>Số điện thoại</label>
-
-                <div className="input-wrapper">
-                  <span className="input-icon">📱</span>
-
-                  <input
-                    type="tel"
-                    placeholder="Nhập số điện thoại"
-                    value={soDienThoai}
-                    onChange={(e) => {
-                      setSoDienThoai(e.target.value);
-
-                      setRegisterErrors({
-                        ...registerErrors,
-                        soDienThoai: "",
-                      });
-                    }}
-                  />
-                </div>
-
-                {registerErrors.soDienThoai && (
-                  <p className="error-message">{registerErrors.soDienThoai}</p>
-                )}
-              </div>
-
-              {/* PASSWORD */}
-              <div className="form-group">
-                <label>Mật khẩu</label>
-
-                <div className="input-wrapper">
-                  <span className="input-icon">🔒</span>
-
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Nhập mật khẩu"
-                    value={registerPassword}
-                    onChange={(e) => {
-                      setRegisterPassword(e.target.value);
-
-                      setRegisterErrors({
-                        ...registerErrors,
-                        password: "",
-                      });
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    className="show-password"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? "🙈" : "👁"}
-                  </button>
-                </div>
-
-                {registerErrors.password && (
-                  <p className="error-message">{registerErrors.password}</p>
-                )}
-              </div>
-
-              {/* CONFIRM PASSWORD */}
-              <div className="form-group">
-                <label>Xác nhận mật khẩu</label>
-
-                <div className="input-wrapper">
-                  <span className="input-icon">🔐</span>
-
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Nhập lại mật khẩu"
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value);
-
-                      setRegisterErrors({
-                        ...registerErrors,
-                        confirmPassword: "",
-                      });
-                    }}
-                  />
-                </div>
-
-                {registerErrors.confirmPassword && (
-                  <p className="error-message">
-                    {registerErrors.confirmPassword}
-                  </p>
-                )}
-              </div>
-
-              {/* REGISTER BUTTON */}
-              <button type="submit" className="login-button" disabled={loading}>
-                <span>+</span>
-
-                {loading ? "Đang đăng ký..." : "Đăng ký"}
-              </button>
-
-              {/* BACK LOGIN */}
-              <div className="register-link">
-                <span>Đã có tài khoản?</span>
-
-                <button type="button" onClick={openLogin}>
-                  Đăng nhập
-                </button>
-              </div>
-            </form>
-          )}
+            <button type="button" className="school-login">
+              👥
+              <span>Đăng nhập bằng tài khoản trường</span>
+            </button>
+          </form>
         </section>
 
-        {/* ===================================================
-            RIGHT
-        =================================================== */}
+        {/* =================================================
+            RIGHT - INFORMATION
+        ================================================= */}
 
         <section className="information-section">
           <div className="overlay"></div>
