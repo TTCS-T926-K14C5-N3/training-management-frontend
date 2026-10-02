@@ -164,3 +164,30 @@
 .page-content {
   padding: 35px 40px;
 }
+@media (max-width: 360px) {
+  .main-layout {
+    display: block;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    box-sizing: border-box;
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
+  .top-header {
+    padding: 20px 16px;
+  }
+
+  .page-content {
+    padding: 20px 16px;
+  }
+
+  .header-user {
+    display: none;
+  }
+}
