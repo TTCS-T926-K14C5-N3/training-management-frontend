@@ -1,15 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-// Cấu trúc response lỗi chuẩn hóa
-export interface ApiErrorResponse {
-  statusCode: number;
-  message: string;
-}
-
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("accessToken");
 
-  const headers = {
+  const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
@@ -21,24 +15,28 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
       headers,
     });
 
-    // 1. Chuẩn hóa lỗi 401: Chưa xác thực / Token hết hạn
+    // 1. Xử lý lỗi 401: Chưa xác thực / Token hết hạn
     if (response.status === 401) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
-      // Tùy chọn: Chuyển hướng về trang đăng nhập hoặc phát sự kiện
-      window.location.reload(); 
-      throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+      window.location.href = "/login"; // Điều hướng về trang Đăng nhập
+      throw new Error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại!");
     }
 
-    // 2. Chuẩn hóa lỗi 403: Không có quyền truy cập
+    // 2. Xử lý lỗi 403: Không có quyền truy cập
     if (response.status === 403) {
-      throw new Error("Bạn không có quyền truy cập vào chức năng này!");
+      throw new Error("Bạn không có quyền truy cập vào tài nguyên này (403 Forbidden)!");
     }
 
-    // 3. Chuẩn hóa các lỗi khác (400, 404, 500...)
+    // 3. Xử lý lỗi 404: Không tìm thấy đường dẫn / dữ liệu
+    if (response.status === 404) {
+      throw new Error("Không tìm thấy dữ liệu hoặc đường dẫn yêu cầu (404 Not Found)!");
+    }
+
+    // 4. Xử lý các lỗi khác (400, 500...)
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || errorData.message || "Đã xảy ra lỗi hệ thống!";
+      const errorMessage = errorData.detail || errorData.message || `Lỗi hệ thống (${response.status})!`;
       throw new Error(errorMessage);
     }
 
@@ -47,3 +45,4 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
     throw error;
   }
 };
+(window as any).fetchWithAuth = fetchWithAuth;
