@@ -3,15 +3,13 @@ import "./App.css";
 
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
-
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import { testPermission } from "./services/permissionService";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+import api from "./services/api"; // Đã thêm trạm kiểm soát Axios
 
 // ===========================================================
 // TYPES
@@ -32,316 +30,159 @@ interface User {
   nguoiDungId: number;
   hoTen: string;
   email: string;
-
   vaiTro: VaiTro[];
-
   quyen: Quyen[];
-
   token: string;
-
   expiresAt: number;
 }
 
 // ===========================================================
-// KIỂM TRA QUYỀN
+// KIỂM TRA QUYỀN VÀ ADMIN
 // ===========================================================
 
 function hasPermission(user: User | null, maQuyen: string): boolean {
-  if (!user) {
-    return false;
-  }
-
+  if (!user) return false;
   return user.quyen.some((quyen) => quyen.maQuyen === maQuyen);
 }
 
-// ===========================================================
-// KIỂM TRA ADMIN
-// ===========================================================
-
 function isAdminUser(user: User | null): boolean {
-  if (!user) {
-    return false;
-  }
-
+  if (!user) return false;
   return user.vaiTro.some((role) => {
     const roleName = role.tenVaiTro.trim().toLowerCase();
-
-    return (
-      roleName === "admin" ||
-      roleName === "quản trị hệ thống"
-    );
+    return roleName === "admin" || roleName === "quản trị hệ thống";
   });
 }
 
 // ===========================================================
-// APP
+// APP COMPONENT
 // ===========================================================
 
 function App() {
   // =========================================================
   // USER HIỆN TẠI
   // =========================================================
-
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem("user");
-
-    if (!savedUser) {
-      return null;
-    }
+    if (!savedUser) return null;
 
     try {
       const parsedUser = JSON.parse(savedUser);
-
-      // -----------------------------------------------------
       // KIỂM TRA PHIÊN ĐĂNG NHẬP
-      // -----------------------------------------------------
-
       if (parsedUser.expiresAt && Date.now() >= parsedUser.expiresAt) {
         localStorage.removeItem("user");
-
         return null;
       }
-
-      // -----------------------------------------------------
       // CHUẨN HÓA USER
-      // -----------------------------------------------------
-
       return {
         nguoiDungId: parsedUser.nguoiDungId,
-
         hoTen: parsedUser.hoTen,
-
         email: parsedUser.email,
-
         vaiTro: Array.isArray(parsedUser.vaiTro) ? parsedUser.vaiTro : [],
-
         quyen: Array.isArray(parsedUser.quyen) ? parsedUser.quyen : [],
-
         token: parsedUser.token || "",
-
         expiresAt: parsedUser.expiresAt || 0,
       };
     } catch (error) {
       console.error("Không thể đọc thông tin đăng nhập:", error);
-
       localStorage.removeItem("user");
-
       return null;
     }
   });
 
   // =========================================================
-  // QUÊN MẬT KHẨU
+  // CÁC STATE CỦA FORM
   // =========================================================
-
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-
-  // =========================================================
-  // HIỆN / ẨN PASSWORD
-  // =========================================================
-
   const [showPassword, setShowPassword] = useState(false);
-
-  // =========================================================
-  // LOGIN
-  // =========================================================
-
   const [email, setEmail] = useState("");
-
   const [password, setPassword] = useState("");
-
-  const [loginErrors, setLoginErrors] = useState({
-    email: "",
-    password: "",
-  });
-
-  // =========================================================
-  // MESSAGE
-  // =========================================================
-
+  const [loginErrors, setLoginErrors] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
-
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
-
-  // =========================================================
-  // LOADING
-  // =========================================================
-
   const [loading, setLoading] = useState(false);
 
   // =========================================================
-  // KIỂM TRA QUYỀN
+  // KIỂM TRA QUYỀN TEST
   // =========================================================
-
   const handleTestPermission = async () => {
-  if (!user) return;
-
-  try {
-    const data = await testPermission(user.token);
-
-    setMessage(data.message || "Bạn có quyền USER_CREATE");
-    setMessageType("success");
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Đã xảy ra lỗi.";
-
-    setMessage(errorMessage);
-    setMessageType("error");
-  }
-};
+    if (!user) return;
+    try {
+      const data = await testPermission(user.token);
+      setMessage(data.message || "Bạn có quyền USER_CREATE");
+      setMessageType("success");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Đã xảy ra lỗi.";
+      setMessage(errorMessage);
+      setMessageType("error");
+    }
+  };
 
   // =========================================================
-  // ĐĂNG NHẬP
+  // ĐĂNG NHẬP (ĐÃ CHUYỂN SANG DÙNG API.TS)
   // =========================================================
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setMessage("");
     setMessageType("");
 
-    // -------------------------------------------------------
-    // VALIDATE
-    // -------------------------------------------------------
-
-    const newErrors = {
-      email: "",
-      password: "",
-    };
-
-    if (!email.trim()) {
-      newErrors.email = "Vui lòng nhập email";
-    }
-
-    if (!password.trim()) {
-      newErrors.password = "Vui lòng nhập mật khẩu";
-    }
+    // 1. VALIDATE RỖNG
+    const newErrors = { email: "", password: "" };
+    if (!email.trim()) newErrors.email = "Vui lòng nhập email";
+    if (!password.trim()) newErrors.password = "Vui lòng nhập mật khẩu";
 
     setLoginErrors(newErrors);
+    if (newErrors.email || newErrors.password) return;
 
-    if (newErrors.email || newErrors.password) {
-      return;
-    }
-
-    // -------------------------------------------------------
-    // GỌI API LOGIN
-    // -------------------------------------------------------
-
+    // 2. GỌI API LOGIN BẰNG AXIOS
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password,
-        }),
+      // Trạm kiểm soát api.ts sẽ tự gọi đúng baseURL và tự bắt lỗi 401/403/422
+      const response = await api.post('/login', {
+        email: email.trim(),
+        password: password,
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      // -----------------------------------------------------
-      // LOGIN THẤT BẠI
-      // -----------------------------------------------------
-
-      if (!response.ok) {
-        setMessage(data.detail || "Đăng nhập không thành công");
-
-        setMessageType("error");
-
-        return;
-      }
-
-      // -----------------------------------------------------
-      // KIỂM TRA TOKEN
-      // -----------------------------------------------------
-
+      // 3. XỬ LÝ KHI LOGIN THÀNH CÔNG
       if (!data.access_token) {
         setMessage("Đăng nhập thành công nhưng không nhận được access token");
-
         setMessageType("error");
-
         return;
       }
 
-      // -----------------------------------------------------
-      // LẤY VAI TRÒ
-      // -----------------------------------------------------
-
       const vaiTro: VaiTro[] = Array.isArray(data.vaiTro) ? data.vaiTro : [];
-
-      // -----------------------------------------------------
-      // LẤY QUYỀN
-      // -----------------------------------------------------
-
       const quyen: Quyen[] = Array.isArray(data.quyen) ? data.quyen : [];
 
-      // -----------------------------------------------------
-      // TẠO USER
-      // -----------------------------------------------------
-
+// Lấy dữ liệu và lưu vào Local Storage
       const loggedInUser: User = {
         nguoiDungId: data.nguoiDungId,
-
         hoTen: data.hoTen,
-
         email: data.email,
-
         vaiTro: vaiTro,
-
         quyen: quyen,
-
         token: data.access_token,
-
-        // Backend JWT hiện tại hết hạn sau 30 phút
         expiresAt: Date.now() + 30 * 60 * 1000,
       };
 
-      // -----------------------------------------------------
-      // LƯU LOCAL STORAGE
-      // -----------------------------------------------------
-
       localStorage.setItem("user", JSON.stringify(loggedInUser));
 
-      // -----------------------------------------------------
-      // CẬP NHẬT STATE
-      // -----------------------------------------------------
-
-      setUser(loggedInUser);
-
-      // -----------------------------------------------------
-      // THÔNG BÁO
-      // -----------------------------------------------------
-
+      // Hiển thị thông báo lên Form Đăng nhập
       setMessage(data.message || "Đăng nhập thành công");
-
       setMessageType("success");
 
-      // -----------------------------------------------------
-      // DEBUG
-      // -----------------------------------------------------
+      // Dùng setTimeout tạo độ trễ 1 giây (1000ms) để người dùng kịp đọc thông báo
+      // Sau 1 giây mới gọi setUser() để chuyển trang
+      setTimeout(() => {
+        setUser(loggedInUser);
+      }, 1000);
 
-      console.log("Đăng nhập thành công:", data);
-
-      console.log("Vai trò:", vaiTro);
-
-      console.log("Số quyền:", quyen.length);
-
-      console.log("Danh sách quyền:", quyen);
-
-      console.log("Có phải Admin:", isAdminUser(loggedInUser));
-    } catch (error) {
+    } catch (error: any) {
+      // 4. LOGIN THẤT BẠI
       console.error("Lỗi đăng nhập:", error);
-
-      setMessage("Không thể kết nối tới máy chủ");
-
+      // Lấy câu thông báo lỗi chính xác từ Backend (VD: Sai mật khẩu)
+      setMessage(error.response?.data?.detail || "Email hoặc mật khẩu không đúng");
       setMessageType("error");
     } finally {
       setLoading(false);
@@ -349,73 +190,38 @@ function App() {
   };
 
   // =========================================================
-  // ĐĂNG XUẤT
+  // ĐĂNG XUẤT (ĐÃ CHUYỂN SANG DÙNG API.TS)
   // =========================================================
-
   const handleLogout = async () => {
     try {
-      // -----------------------------------------------------
-      // GỌI API LOGOUT
-      // -----------------------------------------------------
-
       if (user?.token) {
-        await fetch(`${API_URL}/logout`, {
-          method: "POST",
-
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        });
+        // Gọi API xóa phiên làm việc (api.ts tự động đính kèm Token)
+        await api.post('/logout');
       }
     } catch (error) {
       console.error("Lỗi đăng xuất:", error);
     } finally {
-      // -----------------------------------------------------
-      // XÓA USER
-      // -----------------------------------------------------
-
+      // Dọn dẹp dữ liệu ở Frontend bất kể Backend báo gì
       localStorage.removeItem("user");
-
-      // -----------------------------------------------------
-      // RESET STATE
-      // -----------------------------------------------------
-
       setUser(null);
-
       setEmail("");
-
       setPassword("");
-
       setMessage("");
-
       setMessageType("");
-
-      setLoginErrors({
-        email: "",
-        password: "",
-      });
-
+      setLoginErrors({ email: "", password: "" });
       setShowPassword(false);
     }
   };
 
   // =========================================================
-  // RESET PASSWORD
+  // LUỒNG ĐIỀU HƯỚNG GIAO DIỆN
   // =========================================================
-
   if (window.location.pathname === "/reset-password") {
     return <ResetPassword />;
   }
 
-  // =========================================================
-  // ĐÃ ĐĂNG NHẬP
-  // =========================================================
-
+  // NẾU ĐÃ ĐĂNG NHẬP: HIỂN THỊ GIAO DIỆN CHÍNH
   if (user) {
-    // =======================================================
-    // ĐỔI MẬT KHẨU
-    // =======================================================
-
     if (window.location.pathname === "/change-password") {
       return (
         <ProtectedRoute>
@@ -424,47 +230,20 @@ function App() {
       );
     }
 
-    // =======================================================
-    // LẤY TÊN VAI TRÒ
-    // =======================================================
+    const roleName = user.vaiTro && user.vaiTro.length > 0
+      ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
+      : "Chưa có vai trò";
 
-    const roleName =
-      user.vaiTro && user.vaiTro.length > 0
-        ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
-        : "Chưa có vai trò";
+    const currentPath = window.location.pathname;
+    let requiredPermission: string | undefined;
 
- // =======================================================
-// KIỂM TRA QUYỀN THEO URL
-// =======================================================
-
-const currentPath = window.location.pathname;
-
-let requiredPermission: string | undefined;
-
-if (currentPath === "/quan-ly-diem") {
-  requiredPermission = "QUAN_LY_DIEM";
-}
-
-if (currentPath === "/quan-ly-lop") {
-  requiredPermission = "QUAN_LY_LOP";
-}
-
-if (currentPath === "/quan-ly-hoc-phi") {
-  requiredPermission = "QUAN_LY_HOC_PHI";
-}
-
-    // =======================================================
-    // KIỂM TRA ADMIN
-    // =======================================================
+    if (currentPath === "/quan-ly-diem") requiredPermission = "QUAN_LY_DIEM";
+    if (currentPath === "/quan-ly-lop") requiredPermission = "QUAN_LY_LOP";
+    if (currentPath === "/quan-ly-hoc-phi") requiredPermission = "QUAN_LY_HOC_PHI";
 
     const isAdmin = isAdminUser(user);
 
-    console.log("ROLE:", user.vaiTro);
-    console.log("IS ADMIN:", isAdmin);  
-    // =======================================================
-    // ADMIN LAYOUT
-    // =======================================================
-
+    // GIAO DIỆN ADMIN
     if (isAdmin) {
       return (
         <ProtectedRoute>
@@ -548,51 +327,24 @@ if (currentPath === "/quan-ly-hoc-phi") {
       );
     }
 
-    // =======================================================
-    // MAIN LAYOUT CHO USER KHÔNG PHẢI ADMIN
-    // =======================================================
-
+    // GIAO DIỆN USER THƯỜNG
     return (
-  <ProtectedRoute
-    requiredPermission={requiredPermission}
-  >
-    <MainLayout
-      userName={user.hoTen}
-      roleName={roleName}
-      permissions={user.quyen.map((q) => q.maQuyen)}
-      onLogout={handleLogout}
-    >
+      <ProtectedRoute requiredPermission={requiredPermission}>
+        <MainLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+        >
           <div className="dashboard-welcome">
             <h2>Xin chào, {user.hoTen}!</h2>
-
             <p>Chào mừng bạn đến với hệ thống quản lý đào tạo.</p>
 
-            <div
-              style={{
-                marginTop: "25px",
-
-                padding: "20px",
-
-                background: "white",
-
-                borderRadius: "10px",
-
-                border: "1px solid #e5e7eb",
-              }}
-            >
+            <div style={{ marginTop: "25px", padding: "20px", background: "white", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
               <h3>Thông tin tài khoản</h3>
-
-              <p>
-                <strong>Email:</strong> {user.email}
-              </p>
-
-              <p>
-                <strong>Vai trò:</strong> {roleName}
-              </p>
-
-              <p>
-                <strong>Số quyền:</strong> {user.quyen.length}
-              </p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Vai trò:</strong> {roleName}</p>
+              <p><strong>Số quyền:</strong> {user.quyen.length}</p>
             </div>
           </div>
         </MainLayout>
@@ -600,115 +352,64 @@ if (currentPath === "/quan-ly-hoc-phi") {
     );
   }
 
-  // =========================================================
-  // QUÊN MẬT KHẨU
-  // =========================================================
-
   if (isForgotPassword) {
     return <ForgotPassword />;
   }
 
   // =========================================================
-  // GIAO DIỆN ĐĂNG NHẬP
+  // GIAO DIỆN LOGIN (NẾU CHƯA ĐĂNG NHẬP)
   // =========================================================
-
   return (
     <div className="login-page">
       <div className="login-container">
-        {/* =================================================
-            LEFT - LOGIN
-        ================================================= */}
-
+        {/* TRÁI: FORM ĐĂNG NHẬP */}
         <section className="login-form-section">
           <div className="brand">
             <div className="brand-icon">🎓</div>
-
-            <h1>
-              Hệ thống quản lý <span>đào tạo</span>
-            </h1>
+            <h1>Hệ thống quản lý <span>đào tạo</span></h1>
           </div>
 
           <p className="subtitle">
             Đăng nhập để truy cập và quản lý các chức năng của hệ thống
           </p>
 
-          {/* =================================================
-              MESSAGE
-          ================================================= */}
-
           {message && (
-            <div
-              className={
-                messageType === "success"
-                  ? "message success-message"
-                  : "message api-error-message"
-              }
-            >
+            <div className={messageType === "success" ? "message success-message" : "message api-error-message"}>
               {message}
             </div>
           )}
 
-          {/* =================================================
-              LOGIN FORM
-          ================================================= */}
-
           <form className="login-form" onSubmit={handleLogin}>
-            {/* =================================================
-                EMAIL
-            ================================================= */}
-
             <div className="form-group">
               <label>Email</label>
-
               <div className="input-wrapper">
                 <span className="input-icon">✉️</span>
-
                 <input
                   type="email"
                   placeholder="Nhập email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-
-                    setLoginErrors({
-                      ...loginErrors,
-
-                      email: "",
-                    });
+                    setLoginErrors({ ...loginErrors, email: "" });
                   }}
                 />
               </div>
-
-              {loginErrors.email && (
-                <p className="error-message">{loginErrors.email}</p>
-              )}
+              {loginErrors.email && <p className="error-message">{loginErrors.email}</p>}
             </div>
-
-            {/* =================================================
-                PASSWORD
-            ================================================= */}
 
             <div className="form-group">
               <label>Mật khẩu</label>
-
               <div className="input-wrapper">
                 <span className="input-icon">🔒</span>
-
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Nhập mật khẩu"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-
-                    setLoginErrors({
-                      ...loginErrors,
-
-                      password: "",
-                    });
+                    setLoginErrors({ ...loginErrors, password: "" });
                   }}
                 />
-
                 <button
                   type="button"
                   className="show-password"
@@ -717,107 +418,49 @@ if (currentPath === "/quan-ly-hoc-phi") {
                   {showPassword ? "🙈" : "👁"}
                 </button>
               </div>
-
-              {loginErrors.password && (
-                <p className="error-message">{loginErrors.password}</p>
-              )}
+              {loginErrors.password && <p className="error-message">{loginErrors.password}</p>}
             </div>
-
-            {/* =================================================
-                OPTIONS
-            ================================================= */}
 
             <div className="login-options">
               <label className="remember">
                 <input type="checkbox" />
-
                 <span>Ghi nhớ đăng nhập</span>
               </label>
-
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-
-                  setIsForgotPassword(true);
-                }}
-              >
+              <a href="#" onClick={(e) => { e.preventDefault(); setIsForgotPassword(true); }}>
                 Quên mật khẩu?
               </a>
             </div>
 
-            {/* =================================================
-                LOGIN BUTTON
-            ================================================= */}
-
             <button type="submit" className="login-button" disabled={loading}>
               <span>→</span>
-
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
 
-            {/* =================================================
-                SCHOOL LOGIN
-            ================================================= */}
-
             <div className="divider">
               <span></span>
-
               <p>hoặc</p>
-
               <span></span>
             </div>
 
             <button type="button" className="school-login">
-              👥
-              <span>Đăng nhập bằng tài khoản trường</span>
+              👥<span>Đăng nhập bằng tài khoản trường</span>
             </button>
           </form>
         </section>
 
-        {/* =================================================
-            RIGHT - INFORMATION
-        ================================================= */}
-
+        {/* PHẢI: GIỚI THIỆU */}
         <section className="information-section">
           <div className="overlay"></div>
-
           <div className="information-content">
-            <h2>
-              Quản lý đào tạo
-              <br />
-              hiệu quả hơn
-            </h2>
-
+            <h2>Quản lý đào tạo<br />hiệu quả hơn</h2>
             <p className="description">
-              Hỗ trợ quản lý sinh viên, giảng viên, khóa học và các hoạt động
-              đào tạo một cách dễ dàng, nhanh chóng và chính xác.
+              Hỗ trợ quản lý sinh viên, giảng viên, khóa học và các hoạt động đào tạo một cách dễ dàng, nhanh chóng và chính xác.
             </p>
-
             <div className="features">
-              <Feature
-                icon="🎓"
-                title="Quản lý khóa học"
-                description="Tổ chức và quản lý các chương trình đào tạo"
-              />
-
-              <Feature
-                icon="👥"
-                title="Quản lý sinh viên"
-                description="Theo dõi thông tin và quá trình học tập"
-              />
-
-              <Feature
-                icon="📅"
-                title="Quản lý lịch học"
-                description="Sắp xếp thời khóa biểu linh hoạt"
-              />
-
-              <Feature
-                icon="📊"
-                title="Thống kê - Báo cáo"
-                description="Cung cấp báo cáo chi tiết, trực quan"
-              />
+              <Feature icon="🎓" title="Quản lý khóa học" description="Tổ chức và quản lý các chương trình đào tạo" />
+              <Feature icon="👥" title="Quản lý sinh viên" description="Theo dõi thông tin và quá trình học tập" />
+              <Feature icon="📅" title="Quản lý lịch học" description="Sắp xếp thời khóa biểu linh hoạt" />
+              <Feature icon="📊" title="Thống kê - Báo cáo" description="Cung cấp báo cáo chi tiết, trực quan" />
             </div>
           </div>
         </section>
@@ -829,7 +472,6 @@ if (currentPath === "/quan-ly-hoc-phi") {
 // ===========================================================
 // FEATURE COMPONENT
 // ===========================================================
-
 interface FeatureProps {
   icon: string;
   title: string;
@@ -840,10 +482,8 @@ function Feature({ icon, title, description }: FeatureProps) {
   return (
     <div className="feature">
       <div className="feature-icon">{icon}</div>
-
       <div>
         <h3>{title}</h3>
-
         <p>{description}</p>
       </div>
     </div>
