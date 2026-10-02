@@ -1,3 +1,4 @@
+import { forgotPassword } from "../services/authService";
 import React, { useState } from "react";
 
 export const ForgotPassword: React.FC = () => {
@@ -8,62 +9,31 @@ export const ForgotPassword: React.FC = () => {
     text: string;
   } | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage(null);
 
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  try {
+    const res = await forgotPassword(email);
 
-      const response = await fetch(`${API_URL}/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-        }),
-      });
+    setMessage({
+      type: "success",
+      text: res?.message || "Yêu cầu đã được gửi! Vui lòng kiểm tra Gmail để lấy liên kết đặt lại mật khẩu.",
+    });
 
-      const res = await response.json();
+    setEmail("");
+  } catch (err: any) {
+    console.error("FORGOT PASSWORD ERROR:", err);
 
-      if (response.ok) {
-        setMessage({
-          type: "success",
-          text: "Yêu cầu đã được gửi! Vui lòng kiểm tra Gmail để lấy liên kết đặt lại mật khẩu.",
-        });
-
-        setEmail("");
-      } else {
-        let errorMessage = "Không thể gửi yêu cầu đặt lại mật khẩu.";
-
-        if (res?.detail) {
-          if (Array.isArray(res.detail)) {
-            errorMessage = res.detail.map((item: any) => item.msg).join(", ");
-          } else {
-            errorMessage = res.detail;
-          }
-        } else if (res?.message) {
-          errorMessage = res.message;
-        }
-
-        setMessage({
-          type: "error",
-          text: errorMessage,
-        });
-      }
-    } catch (err) {
-      console.error("FORGOT PASSWORD ERROR:", err);
-
-      setMessage({
-        type: "error",
-        text: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMessage({
+      type: "error",
+      text: err.message || "Không thể gửi yêu cầu đặt lại mật khẩu.",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={styles.container}>
