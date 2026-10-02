@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import ErrorPage from "../pages/ErrorPage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -79,15 +80,14 @@ function ProtectedRoute({
   }, [user]);
 
   // =========================================================
-  // KHÔNG CÓ PHIÊN ĐĂNG NHẬP
+  // KHÔNG CÓ PHIÊN ĐĂNG NHẬP (LỖI 401)
   // =========================================================
   if (!user) {
-    window.location.href = "/";
-    return null;
+    return <ErrorPage code={401} />;
   }
 
   // =========================================================
-  // KIỂM TRA PHIÊN
+  // KIỂM TRA PHIÊN (LỖI 401)
   // =========================================================
   let session: SessionUser;
 
@@ -99,17 +99,15 @@ function ProtectedRoute({
       Date.now() >= session.expiresAt
     ) {
       localStorage.removeItem("user");
-      window.location.href = "/";
-      return null;
+      return <ErrorPage code={401} />;
     }
   } catch {
     localStorage.removeItem("user");
-    window.location.href = "/";
-    return null;
+    return <ErrorPage code={401} />;
   }
 
   // =========================================================
-  // KIỂM TRA QUYỀN TRUY CẬP URL
+  // KIỂM TRA QUYỀN TRUY CẬP URL (LỖI 403)
   // =========================================================
   if (requiredPermission) {
     const permissions = Array.isArray(session.quyen)
@@ -122,58 +120,7 @@ function ProtectedRoute({
     );
 
     if (!hasPermission) {
-      return (
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f5f7fb",
-            padding: "20px",
-            boxSizing: "border-box",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-              padding: "35px",
-              background: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              textAlign: "center",
-              boxSizing: "border-box",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>
-              Không có quyền truy cập
-            </h2>
-
-            <p>
-              Bạn không có quyền thực hiện chức năng này.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = "/";
-              }}
-              style={{
-                marginTop: "15px",
-                padding: "10px 20px",
-                border: "none",
-                borderRadius: "8px",
-                background: "#2563eb",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              Quay lại
-            </button>
-          </div>
-        </div>
-      );
+      return <ErrorPage code={403} />;
     }
   }
 

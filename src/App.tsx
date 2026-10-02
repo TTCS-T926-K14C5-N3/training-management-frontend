@@ -9,6 +9,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
+import ErrorPage from "./pages/ErrorPage";
 import { testPermission } from "./services/permissionService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -398,6 +399,22 @@ function App() {
       setShowPassword(false);
     }
   };
+  
+  // =========================================================
+  // KIỂM TRA LỖI 404 (KHÔNG TÌM THẤY TRANG)
+  // =========================================================
+  const validPaths = [
+    "/",
+    "/reset-password",
+    "/change-password",
+    "/quan-ly-diem",
+    "/quan-ly-lop",
+    "/quan-ly-hoc-phi"
+  ];
+
+  if (!validPaths.includes(window.location.pathname)) {
+    return <ErrorPage code={404} />;
+  }
 
   // =========================================================
   // RESET PASSWORD
@@ -608,6 +625,21 @@ if (currentPath === "/quan-ly-hoc-phi") {
     return <ForgotPassword />;
   }
 
+
+  // =========================================================
+  // KIỂM TRA LỖI 401 (CHƯA ĐĂNG NHẬP)
+  // =========================================================
+  const protectedPaths = [
+    "/change-password",
+    "/quan-ly-diem",
+    "/quan-ly-lop",
+    "/quan-ly-hoc-phi"
+  ];
+
+  if (protectedPaths.includes(window.location.pathname) && !user) {
+    return <ErrorPage code={401} />;
+  }
+  
   // =========================================================
   // GIAO DIỆN ĐĂNG NHẬP
   // =========================================================
