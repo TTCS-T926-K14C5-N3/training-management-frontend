@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import ErrorPage from "../components/ErrorPage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -79,11 +80,20 @@ function ProtectedRoute({
   }, [user]);
 
   // =========================================================
-  // KHÔNG CÓ PHIÊN ĐĂNG NHẬP
+  // 401 - KHÔNG CÓ PHIÊN ĐĂNG NHẬP
   // =========================================================
   if (!user) {
-    window.location.href = "/";
-    return null;
+    return (
+      <ErrorPage
+        code={401}
+        title="Phiên đăng nhập hết hạn"
+        message="Bạn cần đăng nhập để tiếp tục sử dụng chức năng này."
+        actionText="Đăng nhập lại"
+        onAction={() => {
+          window.location.href = "/";
+        }}
+      />
+    );
   }
 
   // =========================================================
@@ -94,22 +104,48 @@ function ProtectedRoute({
   try {
     session = JSON.parse(user);
 
+    // =======================================================
+    // 401 - PHIÊN ĐÃ HẾT HẠN
+    // =======================================================
     if (
       session.expiresAt &&
       Date.now() >= session.expiresAt
     ) {
       localStorage.removeItem("user");
-      window.location.href = "/";
-      return null;
+
+      return (
+        <ErrorPage
+          code={401}
+          title="Phiên đăng nhập hết hạn"
+          message="Phiên làm việc của bạn đã hết hạn. Vui lòng đăng nhập lại."
+          actionText="Đăng nhập lại"
+          onAction={() => {
+            window.location.href = "/";
+          }}
+        />
+      );
     }
   } catch {
+    // =======================================================
+    // 401 - SESSION KHÔNG HỢP LỆ
+    // =======================================================
     localStorage.removeItem("user");
-    window.location.href = "/";
-    return null;
+
+    return (
+      <ErrorPage
+        code={401}
+        title="Phiên đăng nhập không hợp lệ"
+        message="Thông tin phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại."
+        actionText="Đăng nhập lại"
+        onAction={() => {
+          window.location.href = "/";
+        }}
+      />
+    );
   }
 
   // =========================================================
-  // KIỂM TRA QUYỀN TRUY CẬP URL
+  // 403 - KIỂM TRA QUYỀN TRUY CẬP
   // =========================================================
   if (requiredPermission) {
     const permissions = Array.isArray(session.quyen)
@@ -123,56 +159,15 @@ function ProtectedRoute({
 
     if (!hasPermission) {
       return (
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f5f7fb",
-            padding: "20px",
-            boxSizing: "border-box",
+        <ErrorPage
+          code={403}
+          title="Không có quyền truy cập"
+          message="Bạn không có quyền thực hiện chức năng này."
+          actionText="Quay về trang chính"
+          onAction={() => {
+            window.location.href = "/";
           }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-              padding: "35px",
-              background: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              textAlign: "center",
-              boxSizing: "border-box",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>
-              Không có quyền truy cập
-            </h2>
-
-            <p>
-              Bạn không có quyền thực hiện chức năng này.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = "/";
-              }}
-              style={{
-                marginTop: "15px",
-                padding: "10px 20px",
-                border: "none",
-                borderRadius: "8px",
-                background: "#2563eb",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              Quay lại
-            </button>
-          </div>
-        </div>
+        />
       );
     }
   }

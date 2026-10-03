@@ -1,32 +1,33 @@
-
-import React from "react";
-import "./ErrorPage.css";
-
 interface ErrorPageProps {
-  code?: number;
-  message?: string;
+  code: 401 | 403 | 404;
+  title: string;
+  message: string;
+  actionText: string;
+  onAction: () => void;
 }
 
-export default function ErrorPage({
-  code = 404,
-  message = "Trang bạn tìm kiếm không tồn tại hoặc đã bị xóa.",
+function ErrorPage({
+  code,
+  title,
+  message,
+  actionText,
+  onAction,
 }: ErrorPageProps) {
   return (
     <div className="error-page">
       <div className="error-content">
         <div className="error-code">{code}</div>
-        <h1>Oops! Không tìm thấy trang</h1>
+
+        <h1>{title}</h1>
+
         <p>{message}</p>
 
-        <button
-          type="button"
-          onClick={() => {
-            window.location.href = "/";
-          }}
-        >
-          ← Quay về trang chủ
+        <button type="button" onClick={onAction}>
+          ← {actionText}
         </button>
       </div>
     </div>
   );
 }
+
+export default ErrorPage;

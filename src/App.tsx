@@ -234,7 +234,12 @@ if (!validPaths.includes(window.location.pathname)) {
   return (
     <ErrorPage
       code={404}
+      title="Không tìm thấy trang"
       message="Trang bạn tìm kiếm không tồn tại hoặc đã bị xóa."
+      actionText="Về trang chủ"
+      onAction={() => {
+        window.location.href = "/";
+      }}
     />
   );
 }

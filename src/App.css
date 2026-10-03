@@ -931,3 +931,65 @@ input {
     padding-bottom: 10px;
   }
 }
+
+/* ==============================
+   ERROR PAGE 401 / 403 / 404
+   ============================== */
+
+.error-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #f5f7fb;
+}
+
+.error-content {
+  width: 100%;
+  max-width: 520px;
+  padding: 40px;
+  box-sizing: border-box;
+  text-align: center;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.error-code {
+  font-size: 100px;
+  font-weight: 800;
+  line-height: 1;
+  color: #2563eb;
+  margin-bottom: 20px;
+}
+
+.error-content h1 {
+  margin: 0 0 12px;
+  color: #1e293b;
+  font-size: 28px;
+}
+
+.error-content p {
+  margin: 0 auto 25px;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.error-content button {
+  padding: 11px 22px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-content button:hover {
+  background: #1d4ed8;
+}
