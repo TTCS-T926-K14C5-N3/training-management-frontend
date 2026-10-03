@@ -4,6 +4,7 @@ import "./App.css";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import RoleManagement from "./pages/RoleManagement";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -233,7 +234,20 @@ function App() {
     const roleName = user.vaiTro && user.vaiTro.length > 0
       ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
       : "Chưa có vai trò";
-
+if (window.location.pathname === "/quan-ly-vai-tro") {
+  return (
+    <ProtectedRoute>
+      <AdminLayout
+        userName={user.hoTen}
+        roleName={roleName}
+        permissions={user.quyen.map((q) => q.maQuyen)}
+        onLogout={handleLogout}
+      >
+        <RoleManagement />
+      </AdminLayout>
+    </ProtectedRoute>
+  );
+}
     const currentPath = window.location.pathname;
     let requiredPermission: string | undefined;
 
