@@ -4,12 +4,13 @@ import "./App.css";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
-
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import { testPermission } from "./services/permissionService";
 import api from "./services/api"; // Đã thêm trạm kiểm soát Axios
+import ErrorPage from "./components/ErrorPage";
+
 
 // ===========================================================
 // TYPES
@@ -212,6 +213,31 @@ function App() {
       setShowPassword(false);
     }
   };
+
+// =========================================================
+  // CHỐT CHẶN BẮT LỖI 404 (DÀNH CHO ĐỊNH TUYẾN THỦ CÔNG)
+  // =========================================================
+  const validPaths = [
+  "/",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/change-password",
+
+  // Bổ sung các đường dẫn hợp lệ của dự án
+  "/quan-ly-diem",
+  "/quan-ly-lop",
+  "/quan-ly-hoc-phi",
+];
+
+if (!validPaths.includes(window.location.pathname)) {
+  return (
+    <ErrorPage
+      code={404}
+      message="Trang bạn tìm kiếm không tồn tại hoặc đã bị xóa."
+    />
+  );
+}
 
   // =========================================================
   // LUỒNG ĐIỀU HƯỚNG GIAO DIỆN
