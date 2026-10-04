@@ -153,8 +153,28 @@ function App() {
         return;
       }
 
-      const vaiTro: VaiTro[] = Array.isArray(data.vaiTro) ? data.vaiTro : [];
-      const quyen: Quyen[] = Array.isArray(data.quyen) ? data.quyen : [];
+      const vaiTro: VaiTro[] = Array.isArray(data.vaiTro)
+        ? data.vaiTro.map((role: any, index: number) =>
+            typeof role === "string"
+              ? {
+                  vaiTroId: index,
+                  tenVaiTro: role,
+                }
+              : role
+          )
+        : [];
+
+      const quyen: Quyen[] = Array.isArray(data.quyen)
+        ? data.quyen.map((permission: any, index: number) =>
+            typeof permission === "string"
+              ? {
+                  quyenId: index,
+                  maQuyen: permission,
+                  tenQuyen: permission,
+                }
+              : permission
+          )
+        : [];
 
 // Lấy dữ liệu và lưu vào Local Storage
       const loggedInUser: User = {
