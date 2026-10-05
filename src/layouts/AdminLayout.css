@@ -28,11 +28,13 @@ body {
 
 .admin-layout {
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
 
   display: flex;
 
   background: #f5f7fb;
+
+  overflow: hidden;
 }
 
 /* =========================================================
@@ -47,6 +49,7 @@ body {
   bottom: 0;
 
   width: 250px;
+  height: 100vh;
 
   display: flex;
   flex-direction: column;
@@ -60,6 +63,8 @@ body {
   z-index: 1000;
 
   box-shadow: 8px 0 30px rgba(15, 23, 42, 0.08);
+
+  overflow: hidden;
 }
 
 /* =========================================================
@@ -73,6 +78,8 @@ body {
   gap: 12px;
 
   padding: 2px 8px 30px;
+
+  flex-shrink: 0;
 }
 
 .admin-logo-mark {
@@ -124,7 +131,10 @@ body {
 .admin-navigation {
   flex: 1;
 
+  min-height: 0;
+
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .admin-navigation::-webkit-scrollbar {
@@ -134,6 +144,10 @@ body {
 .admin-navigation::-webkit-scrollbar-thumb {
   background: #263247;
   border-radius: 10px;
+}
+
+.admin-navigation::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .admin-section-title {
@@ -224,6 +238,8 @@ body {
   padding-top: 16px;
 
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+
+  flex-shrink: 0;
 }
 
 .admin-account {
@@ -347,10 +363,17 @@ body {
 
 .admin-main {
   width: calc(100% - 250px);
-
-  min-height: 100vh;
+  height: 100vh;
 
   margin-left: 250px;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+  min-height: 0;
+
+  overflow: hidden;
 }
 
 /* =========================================================
@@ -359,6 +382,8 @@ body {
 
 .admin-header {
   min-height: 96px;
+
+  flex-shrink: 0;
 
   display: flex;
   align-items: center;
@@ -518,11 +543,40 @@ body {
    ========================================================= */
 
 .admin-content {
+  flex: 1;
+
+  width: 100%;
+
+  min-width: 0;
+  min-height: 0;
+
   padding: 30px 38px 45px;
 
   background: linear-gradient(180deg, #f7f9fc 0%, #f3f6fa 100%);
 
-  min-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar - CONTENT */
+
+.admin-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-content::-webkit-scrollbar-track {
+  background: #eef2f7;
+}
+
+.admin-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.admin-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* =========================================================
@@ -994,7 +1048,7 @@ body {
 }
 
 /* =========================================================
-   RESPONSIVE
+   RESPONSIVE - 1200px
    ========================================================= */
 
 @media (max-width: 1200px) {
@@ -1004,6 +1058,7 @@ body {
 
   .admin-main {
     width: calc(100% - 225px);
+
     margin-left: 225px;
   }
 
@@ -1012,6 +1067,10 @@ body {
   }
 }
 
+/* =========================================================
+   RESPONSIVE - 900px
+   ========================================================= */
+
 @media (max-width: 900px) {
   .admin-sidebar {
     width: 210px;
@@ -1019,6 +1078,7 @@ body {
 
   .admin-main {
     width: calc(100% - 210px);
+
     margin-left: 210px;
   }
 
@@ -1037,9 +1097,18 @@ body {
   }
 }
 
+/* =========================================================
+   RESPONSIVE - 700px
+   ========================================================= */
+
 @media (max-width: 700px) {
   .admin-layout {
+    width: 100%;
+    height: auto;
+
     display: block;
+
+    overflow: visible;
   }
 
   .admin-sidebar {
@@ -1049,19 +1118,34 @@ body {
     height: auto;
 
     min-height: auto;
+
+    overflow: visible;
   }
 
   .admin-main {
     width: 100%;
+    height: auto;
+
     margin-left: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    overflow: visible;
   }
 
   .admin-navigation {
     max-height: 300px;
+
+    overflow-y: auto;
   }
 
   .admin-header {
+    min-height: 80px;
+
     padding: 20px;
+
+    flex-shrink: 0;
   }
 
   .admin-header-right {
@@ -1069,7 +1153,17 @@ body {
   }
 
   .admin-content {
+    width: 100%;
+
+    min-height: auto;
+
     padding: 20px;
+
+    overflow: visible;
+  }
+
+  .admin-content::-webkit-scrollbar {
+    display: none;
   }
 
   .admin-stat-grid {
@@ -1084,5 +1178,9 @@ body {
 
   .admin-welcome-icon {
     display: none;
+  }
+
+  .admin-dashboard-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -7,6 +7,9 @@ interface AdminLayoutProps {
   roleName: string;
   permissions: string[];
   onLogout: () => void;
+
+  // Điều hướng đến trang quản lý vai trò & quyền
+  onRoleManagement: () => void;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
@@ -15,266 +18,183 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   roleName,
   permissions,
   onLogout,
+  onRoleManagement,
 }) => {
+  const avatarLetter = userName?.charAt(0)?.toUpperCase() || "A";
 
-const avatarLetter =
-  userName?.charAt(0)?.toUpperCase() || "A";
-
-  const hasPermission = (maQuyen: string) =>
-  permissions.includes(maQuyen);
+  const hasPermission = (maQuyen: string) => permissions.includes(maQuyen);
 
   return (
     <div className="admin-layout">
-
-      {/* ================= SIDEBAR ================= */}
+      {/* =====================================================
+          SIDEBAR
+      ===================================================== */}
       <aside className="admin-sidebar">
-
         {/* Logo */}
         <div className="admin-logo">
-          <div className="admin-logo-mark">
-            E
-          </div>
+          <div className="admin-logo-mark">E</div>
 
           <div className="admin-logo-text">
             <div>EduManage</div>
-            <small>
-              TRAINING MANAGEMENT
-            </small>
+
+            <small>TRAINING MANAGEMENT</small>
           </div>
         </div>
 
-        {/* Menu */}
+        {/* =================================================
+            MENU
+        ================================================= */}
         <div className="admin-navigation">
-
           {/* Tổng quan */}
-          <div className="admin-section-title">
-            TỔNG QUAN
-          </div>
+          <div className="admin-section-title">TỔNG QUAN</div>
 
-          <button
-            type="button"
-            className="admin-menu-item admin-menu-active"
-          >
-            <span className="admin-menu-symbol">
-              ▦
-            </span>
+          <button type="button" className="admin-menu-item admin-menu-active">
+            <span className="admin-menu-symbol">▦</span>
 
-            <span>
-              Dashboard
-            </span>
+            <span>Trang chủ</span>
           </button>
 
-          {/* Quản lý */}
-          <div className="admin-section-title">
-            QUẢN LÝ
-          </div>
+          {/* =================================================
+              QUẢN LÝ
+          ================================================= */}
+          <div className="admin-section-title">QUẢN LÝ</div>
 
-          {hasPermission("QUAN_LY_TAI_KHOAN") && (
-  <button
-    type="button"
-    className="admin-menu-item"
-  >
-    <span className="admin-menu-symbol">
-      ♙
-    </span>
+          {/* Người dùng */}
+          {hasPermission("USER_VIEW") && (
+            <button type="button" className="admin-menu-item">
+              <span className="admin-menu-symbol">♙</span>
 
-    <span>
-      Người dùng
-    </span>
-  </button>
-)}
+              <span>Người dùng</span>
+            </button>
+          )}
 
-{hasPermission("GAN_VAI_TRO") && (
-      <button
-         type="button"
-         className="admin-menu-item"
-      >
-        <span className="admin-menu-symbol">
-      ◇
-    </span>
+          {/* Vai trò & quyền */}
+          {hasPermission("ROLE_VIEW") && (
+            <button
+              type="button"
+              className="admin-menu-item"
+              onClick={onRoleManagement}
+            >
+              <span className="admin-menu-symbol">◇</span>
 
-    <span>
-      Vai trò & quyền
-    </span>
-  </button>
-)}
+              <span>Vai trò & quyền</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            className="admin-menu-item"
-          >
-            <span className="admin-menu-symbol">
-              ▣
-            </span>
+          {/* Đào tạo */}
+          <button type="button" className="admin-menu-item">
+            <span className="admin-menu-symbol">▣</span>
 
-            <span>
-              Đào tạo
-            </span>
+            <span>Đào tạo</span>
           </button>
 
-{hasPermission("QUAN_LY_LOP") && (
-    <button
-     type="button"
-     className="admin-menu-item"
-    >
-    <span className="admin-menu-symbol">
-      ▤
-    </span>
+          {/* Lớp học */}
+          {hasPermission("QUAN_LY_LOP") && (
+            <button type="button" className="admin-menu-item">
+              <span className="admin-menu-symbol">▤</span>
 
-    <span>
-      Lớp học
-    </span>
-  </button>
-)}
+              <span>Lớp học</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            className="admin-menu-item"
-          >
-            <span className="admin-menu-symbol">
-              ◫
-            </span>
+          {/* Báo cáo */}
+          <button type="button" className="admin-menu-item">
+            <span className="admin-menu-symbol">◫</span>
 
-            <span>
-              Báo cáo
-            </span>
+            <span>Báo cáo</span>
           </button>
 
-          {/* Hệ thống */}
-          <div className="admin-section-title">
-            HỆ THỐNG
-          </div>
+          {/* =================================================
+              HỆ THỐNG
+          ================================================= */}
+          <div className="admin-section-title">HỆ THỐNG</div>
 
-          <button
-            type="button"
-            className="admin-menu-item"
-          >
-            <span className="admin-menu-symbol">
-              ⚙
-            </span>
+          {/* Cài đặt */}
+          <button type="button" className="admin-menu-item">
+            <span className="admin-menu-symbol">⚙</span>
 
-            <span>
-              Cài đặt
-            </span>
+            <span>Cài đặt</span>
           </button>
-
         </div>
 
-        {/* ================= USER FOOTER ================= */}
+        {/* =================================================
+            USER FOOTER
+        ================================================= */}
         <div className="admin-sidebar-footer">
-
           <div className="admin-account">
-
+            {/* Avatar */}
             <div className="admin-avatar">
-                {avatarLetter}
+              {avatarLetter}
 
               <span className="admin-online"></span>
             </div>
 
+            {/* Thông tin tài khoản */}
             <div className="admin-account-info">
+              <strong>{userName}</strong>
 
-              <strong>
-                {userName}
-              </strong>
-
-              <span>
-                {roleName}
-              </span>
-
+              <span>{roleName}</span>
             </div>
-
           </div>
 
-          <button
-            type="button"
-            className="admin-logout"
-            onClick={onLogout}
-          >
-            <span>
-              ↪
-            </span>
-
+          {/* Đăng xuất */}
+          <button type="button" className="admin-logout" onClick={onLogout}>
+            <span>↪</span>
             Đăng xuất
           </button>
-
         </div>
-
       </aside>
 
-      {/* ================= MAIN ================= */}
+      {/* =====================================================
+          MAIN
+      ===================================================== */}
       <main className="admin-main">
-
-        {/* ================= HEADER ================= */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
         <header className="admin-header">
-
           <div>
-
             <div className="admin-breadcrumb">
               Admin
               <span>/</span>
-              Dashboard
+              Trang chủ
             </div>
 
-            <h1>
-              Dashboard
-            </h1>
+            <h1>Trang chủ</h1>
 
-            <p>
-              Tổng quan hệ thống quản lý đào tạo
-            </p>
-
+            <p>Tổng quan hệ thống quản lý đào tạo</p>
           </div>
 
           <div className="admin-header-right">
-
             {/* Notification */}
             <button
               type="button"
               className="admin-notification"
               title="Thông báo"
             >
-              ♢
-              <span></span>
+              ♢<span></span>
             </button>
 
             {/* Profile */}
             <div className="admin-header-profile">
-
-              <div className="admin-header-avatar">
-                {avatarLetter}
-              </div>
+              <div className="admin-header-avatar">{avatarLetter}</div>
 
               <div>
+                <strong>{userName}</strong>
 
-                <strong>
-                  {userName}
-                </strong>
-
-                <small>
-                  {roleName}
-                </small>
-
+                <small>{roleName}</small>
               </div>
 
-              <span className="admin-arrow">
-                ▾
-              </span>
-
+              <span className="admin-arrow">▾</span>
             </div>
-
           </div>
-
         </header>
 
-        {/* ================= CONTENT ================= */}
-        <section className="admin-content">
-
-          {children}
-
-        </section>
-
+        {/* =================================================
+            CONTENT
+        ================================================= */}
+        <section className="admin-content">{children}</section>
       </main>
-
     </div>
   );
 };
