@@ -277,6 +277,7 @@ body {
 
   font-size: 14px;
   font-weight: 750;
+  overflow: hidden;
 }
 
 .admin-online {
@@ -509,6 +510,7 @@ body {
 
   font-size: 12px;
   font-weight: 750;
+  overflow: hidden;
 }
 
 .admin-header-profile div:not(.admin-header-avatar) {
@@ -825,6 +827,14 @@ body {
 
   font-size: 14px;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.admin-avatar img,
+.admin-header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .admin-panel-header p {

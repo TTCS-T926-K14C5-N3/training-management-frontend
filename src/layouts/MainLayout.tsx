@@ -1,13 +1,28 @@
 import React, { useEffect, useRef, useState } from "react";
+import AvatarImage from "../components/AvatarImage";
 import "./MainLayout.css";
 
 interface MainLayoutProps {
   children: React.ReactNode;
+
   userName: string;
   email: string;
   roleName: string;
+  avatarUrl?: string | null;
   permissions: string[];
+
   onLogout: () => void;
+
+  // =========================================================
+  // ĐIỀU HƯỚNG
+  // =========================================================
+
+  onHome: () => void;
+  onProfile: () => void;
+  onChangePassword: () => void;
+
+  onGradeManagement?: () => void;
+  onClassManagement?: () => void;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
@@ -15,14 +30,50 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   userName,
   email,
   roleName,
+  avatarUrl,
   permissions,
   onLogout,
+
+  onHome,
+  onProfile,
+  onChangePassword,
+
+  onGradeManagement,
+  onClassManagement,
 }) => {
+  // =========================================================
+  // STATE
+  // =========================================================
+
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+
+  // =========================================================
+  // REF
+  // =========================================================
 
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  const hasPermission = (maQuyen: string) => permissions.includes(maQuyen);
+  // =========================================================
+  // PATH HIỆN TẠI
+  // =========================================================
+
+  const currentPath = window.location.pathname;
+
+  // =========================================================
+  // KIỂM TRA QUYỀN
+  // =========================================================
+
+  const hasPermission = (maQuyen: string) => {
+    return permissions.includes(maQuyen);
+  };
+
+  // =========================================================
+  // KIỂM TRA ACTIVE MENU
+  // =========================================================
+
+  const isActive = (path: string) => {
+    return currentPath === path;
+  };
 
   // =========================================================
   // ĐÓNG POPUP KHI BẤM RA NGOÀI
@@ -63,6 +114,70 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     };
   }, []);
 
+  // =========================================================
+  // ĐIỀU HƯỚNG TRANG CHỦ
+  // =========================================================
+
+  const handleHome = () => {
+    setShowAccountMenu(false);
+    onHome();
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG HỒ SƠ CÁ NHÂN
+  // =========================================================
+
+  const handleProfile = () => {
+    setShowAccountMenu(false);
+    onProfile();
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG ĐỔI MẬT KHẨU
+  // =========================================================
+
+  const handleChangePassword = () => {
+    setShowAccountMenu(false);
+    onChangePassword();
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG QUẢN LÝ ĐIỂM
+  // =========================================================
+
+  const handleGradeManagement = () => {
+    setShowAccountMenu(false);
+
+    if (!onGradeManagement) {
+      return;
+    }
+
+    onGradeManagement();
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG QUẢN LÝ LỚP
+  // =========================================================
+
+  const handleClassManagement = () => {
+    setShowAccountMenu(false);
+
+    if (!onClassManagement) {
+      return;
+    }
+
+    onClassManagement();
+  };
+
+  // =========================================================
+  // LOGOUT
+  // =========================================================
+
+  const handleLogout = () => {
+    setShowAccountMenu(false);
+    onLogout();
+  };
+
   return (
     <div className="main-layout">
       {/* =====================================================
@@ -70,37 +185,99 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       ===================================================== */}
 
       <aside className="sidebar">
-        {/* LOGO */}
+        {/* ===================================================
+            LOGO
+        =================================================== */}
 
         <div className="sidebar-logo">
           <h2>EduManage</h2>
+
           <span>Training Management</span>
         </div>
 
-        {/* MENU */}
+        {/* ===================================================
+            MENU
+        =================================================== */}
 
         <nav className="sidebar-menu">
-          {/* DASHBOARD */}
+          {/* =================================================
+              TRANG CHỦ
+          ================================================= */}
 
-          <button className="sidebar-item active">
-            <span>⌂</span>
+          <button
+            type="button"
+            className={`sidebar-item ${isActive("/") ? "active" : ""}`}
+            onClick={handleHome}
+          >
+            <span className="sidebar-item-icon">⌂</span>
+
             <span>Trang chủ</span>
           </button>
 
-          {/* QUẢN LÝ ĐIỂM */}
+          {/* =================================================
+              HỒ SƠ CÁ NHÂN
+          ================================================= */}
+
+          <button
+            type="button"
+            className={`sidebar-item ${
+              isActive("/ho-so-ca-nhan") ? "active" : ""
+            }`}
+            onClick={handleProfile}
+          >
+            <span className="sidebar-item-icon">👤</span>
+
+            <span>Hồ sơ cá nhân</span>
+          </button>
+
+          {/* =================================================
+              ĐỔI MẬT KHẨU
+          ================================================= */}
+
+          <button
+            type="button"
+            className={`sidebar-item ${
+              isActive("/change-password") ? "active" : ""
+            }`}
+            onClick={handleChangePassword}
+          >
+            <span className="sidebar-item-icon">🔐</span>
+
+            <span>Đổi mật khẩu</span>
+          </button>
+
+          {/* =================================================
+              QUẢN LÝ ĐIỂM
+          ================================================= */}
 
           {hasPermission("QUAN_LY_DIEM") && (
-            <button className="sidebar-item">
-              <span>📊</span>
+            <button
+              type="button"
+              className={`sidebar-item ${
+                isActive("/quan-ly-diem") ? "active" : ""
+              }`}
+              onClick={handleGradeManagement}
+            >
+              <span className="sidebar-item-icon">📊</span>
+
               <span>Quản lý điểm</span>
             </button>
           )}
 
-          {/* QUẢN LÝ LỚP */}
+          {/* =================================================
+              QUẢN LÝ LỚP
+          ================================================= */}
 
           {hasPermission("QUAN_LY_LOP") && (
-            <button className="sidebar-item">
-              <span>🏫</span>
+            <button
+              type="button"
+              className={`sidebar-item ${
+                isActive("/quan-ly-lop") ? "active" : ""
+              }`}
+              onClick={handleClassManagement}
+            >
+              <span className="sidebar-item-icon">🏫</span>
+
               <span>Quản lý lớp</span>
             </button>
           )}
@@ -111,22 +288,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         =================================================== */}
 
         <div className="sidebar-bottom">
-          {/* USER */}
+          {/* =================================================
+              USER
+          ================================================= */}
 
-          <div className="sidebar-user">
+          <button
+            type="button"
+            className="sidebar-user"
+            onClick={handleProfile}
+          >
             <div className="user-avatar">
-              {userName.charAt(0).toUpperCase()}
+              <AvatarImage
+                source={avatarUrl}
+                fallback={userName.charAt(0).toUpperCase()}
+                alt={`Ảnh đại diện của ${userName}`}
+              />
             </div>
 
             <div className="user-info">
               <strong>{userName}</strong>
+
               <span>{roleName}</span>
             </div>
-          </div>
+          </button>
 
-          {/* LOGOUT */}
+          {/* =================================================
+              LOGOUT
+          ================================================= */}
 
-          <button className="logout-button" onClick={onLogout}>
+          <button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+          >
             Đăng xuất
           </button>
         </div>
@@ -151,7 +345,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           ================================================= */}
 
           <div className="header-account-wrapper" ref={accountMenuRef}>
-            {/* NÚT TÊN TÀI KHOẢN */}
+            {/* =================================================
+                ACCOUNT BUTTON
+            ================================================= */}
 
             <button
               type="button"
@@ -163,7 +359,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               aria-haspopup="true"
             >
               <div className="header-user-avatar">
-                {userName.charAt(0).toUpperCase()}
+                <AvatarImage
+                  source={avatarUrl}
+                  fallback={userName.charAt(0).toUpperCase()}
+                  alt={`Ảnh đại diện của ${userName}`}
+                />
               </div>
 
               <span>{userName}</span>
@@ -183,20 +383,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
             {showAccountMenu && (
               <div className="account-dropdown">
-                {/* HEADER */}
+                {/* =================================================
+                    DROPDOWN HEADER
+                ================================================= */}
 
                 <div className="account-dropdown-header">
                   <div className="account-dropdown-avatar">
-                    {userName.charAt(0).toUpperCase()}
+                    <AvatarImage
+                      source={avatarUrl}
+                      fallback={userName.charAt(0).toUpperCase()}
+                      alt={`Ảnh đại diện của ${userName}`}
+                    />
                   </div>
 
                   <div>
                     <strong>{userName}</strong>
+
                     <span>{roleName}</span>
                   </div>
                 </div>
 
-                {/* DIVIDER */}
+                {/* =================================================
+                    DIVIDER
+                ================================================= */}
 
                 <div className="account-dropdown-divider"></div>
 
@@ -212,6 +421,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
                     <div>
                       <span>Họ và tên</span>
+
                       <strong>{userName}</strong>
                     </div>
                   </div>
@@ -224,7 +434,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                     <div>
                       <span>Email</span>
 
-                      {/* ĐÃ SỬA: DÙNG EMAIL */}
                       <strong>{email}</strong>
                     </div>
                   </div>
@@ -236,6 +445,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
                     <div>
                       <span>Vai trò</span>
+
                       <strong>{roleName}</strong>
                     </div>
                   </div>
@@ -247,13 +457,36 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
                     <div>
                       <span>Số quyền</span>
+
                       <strong>{permissions.length} quyền</strong>
                     </div>
                   </div>
                 </div>
 
                 {/* =================================================
-                    TRẠNG THÁI TÀI KHOẢN
+                    ACTIONS
+                ================================================= */}
+
+                <div className="account-dropdown-actions">
+                  {/* HỒ SƠ */}
+
+                  <button type="button" onClick={handleProfile}>
+                    <span>👤</span>
+
+                    <span>Hồ sơ cá nhân</span>
+                  </button>
+
+                  {/* ĐỔI MẬT KHẨU */}
+
+                  <button type="button" onClick={handleChangePassword}>
+                    <span>🔐</span>
+
+                    <span>Đổi mật khẩu</span>
+                  </button>
+                </div>
+
+                {/* =================================================
+                    TRẠNG THÁI
                 ================================================= */}
 
                 <div className="account-dropdown-status">

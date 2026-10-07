@@ -14,6 +14,7 @@ import ChangePassword from "./pages/ChangePassword";
 import Profile from "./pages/Profile";
 
 import api from "./services/api";
+import { getAvatarPath } from "./utils/avatar";
 
 // ===========================================================
 // TYPES
@@ -34,6 +35,7 @@ interface User {
   nguoiDungId: number;
   hoTen: string;
   email: string;
+  anhDaiDien: string | null;
   vaiTro: VaiTro[];
   quyen: Quyen[];
   token: string;
@@ -47,6 +49,13 @@ interface User {
 
 function hasPermission(user: User | null, maQuyen: string): boolean {
   if (!user) return false;
+
+  if (
+    isAdminUser(user) &&
+    (maQuyen === "USER_VIEW" || maQuyen === "ROLE_VIEW")
+  ) {
+    return true;
+  }
 
   return user.quyen.some((quyen) => quyen.maQuyen === maQuyen);
 }
@@ -310,10 +319,6 @@ function App() {
     try {
       const parsedUser = JSON.parse(savedUser);
 
-      // -----------------------------------------------------
-      // KIỂM TRA SESSION FRONTEND
-      // -----------------------------------------------------
-
       if (parsedUser.expiresAt && Date.now() >= parsedUser.expiresAt) {
         localStorage.removeItem("user");
 
@@ -324,6 +329,7 @@ function App() {
         nguoiDungId: parsedUser.nguoiDungId,
         hoTen: parsedUser.hoTen,
         email: parsedUser.email,
+        anhDaiDien: getAvatarPath(parsedUser),
         vaiTro: Array.isArray(parsedUser.vaiTro) ? parsedUser.vaiTro : [],
         quyen: Array.isArray(parsedUser.quyen) ? parsedUser.quyen : [],
         token: parsedUser.token || "",
@@ -503,10 +509,6 @@ function App() {
 
     setMessageType("");
 
-    // -------------------------------------------------------
-    // VALIDATE
-    // -------------------------------------------------------
-
     const newErrors = {
       email: "",
       password: "",
@@ -529,20 +531,12 @@ function App() {
     try {
       setLoading(true);
 
-      // -----------------------------------------------------
-      // LOGIN API
-      // -----------------------------------------------------
-
       const response = await api.post("/login", {
         email: email.trim(),
         password,
       });
 
       const data = response.data;
-
-      // -----------------------------------------------------
-      // KIỂM TRA TOKEN
-      // -----------------------------------------------------
 
       if (!data.access_token) {
         setMessage("Đăng nhập thành công nhưng không nhận được access token");
@@ -551,10 +545,6 @@ function App() {
 
         return;
       }
-
-      // -----------------------------------------------------
-      // LOGIN THÀNH CÔNG
-      // -----------------------------------------------------
 
       const normalizedEmail = email.trim().toLowerCase();
 
@@ -568,26 +558,17 @@ function App() {
 
       const quyen: Quyen[] = Array.isArray(data.quyen) ? data.quyen : [];
 
-      // -----------------------------------------------------
-      // TẠO USER
-      // -----------------------------------------------------
-
       const loggedInUser: User = {
         nguoiDungId: data.nguoiDungId,
         hoTen: data.hoTen,
         email: data.email,
+        anhDaiDien: getAvatarPath(data),
         vaiTro,
         quyen,
         token: data.access_token,
         yeuCauDoiMatKhau: data.yeuCauDoiMatKhau === true,
-
-        // JWT hiện tại: 30 phút
         expiresAt: Date.now() + 30 * 60 * 1000,
       };
-
-      // -----------------------------------------------------
-      // LƯU SESSION
-      // -----------------------------------------------------
 
       localStorage.setItem("user", JSON.stringify(loggedInUser));
 
@@ -597,10 +578,6 @@ function App() {
 
       setUser(loggedInUser);
 
-      // -----------------------------------------------------
-      // BẮT BUỘC ĐỔI MẬT KHẨU
-      // -----------------------------------------------------
-
       if (data.yeuCauDoiMatKhau === true) {
         window.history.replaceState({}, "", "/change-password");
 
@@ -608,10 +585,6 @@ function App() {
 
         return;
       }
-
-      // -----------------------------------------------------
-      // ĐĂNG NHẬP BÌNH THƯỜNG
-      // -----------------------------------------------------
 
       window.history.replaceState({}, "", "/");
 
@@ -623,10 +596,6 @@ function App() {
 
       const detail =
         error.response?.data?.detail || "Email hoặc mật khẩu không đúng";
-
-      // -----------------------------------------------------
-      // KHÓA 15 PHÚT
-      // -----------------------------------------------------
 
       if (status === 423) {
         const normalizedEmail = email.trim().toLowerCase();
@@ -650,10 +619,6 @@ function App() {
 
         return;
       }
-
-      // -----------------------------------------------------
-      // SAI LOGIN
-      // -----------------------------------------------------
 
       setMessage(detail);
 
@@ -700,11 +665,72 @@ function App() {
   };
 
   // =========================================================
+  // ĐIỀU HƯỚNG HỒ SƠ CÁ NHÂN
+  // =========================================================
+
+  const handleProfile = () => {
+    navigate("/ho-so-ca-nhan");
+  };
+
+  // =========================================================
   // ĐIỀU HƯỚNG ĐỔI MẬT KHẨU
   // =========================================================
 
   const handleChangePassword = () => {
     navigate("/change-password");
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG QUẢN LÝ ĐIỂM
+  // =========================================================
+
+  const handleGradeManagement = () => {
+    if (!hasPermission(user, "QUAN_LY_DIEM")) {
+      navigate("/");
+
+      return;
+    }
+
+    navigate("/quan-ly-diem");
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG QUẢN LÝ LỚP
+  // =========================================================
+
+  const handleClassManagement = () => {
+    if (!hasPermission(user, "QUAN_LY_LOP")) {
+      navigate("/");
+
+      return;
+    }
+
+    navigate("/quan-ly-lop");
+  };
+
+  // =========================================================
+  // CẬP NHẬT USER SAU KHI SỬA HỒ SƠ
+  // =========================================================
+
+  const handleProfileUpdated = (updatedProfile: {
+    nguoiDungId: number;
+    hoTen: string;
+    email: string;
+    anhDaiDien?: string | null;
+  }) => {
+    if (!user) return;
+
+    const updatedUser: User = {
+      ...user,
+      nguoiDungId: updatedProfile.nguoiDungId,
+      hoTen: updatedProfile.hoTen,
+      email: updatedProfile.email,
+      anhDaiDien: updatedProfile.anhDaiDien ?? user.anhDaiDien,
+    };
+
+    setUser(updatedUser);
+
+    localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
   // =========================================================
@@ -780,10 +806,6 @@ function App() {
     return (
       <div className="login-page">
         <div className="login-container">
-          {/* =================================================
-              FORM LOGIN
-          ================================================= */}
-
           <section className="login-form-section">
             <div className="brand">
               <div className="brand-icon">🎓</div>
@@ -797,8 +819,6 @@ function App() {
               Đăng nhập để truy cập và quản lý các chức năng của hệ thống
             </p>
 
-            {/* MESSAGE */}
-
             {message && (
               <div
                 className={
@@ -811,11 +831,7 @@ function App() {
               </div>
             )}
 
-            {/* FORM */}
-
             <form className="login-form" onSubmit={handleLogin}>
-              {/* EMAIL */}
-
               <div className="form-group">
                 <label>Email</label>
 
@@ -845,8 +861,6 @@ function App() {
                   <p className="error-message">{loginErrors.email}</p>
                 )}
               </div>
-
-              {/* PASSWORD */}
 
               <div className="form-group">
                 <label>Mật khẩu</label>
@@ -882,8 +896,6 @@ function App() {
                 )}
               </div>
 
-              {/* OPTIONS */}
-
               <div className="login-options">
                 <label className="remember">
                   <input type="checkbox" />
@@ -903,15 +915,12 @@ function App() {
                 </a>
               </div>
 
-              {/* LOGIN BUTTON */}
-
               <button
                 type="submit"
                 className="login-button"
                 disabled={isLoginDisabled}
                 style={{
                   opacity: isLoginDisabled ? 0.55 : 1,
-
                   cursor: isLoginDisabled ? "not-allowed" : "pointer",
                 }}
               >
@@ -924,8 +933,6 @@ function App() {
                     : "Đăng nhập"}
               </button>
 
-              {/* DIVIDER */}
-
               <div className="divider">
                 <span></span>
 
@@ -934,18 +941,12 @@ function App() {
                 <span></span>
               </div>
 
-              {/* SCHOOL LOGIN */}
-
               <button type="button" className="school-login">
                 👥
                 <span>Đăng nhập bằng tài khoản trường</span>
               </button>
             </form>
           </section>
-
-          {/* =================================================
-              GIỚI THIỆU
-          ================================================= */}
 
           <section className="information-section">
             <div className="overlay"></div>
@@ -995,13 +996,8 @@ function App() {
   }
 
   // =========================================================
-  // TỪ ĐÂY TRỞ XUỐNG:
-  // USER ĐÃ ĐĂNG NHẬP
-  // =========================================================
-
-  // ---------------------------------------------------------
   // TÀI KHOẢN BẮT BUỘC ĐỔI MẬT KHẨU
-  // ---------------------------------------------------------
+  // =========================================================
 
   if (user.yeuCauDoiMatKhau === true && currentPath !== "/change-password") {
     window.history.replaceState({}, "", "/change-password");
@@ -1029,10 +1025,20 @@ function App() {
           userName={user.hoTen}
           email={user.email}
           roleName={roleName}
+          avatarUrl={user.anhDaiDien}
           permissions={user.quyen.map((q) => q.maQuyen)}
           onLogout={handleLogout}
+          onHome={handleHome}
+          onProfile={handleProfile}
+          onChangePassword={handleChangePassword}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
         >
-          <Profile user={user} onBack={() => navigate("/")} />
+          <Profile
+            user={user}
+            onBack={handleHome}
+            onProfileUpdated={handleProfileUpdated}
+          />
         </MainLayout>
       </ProtectedRoute>
     );
@@ -1045,7 +1051,21 @@ function App() {
   if (currentPath === "/change-password") {
     return (
       <ProtectedRoute>
-        <ChangePassword />
+        <MainLayout
+          userName={user.hoTen}
+          email={user.email}
+          roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+          onHome={handleHome}
+          onProfile={handleProfile}
+          onChangePassword={handleChangePassword}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
+        >
+          <ChangePassword />
+        </MainLayout>
       </ProtectedRoute>
     );
   }
@@ -1070,12 +1090,15 @@ function App() {
         <AdminLayout
           userName={user.hoTen}
           roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
           permissions={user.quyen.map((q) => q.maQuyen)}
           onLogout={handleLogout}
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
           onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
         >
           <UsersPage />
         </AdminLayout>
@@ -1097,12 +1120,15 @@ function App() {
         <AdminLayout
           userName={user.hoTen}
           roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
           permissions={user.quyen.map((q) => q.maQuyen)}
           onLogout={handleLogout}
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
           onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
         >
           <RoleManagement />
         </AdminLayout>
@@ -1138,17 +1164,16 @@ function App() {
         <AdminLayout
           userName={user.hoTen}
           roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
           permissions={user.quyen.map((q) => q.maQuyen)}
           onLogout={handleLogout}
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
           onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
         >
-          {/* =================================================
-              WELCOME
-          ================================================= */}
-
           <div className="admin-welcome">
             <div>
               <div className="admin-welcome-label">TỔNG QUAN HỆ THỐNG</div>
@@ -1162,10 +1187,6 @@ function App() {
 
             <div className="admin-welcome-icon">🎓</div>
           </div>
-
-          {/* =================================================
-              STAT
-          ================================================= */}
 
           <div className="admin-stat-grid">
             <div className="admin-stat-card">
@@ -1217,15 +1238,7 @@ function App() {
             </div>
           </div>
 
-          {/* =================================================
-              DASHBOARD
-          ================================================= */}
-
           <div className="admin-dashboard-grid">
-            {/* =================================================
-                HOẠT ĐỘNG
-            ================================================= */}
-
             <div
               className="admin-panel"
               style={{
@@ -1294,8 +1307,14 @@ function App() {
         userName={user.hoTen}
         email={user.email}
         roleName={roleName}
+        avatarUrl={user.anhDaiDien}
         permissions={user.quyen.map((q) => q.maQuyen)}
         onLogout={handleLogout}
+        onHome={handleHome}
+        onProfile={handleProfile}
+        onChangePassword={handleChangePassword}
+        onGradeManagement={handleGradeManagement}
+        onClassManagement={handleClassManagement}
       >
         <div className="user-dashboard">
           {/* =================================================
@@ -1396,111 +1415,7 @@ function App() {
           </section>
 
           {/* =================================================
-              MAIN DASHBOARD GRID
-          ================================================= */}
-
-          <section className="dashboard-main-grid">
-            <div className="dashboard-panel">
-              <div className="dashboard-panel-header">
-                <div>
-                  <span className="panel-eyebrow">TRUY CẬP NHANH</span>
-
-                  <h3>Chức năng của bạn</h3>
-
-                  <p>Các chức năng được cấp theo vai trò và quyền truy cập.</p>
-                </div>
-              </div>
-
-              <div className="dashboard-action-list">
-                {/* =================================================
-                    HỒ SƠ CÁ NHÂN
-                ================================================= */}
-
-                <button
-                  type="button"
-                  className="dashboard-action"
-                  onClick={() => navigate("/ho-so-ca-nhan")}
-                >
-                  <div className="dashboard-action-icon blue">👤</div>
-
-                  <div className="dashboard-action-content">
-                    <strong>Hồ sơ cá nhân</strong>
-
-                    <span>Xem và cập nhật thông tin cá nhân</span>
-                  </div>
-
-                  <div className="dashboard-action-arrow">→</div>
-                </button>
-
-                {/* =================================================
-                    ĐỔI MẬT KHẨU
-                ================================================= */}
-
-                <button
-                  type="button"
-                  className="dashboard-action"
-                  onClick={() => navigate("/change-password")}
-                >
-                  <div className="dashboard-action-icon purple">🔐</div>
-
-                  <div className="dashboard-action-content">
-                    <strong>Đổi mật khẩu</strong>
-
-                    <span>Cập nhật mật khẩu để bảo vệ tài khoản</span>
-                  </div>
-
-                  <div className="dashboard-action-arrow">→</div>
-                </button>
-
-                {/* =================================================
-                    QUẢN LÝ ĐIỂM
-                ================================================= */}
-
-                {hasPermission(user, "QUAN_LY_DIEM") && (
-                  <button
-                    type="button"
-                    className="dashboard-action"
-                    onClick={() => navigate("/quan-ly-diem")}
-                  >
-                    <div className="dashboard-action-icon green">📊</div>
-
-                    <div className="dashboard-action-content">
-                      <strong>Quản lý điểm</strong>
-
-                      <span>Xem và quản lý thông tin điểm</span>
-                    </div>
-
-                    <div className="dashboard-action-arrow">→</div>
-                  </button>
-                )}
-
-                {/* =================================================
-                    QUẢN LÝ LỚP
-                ================================================= */}
-
-                {hasPermission(user, "QUAN_LY_LOP") && (
-                  <button
-                    type="button"
-                    className="dashboard-action"
-                    onClick={() => navigate("/quan-ly-lop")}
-                  >
-                    <div className="dashboard-action-icon orange">🏫</div>
-
-                    <div className="dashboard-action-content">
-                      <strong>Quản lý lớp</strong>
-
-                      <span>Xem và quản lý thông tin lớp học</span>
-                    </div>
-
-                    <div className="dashboard-action-arrow">→</div>
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* =================================================
-              BOTTOM INFORMATION
+              THÔNG TIN HỆ THỐNG
           ================================================= */}
 
           <section className="dashboard-bottom-grid">
