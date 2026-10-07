@@ -1,14 +1,15 @@
 import { fetchWithAuth } from "./apiClient";
+
 export const forgotPassword = async (email: string) => {
-  return await fetchWithAuth('/api/v1/auth/forgot-password', {
-    method: 'POST',
+  return await fetchWithAuth("/forgot-password", {
+    method: "POST",
     body: JSON.stringify({ email }),
   });
 };
 
 export const resetPassword = async (token: string, new_password: string) => {
-  return await fetchWithAuth('/api/v1/auth/reset-password', {
-    method: 'POST',
+  return await fetchWithAuth("/reset-password", {
+    method: "POST",
     body: JSON.stringify({ token, new_password }),
   });
 };

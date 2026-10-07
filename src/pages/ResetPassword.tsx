@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -7,6 +7,9 @@ export const ResetPassword: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+
+  const [checkingToken, setCheckingToken] = useState(true);
+  const [tokenValid, setTokenValid] = useState(false);
 
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -24,6 +27,62 @@ export const ResetPassword: React.FC = () => {
   const token = queryParams.get("token");
 
   // ============================================================
+  // KIỂM TRA TOKEN NGAY KHI MỞ TRANG
+  // ============================================================
+
+  useEffect(() => {
+    const validateToken = async () => {
+      if (!token) {
+        setMessage({
+          type: "error",
+          text: "Token không hợp lệ",
+        });
+
+        setTokenValid(false);
+        setCheckingToken(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_URL}/reset-password/validate-token?token=${encodeURIComponent(
+            token,
+          )}`,
+        );
+
+        const res = await response.json();
+
+        if (!response.ok) {
+          setMessage({
+            type: "error",
+            text: res?.detail || "Token không hợp lệ",
+          });
+
+          setTokenValid(false);
+          setCheckingToken(false);
+          return;
+        }
+
+        setTokenValid(true);
+        setMessage(null);
+      } catch (error) {
+        console.error("VALIDATE RESET TOKEN ERROR:", error);
+
+        setTokenValid(false);
+
+        setMessage({
+          type: "error",
+          text: "Không thể kiểm tra token. Vui lòng thử lại.",
+        });
+      } finally {
+        setCheckingToken(false);
+      }
+    };
+
+    validateToken();
+  }, [token]);
+
+  // ============================================================
   // XỬ LÝ ĐẶT LẠI MẬT KHẨU
   // ============================================================
 
@@ -36,10 +95,10 @@ export const ResetPassword: React.FC = () => {
     // Kiểm tra token
     // ----------------------------------------------------------
 
-    if (!token) {
+    if (!token || !tokenValid) {
       setMessage({
         type: "error",
-        text: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.",
+        text: "Token không hợp lệ hoặc đã hết hạn.",
       });
 
       return;
@@ -133,6 +192,13 @@ export const ResetPassword: React.FC = () => {
         setNewPassword("");
         setConfirmPassword("");
 
+        // Token đã được sử dụng
+        setTokenValid(false);
+
+        setTimeout(() => {
+          window.location.replace("/");
+        }, 1500);
+
         return;
       }
 
@@ -145,7 +211,9 @@ export const ResetPassword: React.FC = () => {
       if (res?.detail) {
         if (Array.isArray(res.detail)) {
           errorMessage = res.detail
-            .map((item: any) => item.msg || "Dữ liệu không hợp lệ.")
+            .map((item: { msg?: string }) => {
+              return item.msg || "Dữ liệu không hợp lệ.";
+            })
             .join(", ");
         } else {
           errorMessage = res.detail;
@@ -158,6 +226,16 @@ export const ResetPassword: React.FC = () => {
         type: "error",
         text: errorMessage,
       });
+
+      // Nếu backend trả token không hợp lệ/hết hạn
+      // thì ẩn form luôn.
+      if (
+        typeof errorMessage === "string" &&
+        (errorMessage.toLowerCase().includes("token không hợp lệ") ||
+          errorMessage.toLowerCase().includes("token đã hết hạn"))
+      ) {
+        setTokenValid(false);
+      }
     } catch (error) {
       console.error("RESET PASSWORD ERROR:", error);
 
@@ -193,12 +271,9 @@ export const ResetPassword: React.FC = () => {
           <div
             style={{
               ...styles.alert,
-
               backgroundColor:
                 message.type === "success" ? "#e6f4ea" : "#fce8e6",
-
               color: message.type === "success" ? "#137333" : "#c5221f",
-
               borderColor: message.type === "success" ? "#ceead6" : "#fad2cf",
             }}
           >
@@ -207,64 +282,72 @@ export const ResetPassword: React.FC = () => {
         )}
 
         {/* ================================================== */}
-        {/* FORM */}
+        {/* KIỂM TRA TOKEN */}
         {/* ================================================== */}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* Mật khẩu mới */}
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Mật khẩu mới</label>
-
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nhập mật khẩu mới"
-              required
-              disabled={loading}
-              style={styles.input}
-            />
-          </div>
-
-          {/* Xác nhận mật khẩu */}
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Xác nhận mật khẩu mới</label>
-
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Nhập lại mật khẩu mới"
-              required
-              disabled={loading}
-              style={styles.input}
-            />
-          </div>
-
-          {/* Yêu cầu mật khẩu */}
-
+        {checkingToken ? (
           <p style={styles.passwordHint}>
-            Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái và chữ số.
+            Đang kiểm tra liên kết đặt lại mật khẩu...
           </p>
+        ) : tokenValid ? (
+          /* ================================================== */
+          /* FORM ĐẶT LẠI MẬT KHẨU */
+          /* ================================================== */
 
-          {/* Nút */}
+          <form onSubmit={handleSubmit} style={styles.form}>
+            {/* Mật khẩu mới */}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              ...styles.button,
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Mật khẩu mới</label>
 
-              backgroundColor: loading ? "#9ca3af" : "#0066cc",
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Nhập mật khẩu mới"
+                required
+                disabled={loading}
+                style={styles.input}
+              />
+            </div>
 
-              cursor: loading ? "not-allowed" : "pointer",
-            }}
-          >
-            {loading ? "Đang cập nhật..." : "Đặt lại mật khẩu"}
-          </button>
-        </form>
+            {/* Xác nhận mật khẩu */}
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Xác nhận mật khẩu mới</label>
+
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Nhập lại mật khẩu mới"
+                required
+                disabled={loading}
+                style={styles.input}
+              />
+            </div>
+
+            {/* Yêu cầu mật khẩu */}
+
+            <p style={styles.passwordHint}>
+              Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái và chữ số.
+            </p>
+
+            {/* Nút */}
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                ...styles.button,
+                backgroundColor: loading ? "#9ca3af" : "#0066cc",
+                cursor: loading ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Đang cập nhật..." : "Đặt lại mật khẩu"}
+            </button>
+          </form>
+        ) : null}
 
         {/* ================================================== */}
         {/* QUAY LẠI */}
