@@ -1,5 +1,44 @@
 import React, { useState } from "react";
+import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
+
+const getApiErrorMessage = (error: unknown): string => {
+  const fallbackMessage = "Đã xảy ra lỗi khi đổi mật khẩu. Vui lòng thử lại.";
+
+  if (!axios.isAxiosError(error)) {
+    return fallbackMessage;
+  }
+
+  const responseData: unknown = error.response?.data;
+
+  if (!responseData || typeof responseData !== "object") {
+    return fallbackMessage;
+  }
+
+  const data = responseData as Record<string, unknown>;
+  const detail = data.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const messages = detail.flatMap((item) => {
+      if (typeof item !== "object" || item === null || !("msg" in item)) {
+        return [];
+      }
+
+      return typeof item.msg === "string" ? [item.msg] : [];
+    });
+
+    if (messages.length > 0) {
+      return messages.join(" ");
+    }
+  }
+
+  return typeof data.message === "string" ? data.message : fallbackMessage;
+};
 
 const ChangePassword: React.FC = () => {
   // =========================================================
@@ -41,6 +80,28 @@ const ChangePassword: React.FC = () => {
 
     if (currentPassword === newPassword) {
       setError("Mật khẩu mới phải khác mật khẩu hiện tại.");
+      return;
+    }
+
+    const passwordLength = Array.from(newPassword).length;
+
+    if (passwordLength < 8) {
+      setError("Mật khẩu mới phải có ít nhất 8 ký tự.");
+      return;
+    }
+
+    if (passwordLength > 100) {
+      setError("Mật khẩu mới không được vượt quá 100 ký tự.");
+      return;
+    }
+
+    if (!/\p{L}/u.test(newPassword)) {
+      setError("Mật khẩu mới phải có ít nhất một chữ cái.");
+      return;
+    }
+
+    if (!/\p{N}/u.test(newPassword)) {
+      setError("Mật khẩu mới phải có ít nhất một chữ số.");
       return;
     }
 
@@ -132,15 +193,9 @@ const ChangePassword: React.FC = () => {
       window.setTimeout(() => {
         window.location.assign("/");
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Lỗi đổi mật khẩu:", err);
-
-      const message =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        "Đã xảy ra lỗi khi đổi mật khẩu. Vui lòng thử lại.";
-
-      setError(message);
+      setError(getApiErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -152,6 +207,13 @@ const ChangePassword: React.FC = () => {
 
   return (
     <div className="change-password-page">
+      {successMsg && (
+        <ToastNotification
+          type="success"
+          text={`${successMsg} Đang chuyển về trang chủ...`}
+          onClose={() => setSuccessMsg("")}
+        />
+      )}
       <style>
         {`
           * {
@@ -233,11 +295,13 @@ const ChangePassword: React.FC = () => {
             margin-bottom: 42px;
           }
 
-          .brand-title {
+          .change-password-info .brand-title {
             margin: 0;
             font-size: 25px;
             font-weight: 800;
             letter-spacing: -0.5px;
+            color: #ffffff;
+            text-shadow: 0 0 12px rgba(147, 197, 253, 0.65);
           }
 
           .brand-subtitle {
@@ -601,27 +665,6 @@ const ChangePassword: React.FC = () => {
               SUCCESS
               ================================================= */}
 
-          {successMsg && (
-            <div className="alert alert-success">
-              <span className="alert-icon">✓</span>
-
-              <span>
-                {successMsg}
-
-                <br />
-
-                <span
-                  style={{
-                    fontWeight: 400,
-                    fontSize: "12px",
-                  }}
-                >
-                  Đang chuyển về trang chủ...
-                </span>
-              </span>
-            </div>
-          )}
-
           {/* =================================================
               FORM
               ================================================= */}
@@ -660,6 +703,7 @@ const ChangePassword: React.FC = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={isLoading}
+                  maxLength={100}
                   autoComplete="new-password"
                   placeholder="Nhập mật khẩu mới"
                   className="form-input"
@@ -667,10 +711,8 @@ const ChangePassword: React.FC = () => {
               </div>
 
               <div className="password-hint">
-                <span style={{ color: "#dc2626" }}>
-                  Mật khẩu mới nên khác mật khẩu hiện tại và đủ khó để bảo vệ
-                  tài khoản.
-                </span>
+                Mật khẩu cần ít nhất 8 ký tự, gồm ít nhất một chữ cái và một
+                chữ số.
               </div>
             </div>
 

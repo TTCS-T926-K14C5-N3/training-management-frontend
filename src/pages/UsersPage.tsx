@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
 import AvatarImage from "../components/AvatarImage";
 
 import "./UsersPage.css";
@@ -66,24 +66,6 @@ const UsersPage: React.FC = () => {
   } | null>(null);
 
   // =====================================================
-  // TỰ ĐỘNG ẨN TOAST SAU 4 GIÂY
-  // =====================================================
-
-  useEffect(() => {
-    if (!toast) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setToast(null);
-    }, 4000);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [toast]);
-
-  // =====================================================
   // THÔNG TIN NGƯỜI DÙNG ĐANG ĐĂNG NHẬP
   // =====================================================
 
@@ -124,7 +106,6 @@ const UsersPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [createSuccess, setCreateSuccess] = useState("");
 
   const [createForm, setCreateForm] = useState({
     hoTen: "",
@@ -138,9 +119,8 @@ const UsersPage: React.FC = () => {
       email: "",
       vaiTroId: "",
     });
-
     setCreateError("");
-    setCreateSuccess("");
+    setCreateError("");
   };
 
   const openCreateModal = () => {
@@ -227,8 +207,6 @@ const UsersPage: React.FC = () => {
     const vaiTroId = Number(createForm.vaiTroId);
 
     setCreateError("");
-    setCreateSuccess("");
-
     if (!hoTen) {
       setCreateError("Vui lòng nhập họ tên.");
       return;
@@ -259,14 +237,9 @@ const UsersPage: React.FC = () => {
         vai_tro_id: vaiTroId,
       });
 
-      setCreateSuccess(
-        "Tạo tài khoản thành công. Thông tin đăng nhập tạm thời đã được gửi tới email.",
-      );
-
-      // Toast góc trái
       setToast({
         type: "success",
-        text: "Tạo tài khoản thành công.",
+        text: "Tạo tài khoản thành công. Thông tin đăng nhập tạm thời đã được gửi tới email.",
       });
 
       setCreateForm({
@@ -279,7 +252,6 @@ const UsersPage: React.FC = () => {
 
       window.setTimeout(() => {
         setShowCreateModal(false);
-        setCreateSuccess("");
       }, 1800);
     } catch (error: any) {
       console.error("Lỗi tạo tài khoản:", error);
@@ -464,69 +436,31 @@ const UsersPage: React.FC = () => {
           ===================================================== */}
 
       {toast && (
-        <div
-          className={`users-toast ${
-            toast.type === "success"
-              ? "users-toast-success"
-              : "users-toast-error"
-          }`}
-        >
-          <div className="users-toast-icon">
-            {toast.type === "success" ? "✓" : "!"}
-          </div>
-
-          <div className="users-toast-content">
-            <strong>{toast.type === "success" ? "Thành công" : "Lỗi"}</strong>
-
-            <span>{toast.text}</span>
-          </div>
-
-          <button
-            type="button"
-            className="users-toast-close"
-            onClick={() => setToast(null)}
-          >
-            ×
-          </button>
-        </div>
+        <ToastNotification
+          type={toast.type}
+          text={toast.text}
+          onClose={() => setToast(null)}
+        />
       )}
 
-      {/* =====================================================
-          HEADER
-          ===================================================== */}
+      <section className="dashboard-hero users-page-hero">
+        <div className="dashboard-hero-content">
+          <div className="dashboard-hero-label">QUẢN LÝ HỆ THỐNG</div>
 
-      <div className="users-header">
-        <div>
-          <div className="users-breadcrumb">
-            Quản lý <span>/</span> Người dùng
-          </div>
+          <h2>Quản lý người dùng</h2>
 
-          <h1>Người dùng</h1>
-
-          <p>Quản lý tài khoản người dùng trong hệ thống</p>
+          <p>Quản lý tài khoản người dùng trong hệ thống.</p>
         </div>
 
-        {/* CÁC NÚT CHỨC NĂNG */}
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
+        <div className="users-header-actions">
           {canCreateUser && (
             <>
-              {/* IMPORT EXCEL */}
-
               <button
                 className="users-import-button"
                 onClick={() => setShowImportModal(true)}
               >
                 ↑ Import Excel
               </button>
-
-              {/* TẠO TÀI KHOẢN */}
 
               <button className="users-create-button" onClick={openCreateModal}>
                 <span className="button-plus">+</span>
@@ -535,7 +469,7 @@ const UsersPage: React.FC = () => {
             </>
           )}
         </div>
-      </div>
+      </section>
 
       {/* =====================================================
           FILTER
@@ -838,12 +772,6 @@ const UsersPage: React.FC = () => {
 
             {createError && (
               <div className="users-form-error">{createError}</div>
-            )}
-
-            {/* SUCCESS */}
-
-            {createSuccess && (
-              <div className="users-form-success">✓ {createSuccess}</div>
             )}
 
             {/* HỌ TÊN */}

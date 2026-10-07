@@ -4,49 +4,32 @@
 
 .users-page {
   min-height: 100%;
-  padding: 32px 36px 40px;
-  background: #f6f8fc;
+  padding: 0;
   color: #172033;
   box-sizing: border-box;
 }
 
-/* =========================================================
-   HEADER
-   ========================================================= */
-
-.users-header {
+.users-page-hero {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 26px;
+  gap: 20px;
+  min-height: 190px;
+  padding: 30px 36px;
+  margin-bottom: 24px;
 }
 
-.users-breadcrumb {
-  margin-bottom: 9px;
-  color: #8b98ad;
-  font-size: 13px;
-  font-weight: 500;
+.users-page-hero .dashboard-hero-content {
+  max-width: 650px;
 }
 
-.users-breadcrumb span {
-  margin: 0 6px;
-  color: #c2cbd8;
-}
-
-.users-header h1 {
-  margin: 0;
-  color: #14213d;
-  font-size: 32px;
-  line-height: 1.2;
-  font-weight: 750;
-  letter-spacing: -0.5px;
-}
-
-.users-header p {
-  margin: 8px 0 0;
-  color: #7a879b;
-  font-size: 14px;
+.users-header-actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .users-create-button {
@@ -72,6 +55,22 @@
 .users-create-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+}
+
+.users-page-hero .users-create-button {
+  background: #ffffff;
+  color: #1e40af;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.18);
+}
+
+.users-page-hero .users-create-button:hover {
+  background: #eff6ff;
+}
+
+.users-page-hero .users-import-button {
+  height: 46px;
+  padding: 0 18px;
+  font-size: 14px;
 }
 
 .button-plus {
@@ -749,8 +748,7 @@
   font-weight: 650;
 }
 
-.users-form-error,
-.users-form-success {
+.users-form-error {
   margin-bottom: 18px;
   padding: 11px 13px;
   border-radius: 9px;
@@ -763,12 +761,6 @@
   border: 1px solid #fecaca;
   background: #fff1f2;
   color: #dc2626;
-}
-
-.users-form-success {
-  border: 1px solid #b7efd5;
-  background: #ecfdf5;
-  color: #087f5b;
 }
 
 /* =========================================================
@@ -845,10 +837,6 @@
    ========================================================= */
 
 @media (max-width: 1100px) {
-  .users-page {
-    padding: 26px 24px 35px;
-  }
-
   .users-filter-card {
     grid-template-columns: 1fr 1fr;
   }
@@ -863,21 +851,31 @@
 }
 
 @media (max-width: 700px) {
-  .users-page {
-    padding: 20px 15px 30px;
-  }
-
-  .users-header {
-    align-items: flex-start;
+  .users-page-hero {
     flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    padding: 24px;
   }
 
-  .users-header h1 {
+  .users-page-hero .dashboard-hero-content {
+    max-width: none;
+  }
+
+  .users-page-hero h2 {
     font-size: 27px;
   }
 
+  .users-header-actions {
+    flex-wrap: wrap;
+  }
+
   .users-create-button {
-    width: 100%;
+    flex: 1;
+  }
+
+  .users-page-hero .users-import-button {
+    flex: 1;
   }
 
   .users-filter-card {
@@ -952,180 +950,4 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-}
-/* =====================================================
-   TOAST THÔNG BÁO - GÓC DƯỚI BÊN TRÁI
-   ===================================================== */
-
-.users-toast {
-  position: fixed;
-  left: 24px;
-  bottom: 24px;
-
-  min-width: 340px;
-  max-width: 460px;
-
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  padding: 14px 16px;
-
-  background: #ffffff;
-
-  border-radius: 12px;
-
-  box-shadow:
-    0 10px 30px rgba(15, 23, 42, 0.15),
-    0 2px 8px rgba(15, 23, 42, 0.08);
-
-  border: 1px solid #e5e7eb;
-
-  z-index: 99999;
-
-  animation: usersToastSlideIn 0.3s ease-out;
-}
-
-/* ICON */
-
-.users-toast-icon {
-  width: 34px;
-  height: 34px;
-
-  flex-shrink: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 50%;
-
-  font-size: 18px;
-  font-weight: 700;
-}
-
-/* NỘI DUNG */
-
-.users-toast-content {
-  flex: 1;
-
-  display: flex;
-  flex-direction: column;
-
-  gap: 3px;
-}
-
-.users-toast-content strong {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.users-toast-content span {
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-/* NÚT ĐÓNG */
-
-.users-toast-close {
-  width: 28px;
-  height: 28px;
-
-  flex-shrink: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border: none;
-  background: transparent;
-
-  border-radius: 6px;
-
-  font-size: 20px;
-  line-height: 1;
-
-  cursor: pointer;
-
-  color: #64748b;
-
-  transition: all 0.2s ease;
-}
-
-.users-toast-close:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-/* =====================================================
-   THÔNG BÁO THÀNH CÔNG
-   ===================================================== */
-
-.users-toast-success {
-  border-left: 4px solid #22c55e;
-}
-
-.users-toast-success .users-toast-icon {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.users-toast-success .users-toast-content strong {
-  color: #15803d;
-}
-
-.users-toast-success .users-toast-content span {
-  color: #475569;
-}
-
-/* =====================================================
-   THÔNG BÁO LỖI
-   ===================================================== */
-
-.users-toast-error {
-  border-left: 4px solid #ef4444;
-}
-
-.users-toast-error .users-toast-icon {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.users-toast-error .users-toast-content strong {
-  color: #dc2626;
-}
-
-.users-toast-error .users-toast-content span {
-  color: #475569;
-}
-
-/* =====================================================
-   ANIMATION
-   ===================================================== */
-
-@keyframes usersToastSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-30px) translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0) translateY(0);
-  }
-}
-
-/* =====================================================
-   RESPONSIVE
-   ===================================================== */
-
-@media (max-width: 600px) {
-  .users-toast {
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
-
-    min-width: auto;
-    max-width: none;
-  }
 }

@@ -1,19 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import AppStatusPage from "./components/AppStatusPage";
 
 import RoleManagement from "./pages/RoleManagement";
 import UsersPage from "./pages/UsersPage";
+import GradeManagement from "./pages/GradeManagement";
+import ClassManagement from "./pages/ClassManagement";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import Profile from "./pages/Profile";
 
-import api from "./services/api";
+import api, {
+  expireSession,
+  getTokenExpiresAt,
+  refreshAccessToken,
+} from "./services/api";
 import { getAvatarPath } from "./utils/avatar";
 
 // ===========================================================
@@ -43,19 +50,162 @@ interface User {
   yeuCauDoiMatKhau?: boolean;
 }
 
+interface ExpiredSessionDraft {
+  path: string;
+  fields: Array<{
+    tag: string;
+    value: string;
+    checked?: boolean;
+    selectedValues?: string[];
+  }>;
+}
+
+type DraftableField =
+  | HTMLInputElement
+  | HTMLTextAreaElement
+  | HTMLSelectElement;
+
+const getDraftableFields = (): DraftableField[] =>
+  Array.from(
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      "input, textarea, select",
+    ),
+  ).filter((field) => {
+    if (field.disabled) {
+      return false;
+    }
+
+    if (field instanceof HTMLInputElement) {
+      return !["password", "hidden", "file", "button", "submit", "reset"].includes(
+        field.type,
+      );
+    }
+
+    return true;
+  });
+
+const saveExpiredSessionDraft = (path: string) => {
+  try {
+    const fields = getDraftableFields().map((field) => {
+      if (field instanceof HTMLInputElement) {
+        return {
+          tag: "input",
+          value: field.value,
+          ...(field.type === "checkbox" || field.type === "radio"
+            ? { checked: field.checked }
+            : {}),
+        };
+      }
+
+      if (field instanceof HTMLSelectElement) {
+        return {
+          tag: "select",
+          value: field.value,
+          ...(field.multiple
+            ? {
+                selectedValues: Array.from(
+                  field.selectedOptions,
+                  (option) => option.value,
+                ),
+              }
+            : {}),
+        };
+      }
+
+      return { tag: "textarea", value: field.value };
+    });
+
+    sessionStorage.setItem(
+      "expiredSessionDraft",
+      JSON.stringify({ path, fields } satisfies ExpiredSessionDraft),
+    );
+    sessionStorage.setItem("expiredSessionPath", path);
+  } catch (error) {
+    console.error("Không thể lưu bản nháp trước khi phiên hết hạn:", error);
+  }
+};
+
+const restoreExpiredSessionDraft = (path: string) => {
+  const storedDraft = sessionStorage.getItem("expiredSessionDraft");
+
+  if (!storedDraft) {
+    return;
+  }
+
+  try {
+    const draft = JSON.parse(storedDraft) as ExpiredSessionDraft;
+
+    if (draft.path !== path) {
+      return;
+    }
+
+    const fields = getDraftableFields();
+
+    draft.fields.forEach((savedField, index) => {
+      const field = fields[index];
+
+      if (!field) {
+        return;
+      }
+
+      if (
+        field instanceof HTMLInputElement &&
+        savedField.tag === "input" &&
+        (field.type === "checkbox" || field.type === "radio") &&
+        savedField.checked !== undefined
+      ) {
+        const checkedSetter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "checked",
+        )?.set;
+        checkedSetter?.call(field, savedField.checked);
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
+
+      if (field instanceof HTMLSelectElement && savedField.tag === "select") {
+        if (field.multiple && savedField.selectedValues) {
+          Array.from(field.options).forEach((option) => {
+            option.selected = savedField.selectedValues?.includes(option.value) ?? false;
+          });
+        } else {
+          field.value = savedField.value;
+        }
+
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
+
+      if (
+        (field instanceof HTMLInputElement ||
+          field instanceof HTMLTextAreaElement) &&
+        savedField.tag === (field instanceof HTMLInputElement ? "input" : "textarea")
+      ) {
+        const prototype = Object.getPrototypeOf(field);
+        const valueSetter = Object.getOwnPropertyDescriptor(
+          prototype,
+          "value",
+        )?.set;
+        valueSetter?.call(field, savedField.value);
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    sessionStorage.removeItem("expiredSessionDraft");
+    sessionStorage.removeItem("expiredSessionPath");
+  } catch (error) {
+    console.error("Không thể khôi phục bản nháp phiên đăng nhập:", error);
+    sessionStorage.removeItem("expiredSessionDraft");
+    sessionStorage.removeItem("expiredSessionPath");
+  }
+};
+
 // ===========================================================
 // KIỂM TRA QUYỀN
 // ===========================================================
 
 function hasPermission(user: User | null, maQuyen: string): boolean {
   if (!user) return false;
-
-  if (
-    isAdminUser(user) &&
-    (maQuyen === "USER_VIEW" || maQuyen === "ROLE_VIEW")
-  ) {
-    return true;
-  }
 
   return user.quyen.some((quyen) => quyen.maQuyen === maQuyen);
 }
@@ -77,22 +227,6 @@ function isAdminUser(user: User | null): boolean {
       role.vaiTroId === 8
     );
   });
-}
-
-// ===========================================================
-// REDIRECT VỀ TRANG CHỦ
-// ===========================================================
-
-function RedirectToHome() {
-  useEffect(() => {
-    if (window.location.pathname !== "/") {
-      window.history.replaceState({}, "", "/");
-
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    }
-  }, []);
-
-  return null;
 }
 
 // ===========================================================
@@ -318,8 +452,17 @@ function App() {
 
     try {
       const parsedUser = JSON.parse(savedUser);
+      const tokenExpiresAt = parsedUser.token
+        ? getTokenExpiresAt(parsedUser.token)
+        : null;
 
-      if (parsedUser.expiresAt && Date.now() >= parsedUser.expiresAt) {
+      if (
+        (tokenExpiresAt && Date.now() >= tokenExpiresAt) ||
+        (!tokenExpiresAt &&
+          parsedUser.expiresAt &&
+          Date.now() >= parsedUser.expiresAt)
+      ) {
+        sessionStorage.setItem("expiredSessionEmail", parsedUser.email || "");
         localStorage.removeItem("user");
 
         return null;
@@ -334,7 +477,7 @@ function App() {
         quyen: Array.isArray(parsedUser.quyen) ? parsedUser.quyen : [],
         token: parsedUser.token || "",
         yeuCauDoiMatKhau: parsedUser.yeuCauDoiMatKhau === true,
-        expiresAt: parsedUser.expiresAt || 0,
+        expiresAt: tokenExpiresAt ?? parsedUser.expiresAt ?? 0,
       };
     } catch (error) {
       console.error("Không thể đọc thông tin đăng nhập:", error);
@@ -353,7 +496,9 @@ function App() {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    return sessionStorage.getItem("expiredSessionEmail") ?? "";
+  });
 
   const [password, setPassword] = useState("");
 
@@ -362,11 +507,177 @@ function App() {
     password: "",
   });
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => {
+    return sessionStorage.getItem("expiredSessionEmail") !== null
+      ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+      : "";
+  });
 
-  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">(
+    () =>
+      sessionStorage.getItem("expiredSessionEmail") !== null ? "error" : "",
+  );
 
   const [loading, setLoading] = useState(false);
+
+  const loginRequestInProgress = useRef(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("expiredSessionEmail") !== null) {
+      sessionStorage.removeItem("expiredSessionEmail");
+      window.history.replaceState({}, "", "/");
+    }
+
+    const handleSessionExpired = (event: Event) => {
+      const detail = (event as CustomEvent<{ email?: string }>).detail;
+
+      saveExpiredSessionDraft(window.location.pathname);
+      sessionStorage.setItem("expiredSessionEmail", detail?.email || "");
+      setUser(null);
+      setCurrentPath("/");
+      window.history.replaceState({}, "", "/");
+
+      if (detail?.email) {
+        setEmail(detail.email);
+      }
+
+      setPassword("");
+      setMessage("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      setMessageType("error");
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "user" && event.newValue === null) {
+        window.dispatchEvent(
+          new CustomEvent("session-expired", {
+            detail: { email: user?.email },
+          }),
+        );
+      }
+    };
+
+    window.addEventListener("session-expired", handleSessionExpired);
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("session-expired", handleSessionExpired);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const draftPath = sessionStorage.getItem("expiredSessionPath");
+
+    if (!draftPath || draftPath !== currentPath) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      restoreExpiredSessionDraft(currentPath);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [currentPath, user]);
+
+  useEffect(() => {
+    if (!user?.token) {
+      return;
+    }
+
+    let lastActivityAt = 0;
+    let refreshInProgress = false;
+
+    const markActive = () => {
+      lastActivityAt = Date.now();
+    };
+
+    const activityEvents = [
+      "pointerdown",
+      "pointermove",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ] as const;
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, markActive, { passive: true });
+    });
+
+    const checkSession = async () => {
+      const storedUser = localStorage.getItem("user");
+
+      if (!storedUser || refreshInProgress) {
+        return;
+      }
+
+      try {
+        const currentUser = JSON.parse(storedUser);
+        const expiresAt =
+          getTokenExpiresAt(currentUser.token) ?? currentUser.expiresAt;
+
+        if (!expiresAt) {
+          return;
+        }
+
+        currentUser.expiresAt = expiresAt;
+        localStorage.setItem("user", JSON.stringify(currentUser));
+
+        if (Date.now() >= expiresAt) {
+          expireSession();
+          return;
+        }
+
+        if (
+          Date.now() - lastActivityAt > 60 * 1000 ||
+          expiresAt - Date.now() > 2 * 60 * 1000
+        ) {
+          return;
+        }
+
+        refreshInProgress = true;
+
+        const refreshedToken = await refreshAccessToken();
+
+        if (refreshedToken) {
+          const refreshedUser = JSON.parse(
+            localStorage.getItem("user") || "null",
+          );
+
+          if (refreshedUser) {
+            setUser((current) =>
+              current
+                ? {
+                    ...current,
+                    token: refreshedToken,
+                    expiresAt: refreshedUser.expiresAt,
+                  }
+                : current,
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Không thể kiểm tra/gia hạn phiên đăng nhập:", error);
+      } finally {
+        refreshInProgress = false;
+      }
+    };
+
+    const interval = window.setInterval(checkSession, 15 * 1000);
+    void checkSession();
+
+    return () => {
+      window.clearInterval(interval);
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, markActive);
+      });
+    };
+  }, [user?.token]);
 
   // =========================================================
   // KHÓA NÚT LOGIN 15 PHÚT
@@ -501,7 +812,11 @@ function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (loading || loginLockedUntil !== null) {
+    if (
+      loading ||
+      loginRequestInProgress.current ||
+      loginLockedUntil !== null
+    ) {
       return;
     }
 
@@ -529,6 +844,7 @@ function App() {
     }
 
     try {
+      loginRequestInProgress.current = true;
       setLoading(true);
 
       const response = await api.post("/login", {
@@ -567,7 +883,8 @@ function App() {
         quyen,
         token: data.access_token,
         yeuCauDoiMatKhau: data.yeuCauDoiMatKhau === true,
-        expiresAt: Date.now() + 30 * 60 * 1000,
+        expiresAt:
+          getTokenExpiresAt(data.access_token) ?? Date.now() + 30 * 60 * 1000,
       };
 
       localStorage.setItem("user", JSON.stringify(loggedInUser));
@@ -577,6 +894,7 @@ function App() {
       setMessageType("success");
 
       setUser(loggedInUser);
+      sessionStorage.removeItem("expiredSessionEmail");
 
       if (data.yeuCauDoiMatKhau === true) {
         window.history.replaceState({}, "", "/change-password");
@@ -586,9 +904,11 @@ function App() {
         return;
       }
 
-      window.history.replaceState({}, "", "/");
+      const resumePath = sessionStorage.getItem("expiredSessionPath");
+      const destination = resumePath || "/";
 
-      setCurrentPath("/");
+      window.history.replaceState({}, "", destination);
+      setCurrentPath(destination);
     } catch (error: any) {
       console.error("Lỗi đăng nhập:", error);
 
@@ -624,6 +944,7 @@ function App() {
 
       setMessageType("error");
     } finally {
+      loginRequestInProgress.current = false;
       setLoading(false);
     }
   };
@@ -664,6 +985,24 @@ function App() {
     navigate("/quan-ly-nguoi-dung");
   };
 
+  const handleGradeManagement = () => {
+    if (!hasPermission(user, "GRADE_VIEW")) {
+      navigate("/");
+      return;
+    }
+
+    navigate("/quan-ly-diem");
+  };
+
+  const handleClassManagement = () => {
+    if (!hasPermission(user, "CLASS_VIEW")) {
+      navigate("/");
+      return;
+    }
+
+    navigate("/quan-ly-lop");
+  };
+
   // =========================================================
   // ĐIỀU HƯỚNG HỒ SƠ CÁ NHÂN
   // =========================================================
@@ -678,34 +1017,6 @@ function App() {
 
   const handleChangePassword = () => {
     navigate("/change-password");
-  };
-
-  // =========================================================
-  // ĐIỀU HƯỚNG QUẢN LÝ ĐIỂM
-  // =========================================================
-
-  const handleGradeManagement = () => {
-    if (!hasPermission(user, "QUAN_LY_DIEM")) {
-      navigate("/");
-
-      return;
-    }
-
-    navigate("/quan-ly-diem");
-  };
-
-  // =========================================================
-  // ĐIỀU HƯỚNG QUẢN LÝ LỚP
-  // =========================================================
-
-  const handleClassManagement = () => {
-    if (!hasPermission(user, "QUAN_LY_LOP")) {
-      navigate("/");
-
-      return;
-    }
-
-    navigate("/quan-ly-lop");
   };
 
   // =========================================================
@@ -742,34 +1053,35 @@ function App() {
       if (user?.token) {
         await api.post("/logout");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi đăng xuất:", error);
-    } finally {
-      localStorage.removeItem("user");
 
-      setUser(null);
+      if (error.response?.status === 401) {
+        expireSession();
+        return;
+      }
 
-      setEmail("");
-
-      setPassword("");
-
-      setMessage("");
-
-      setMessageType("");
-
-      setLoginErrors({
-        email: "",
-        password: "",
-      });
-
-      setShowPassword(false);
-
-      setLoginLockedUntil(null);
-
-      setLockRemaining(0);
-
-      window.location.replace("/");
+      window.alert(
+        "Không thể xác nhận đăng xuất với máy chủ. Phiên vẫn được giữ để bạn có thể thử lại.",
+      );
+      return;
     }
+
+    localStorage.removeItem("user");
+    setUser(null);
+    setEmail("");
+    setPassword("");
+    setMessage("");
+    setMessageType("");
+    setLoginErrors({
+      email: "",
+      password: "",
+    });
+    setShowPassword(false);
+    setLoginLockedUntil(null);
+    setLockRemaining(0);
+    window.history.replaceState({}, "", "/");
+    setCurrentPath("/");
   };
 
   // =========================================================
@@ -932,19 +1244,6 @@ function App() {
                     ? `Đăng nhập lại sau ${formatLockRemaining()}`
                     : "Đăng nhập"}
               </button>
-
-              <div className="divider">
-                <span></span>
-
-                <p>hoặc</p>
-
-                <span></span>
-              </div>
-
-              <button type="button" className="school-login">
-                👥
-                <span>Đăng nhập bằng tài khoản trường</span>
-              </button>
             </form>
           </section>
 
@@ -1013,6 +1312,7 @@ function App() {
     user.vaiTro && user.vaiTro.length > 0
       ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
       : "Chưa có vai trò";
+  const currentPermissions = user.quyen.map((permission) => permission.maQuyen);
 
   // =========================================================
   // HỒ SƠ CÁ NHÂN
@@ -1023,16 +1323,15 @@ function App() {
       <ProtectedRoute>
         <MainLayout
           userName={user.hoTen}
-          email={user.email}
           roleName={roleName}
           avatarUrl={user.anhDaiDien}
-          permissions={user.quyen.map((q) => q.maQuyen)}
+          permissions={currentPermissions}
           onLogout={handleLogout}
           onHome={handleHome}
-          onProfile={handleProfile}
-          onChangePassword={handleChangePassword}
           onGradeManagement={handleGradeManagement}
           onClassManagement={handleClassManagement}
+          onProfile={handleProfile}
+          onChangePassword={handleChangePassword}
         >
           <Profile
             user={user}
@@ -1053,16 +1352,15 @@ function App() {
       <ProtectedRoute>
         <MainLayout
           userName={user.hoTen}
-          email={user.email}
           roleName={roleName}
           avatarUrl={user.anhDaiDien}
-          permissions={user.quyen.map((q) => q.maQuyen)}
+          permissions={currentPermissions}
           onLogout={handleLogout}
           onHome={handleHome}
-          onProfile={handleProfile}
-          onChangePassword={handleChangePassword}
           onGradeManagement={handleGradeManagement}
           onClassManagement={handleClassManagement}
+          onProfile={handleProfile}
+          onChangePassword={handleChangePassword}
         >
           <ChangePassword />
         </MainLayout>
@@ -1075,6 +1373,61 @@ function App() {
   // =========================================================
 
   const isAdmin = isAdminUser(user);
+  const renderAcademicLayout = (children: React.ReactNode) =>
+    isAdmin ? (
+      <AdminLayout
+        userName={user.hoTen}
+        roleName={roleName}
+        avatarUrl={user.anhDaiDien}
+        isAdmin={isAdmin}
+        permissions={currentPermissions}
+        onLogout={handleLogout}
+        onRoleManagement={handleRoleManagement}
+        onHome={handleHome}
+        onUserManagement={handleUserManagement}
+        onGradeManagement={handleGradeManagement}
+        onClassManagement={handleClassManagement}
+        onChangePassword={handleChangePassword}
+        onProfile={handleProfile}
+      >
+        {children}
+      </AdminLayout>
+    ) : (
+      <MainLayout
+        userName={user.hoTen}
+        roleName={roleName}
+        avatarUrl={user.anhDaiDien}
+        permissions={currentPermissions}
+        onLogout={handleLogout}
+        onHome={handleHome}
+        onGradeManagement={handleGradeManagement}
+        onClassManagement={handleClassManagement}
+        onProfile={handleProfile}
+        onChangePassword={handleChangePassword}
+      >
+        {children}
+      </MainLayout>
+    );
+
+  const renderAdminLayout = (children: React.ReactNode) => (
+    <AdminLayout
+      userName={user.hoTen}
+      roleName={roleName}
+      avatarUrl={user.anhDaiDien}
+      isAdmin={isAdmin}
+      permissions={currentPermissions}
+      onLogout={handleLogout}
+      onRoleManagement={handleRoleManagement}
+      onHome={handleHome}
+      onUserManagement={handleUserManagement}
+      onGradeManagement={handleGradeManagement}
+      onClassManagement={handleClassManagement}
+      onChangePassword={handleChangePassword}
+      onProfile={handleProfile}
+    >
+      {children}
+    </AdminLayout>
+  );
 
   // =========================================================
   // QUẢN LÝ NGƯỜI DÙNG
@@ -1082,27 +1435,13 @@ function App() {
 
   if (currentPath === "/quan-ly-nguoi-dung") {
     if (!hasPermission(user, "USER_VIEW")) {
-      return <RedirectToHome />;
+      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
     }
 
-    return (
+    return renderAdminLayout(
       <ProtectedRoute requiredPermission="USER_VIEW">
-        <AdminLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          isAdmin={isAdmin}
-          permissions={user.quyen.map((q) => q.maQuyen)}
-          onLogout={handleLogout}
-          onRoleManagement={handleRoleManagement}
-          onHome={handleHome}
-          onUserManagement={handleUserManagement}
-          onChangePassword={handleChangePassword}
-          onProfile={handleProfile}
-        >
-          <UsersPage />
-        </AdminLayout>
-      </ProtectedRoute>
+        <UsersPage />
+      </ProtectedRoute>,
     );
   }
 
@@ -1112,26 +1451,28 @@ function App() {
 
   if (currentPath === "/quan-ly-vai-tro") {
     if (!hasPermission(user, "ROLE_VIEW")) {
-      return <RedirectToHome />;
+      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
     }
 
-    return (
+    return renderAdminLayout(
       <ProtectedRoute requiredPermission="ROLE_VIEW">
-        <AdminLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          isAdmin={isAdmin}
-          permissions={user.quyen.map((q) => q.maQuyen)}
-          onLogout={handleLogout}
-          onRoleManagement={handleRoleManagement}
-          onHome={handleHome}
-          onUserManagement={handleUserManagement}
-          onChangePassword={handleChangePassword}
-          onProfile={handleProfile}
-        >
-          <RoleManagement />
-        </AdminLayout>
+        <RoleManagement />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-diem") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="GRADE_VIEW">
+        <GradeManagement permissions={currentPermissions} />
+      </ProtectedRoute>
+    );
+  }
+
+  if (currentPath === "/quan-ly-lop") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="CLASS_VIEW">
+        <ClassManagement permissions={currentPermissions} />
       </ProtectedRoute>
     );
   }
@@ -1140,18 +1481,15 @@ function App() {
   // QUYỀN THEO PATH
   // =========================================================
 
-  let requiredPermission: string | undefined;
-
-  if (currentPath === "/quan-ly-diem") {
-    requiredPermission = "QUAN_LY_DIEM";
+  if (
+    currentPath === "/quan-ly-hoc-phi" &&
+    !hasPermission(user, "QUAN_LY_HOC_PHI")
+  ) {
+    return renderAcademicLayout(<AppStatusPage status="forbidden" />);
   }
 
-  if (currentPath === "/quan-ly-lop") {
-    requiredPermission = "QUAN_LY_LOP";
-  }
-
-  if (currentPath === "/quan-ly-hoc-phi") {
-    requiredPermission = "QUAN_LY_HOC_PHI";
+  if (currentPath !== "/") {
+    return renderAcademicLayout(<AppStatusPage status="not-found" />);
   }
 
   // =========================================================
@@ -1171,22 +1509,49 @@ function App() {
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
-          <div className="admin-welcome">
-            <div>
-              <div className="admin-welcome-label">TỔNG QUAN HỆ THỐNG</div>
+          <section className="dashboard-hero">
+            <div className="dashboard-hero-content">
+              <div className="dashboard-hero-label">
+                HỆ THỐNG QUẢN LÝ ĐÀO TẠO
+              </div>
 
-              <h2>Xin chào, Admin {user.hoTen}!</h2>
+              <h2>
+                Xin chào, <span>{user.hoTen}</span> 👋
+              </h2>
 
               <p>
-                Chào mừng bạn đến với trang quản trị hệ thống quản lý đào tạo.
+                Chào mừng bạn quay trở lại. Chúc bạn có một ngày làm việc hiệu
+                quả!
               </p>
+
+              <div className="dashboard-hero-info">
+                <div>
+                  <span className="hero-info-label">Tài khoản</span>
+
+                  <strong>{user.email}</strong>
+                </div>
+
+                <div>
+                  <span className="hero-info-label">Vai trò</span>
+
+                  <strong>{roleName}</strong>
+                </div>
+              </div>
             </div>
 
-            <div className="admin-welcome-icon">🎓</div>
-          </div>
+            <div className="dashboard-hero-decoration">
+              <div className="hero-circle hero-circle-1"></div>
+
+              <div className="hero-circle hero-circle-2"></div>
+
+              <div className="hero-graduation">🎓</div>
+            </div>
+          </section>
 
           <div className="admin-stat-grid">
             <div className="admin-stat-card">
@@ -1302,19 +1667,18 @@ function App() {
   // =========================================================
 
   return (
-    <ProtectedRoute requiredPermission={requiredPermission}>
+    <ProtectedRoute>
       <MainLayout
         userName={user.hoTen}
-        email={user.email}
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
-        permissions={user.quyen.map((q) => q.maQuyen)}
+        permissions={currentPermissions}
         onLogout={handleLogout}
         onHome={handleHome}
-        onProfile={handleProfile}
-        onChangePassword={handleChangePassword}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onProfile={handleProfile}
+        onChangePassword={handleChangePassword}
       >
         <div className="user-dashboard">
           {/* =================================================

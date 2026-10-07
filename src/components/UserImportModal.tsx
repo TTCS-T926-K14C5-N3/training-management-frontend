@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import api from "../services/api";
+import ToastNotification from "./ToastNotification";
 
 interface ValidUser {
   row: number;
@@ -402,18 +403,11 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
         {/* SUCCESS */}
 
         {success && (
-          <div
-            style={{
-              background: "#f0fdf4",
-              color: "#15803d",
-              border: "1px solid #bbf7d0",
-              borderRadius: "6px",
-              padding: "10px 12px",
-              marginBottom: "16px",
-            }}
-          >
-            {success}
-          </div>
+          <ToastNotification
+            type="success"
+            text={success}
+            onClose={() => setSuccess("")}
+          />
         )}
 
         {/* PREVIEW BUTTON */}

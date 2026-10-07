@@ -1,0 +1,87 @@
+.app-status-page {
+  display: grid;
+  min-height: 52vh;
+  place-items: center;
+  padding: 28px 16px;
+}
+
+.app-status-card {
+  width: min(100%, 560px);
+  padding: 38px 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.app-status-code {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.app-status-card h1 {
+  margin: 0;
+  color: #172033;
+  font-size: clamp(22px, 4vw, 30px);
+}
+
+.app-status-card p {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.app-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.app-status-actions button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-status-primary {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.app-status-primary:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.app-status-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.app-status-secondary:hover {
+  background: #f8fafc;
+}
+
+@media (max-width: 520px) {
+  .app-status-card {
+    padding: 30px 20px;
+  }
+
+  .app-status-actions {
+    flex-direction: column;
+  }
+}

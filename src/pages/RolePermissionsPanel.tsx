@@ -1,0 +1,370 @@
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
+
+interface Role {
+  vaiTroId: number;
+  tenVaiTro: string;
+}
+
+interface Permission {
+  quyenId?: number;
+  maQuyen: string;
+  tenQuyen: string;
+  moTa: string;
+}
+
+interface RolePermissionsPanelProps {
+  roles: Role[];
+}
+
+const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
+  roles,
+}) => {
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const activeRoleId = selectedRoleId ?? roles[0]?.vaiTroId ?? null;
+  const [catalog, setCatalog] = useState<Permission[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
+    new Set(),
+  );
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [loadingPermissions, setLoadingPermissions] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    api
+      .get<Permission[]>("/roles/permissions/catalog")
+      .then((response) => {
+        if (active) {
+          setCatalog(Array.isArray(response.data) ? response.data : []);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Không thể tải danh mục quyền:", error);
+        if (active) {
+          setErrorMessage(
+            "Không thể tải danh mục quyền. Vui lòng kiểm tra quyền quản trị và thử lại.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingCatalog(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeRoleId === null) {
+      return;
+    }
+
+    let active = true;
+
+    api
+      .get<Permission[]>(`/roles/${activeRoleId}/permissions`)
+      .then((response) => {
+        if (active) {
+          const permissions = Array.isArray(response.data)
+            ? response.data
+            : [];
+          setSelectedPermissions(
+            new Set(permissions.map((permission) => permission.maQuyen)),
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Không thể tải quyền của vai trò:", error);
+        if (active) {
+          setSelectedPermissions(new Set());
+          setErrorMessage(
+            "Không thể tải quyền của vai trò. Vui lòng thử lại.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingPermissions(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeRoleId]);
+
+  const groupedPermissions = useMemo(() => {
+    const groupFor = (code: string) => {
+      if (code.startsWith("USER_")) return "Người dùng";
+      if (code.startsWith("ROLE_")) return "Vai trò và phân quyền";
+      if (code.startsWith("GRADE_") || code === "QUAN_LY_DIEM") {
+        return "Điểm";
+      }
+      if (code.startsWith("TUITION_") || code === "QUAN_LY_HOC_PHI") {
+        return "Học phí";
+      }
+      return "Lớp học";
+    };
+
+    return catalog.reduce<Record<string, Permission[]>>((groups, permission) => {
+      const group = groupFor(permission.maQuyen);
+      groups[group] ??= [];
+      groups[group].push(permission);
+      return groups;
+    }, {});
+  }, [catalog]);
+
+  const showError = (messageText: string) => {
+    setMessage("");
+    setErrorMessage(messageText);
+  };
+
+  const togglePermission = (permissionCode: string) => {
+    setSelectedPermissions((current) => {
+      const updated = new Set(current);
+      if (updated.has(permissionCode)) {
+        updated.delete(permissionCode);
+      } else {
+        updated.add(permissionCode);
+      }
+      return updated;
+    });
+  };
+
+  const savePermissions = async () => {
+    if (activeRoleId === null) {
+      showError("Vui lòng chọn vai trò cần cấu hình.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setMessage("");
+      setErrorMessage("");
+      const response = await api.put(
+        `/roles/${activeRoleId}/permissions`,
+        {
+          permissionCodes: Array.from(selectedPermissions),
+        },
+      );
+      const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+      const isCurrentUsersRole = currentUser?.vaiTro?.some(
+        (role: { vaiTroId?: number }) => role.vaiTroId === activeRoleId,
+      );
+
+      if (
+        isCurrentUsersRole &&
+        Array.isArray(response.data?.actorPermissions)
+      ) {
+        currentUser.quyen = response.data.actorPermissions;
+        localStorage.setItem("user", JSON.stringify(currentUser));
+        window.location.reload();
+        return;
+      }
+
+      setMessage("Đã cập nhật quyền cho vai trò.");
+    } catch (error: unknown) {
+      console.error("Không thể cập nhật quyền cho vai trò:", error);
+      const detail = axios.isAxiosError(error)
+        ? error.response?.data?.detail
+        : undefined;
+      showError(
+        typeof detail === "string"
+          ? detail
+          : "Không thể cập nhật quyền. Vui lòng kiểm tra quyền quản trị và thử lại.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedRole = roles.find((role) => role.vaiTroId === activeRoleId);
+
+  return (
+    <section
+      style={{
+        padding: "24px",
+        border: "1px solid #e8edf5",
+        borderRadius: "16px",
+        background: "#fff",
+        boxShadow: "0 4px 18px rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      {(message || errorMessage) && (
+        <ToastNotification
+          type={message ? "success" : "error"}
+          text={message || errorMessage}
+          onClose={() => {
+            setMessage("");
+            setErrorMessage("");
+          }}
+        />
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          justifyContent: "space-between",
+          gap: "16px",
+          marginBottom: "20px",
+        }}
+      >
+        <div>
+          <h3 style={{ margin: 0, color: "#172033" }}>Quyền theo vai trò</h3>
+          <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "13px" }}>
+            Quyền không được chọn sẽ bị từ chối tại backend.
+          </p>
+        </div>
+        <label style={{ color: "#475569", fontSize: "12px", fontWeight: 700 }}>
+          Vai trò
+          <select
+            value={activeRoleId ?? ""}
+            onChange={(event) => {
+              setLoadingPermissions(true);
+              setErrorMessage("");
+              setSelectedRoleId(Number(event.target.value));
+            }}
+            disabled={roles.length === 0 || loadingPermissions || saving}
+            style={{
+              display: "block",
+              minWidth: "220px",
+              height: "40px",
+              marginTop: "6px",
+              padding: "0 10px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "8px",
+              background: "#fff",
+            }}
+          >
+            {roles.map((role) => (
+              <option key={role.vaiTroId} value={role.vaiTroId}>
+                {role.tenVaiTro}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {loadingCatalog || (activeRoleId !== null && loadingPermissions) ? (
+        <p role="status" style={{ color: "#64748b" }}>
+          Đang tải cấu hình quyền...
+        </p>
+      ) : roles.length === 0 ? (
+        <p role="alert" style={{ color: "#b91c1c" }}>
+          Không tải được danh sách tám vai trò hệ thống.
+        </p>
+      ) : catalog.length === 0 ? (
+        <p role="alert" style={{ color: "#b91c1c" }}>
+          Chưa có danh mục quyền để cấu hình.
+        </p>
+      ) : (
+        <div style={{ display: "grid", gap: "18px" }}>
+          {Object.entries(groupedPermissions).map(([group, permissions]) => (
+            <fieldset
+              key={group}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "8px",
+                margin: 0,
+                padding: "16px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+              }}
+            >
+              <legend style={{ padding: "0 6px", fontWeight: 750 }}>
+                {group}
+              </legend>
+              {permissions.map((permission) => {
+                const lockedAdminPermission =
+                  activeRoleId === 8 &&
+                  ["ROLE_VIEW", "ROLE_UPDATE"].includes(permission.maQuyen);
+                return (
+                  <label
+                    key={permission.maQuyen}
+                    style={{
+                      display: "flex",
+                      alignItems: "start",
+                      gap: "9px",
+                      padding: "9px",
+                      borderRadius: "8px",
+                      background: "#f8fafc",
+                      color: "#334155",
+                      fontSize: "13px",
+                    }}
+                    title={permission.moTa}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPermissions.has(permission.maQuyen)}
+                      disabled={
+                        loadingPermissions || saving || lockedAdminPermission
+                      }
+                      onChange={() => togglePermission(permission.maQuyen)}
+                    />
+                    <span>
+                      <strong style={{ display: "block" }}>
+                        {permission.tenQuyen}
+                      </strong>
+                      <small style={{ color: "#64748b" }}>
+                        {permission.maQuyen}
+                      </small>
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
+          ))}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          marginTop: "20px",
+        }}
+      >
+        <span style={{ color: "#64748b", fontSize: "12px" }}>
+          {selectedRole ? `Đang cấu hình: ${selectedRole.tenVaiTro}` : ""}
+        </span>
+        <button
+          type="button"
+          onClick={savePermissions}
+          disabled={
+            saving ||
+            loadingPermissions ||
+            loadingCatalog ||
+            activeRoleId === null
+          }
+          style={{
+            minWidth: "160px",
+            height: "42px",
+            border: 0,
+            borderRadius: "9px",
+            background: saving ? "#94a3b8" : "#2563eb",
+            color: "#fff",
+            fontWeight: 700,
+            cursor: saving ? "wait" : "pointer",
+          }}
+        >
+          {saving ? "Đang lưu..." : "Lưu cấu hình quyền"}
+        </button>
+      </div>
+    </section>
+  );
+};
+
+export default RolePermissionsPanel;

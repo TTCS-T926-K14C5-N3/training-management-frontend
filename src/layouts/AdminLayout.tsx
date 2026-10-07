@@ -20,6 +20,9 @@ interface AdminLayoutProps {
   // Điều hướng đến trang quản lý người dùng
   onUserManagement: () => void;
 
+  onGradeManagement: () => void;
+  onClassManagement: () => void;
+
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
 
@@ -38,6 +41,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onRoleManagement,
   onHome,
   onUserManagement,
+  onGradeManagement,
+  onClassManagement,
   onChangePassword,
   onProfile,
 }) => {
@@ -99,6 +104,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const isRoleManagementActive = currentPath === "/quan-ly-vai-tro";
 
+  const isGradeManagementActive = currentPath === "/quan-ly-diem";
+
+  const isClassManagementActive = currentPath === "/quan-ly-lop";
+
   const isChangePasswordActive = currentPath === "/change-password";
 
   const isProfileActive = currentPath === "/ho-so-ca-nhan";
@@ -115,7 +124,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         ================================================= */}
 
         <div className="admin-logo">
-          <div className="admin-logo-mark">E</div>
+          <img
+            className="admin-logo-mark"
+            src="/images/edumanage-cap.png"
+            alt="Logo EduManage"
+          />
 
           <div className="admin-logo-text">
             <div>EduManage</div>
@@ -193,6 +206,34 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
+          {hasPermission("GRADE_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isGradeManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onGradeManagement}
+            >
+              <span className="admin-menu-symbol">▥</span>
+
+              <span>Quản lý điểm</span>
+            </button>
+          )}
+
+          {hasPermission("QUAN_LY_LOP") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isClassManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onClassManagement}
+            >
+              <span className="admin-menu-symbol">▤</span>
+
+              <span>Quản lý lớp</span>
+            </button>
+          )}
+
           {/* =================================================
               ĐÀO TẠO
           ================================================= */}
@@ -206,14 +247,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           {/* =================================================
               LỚP HỌC
           ================================================= */}
-
-          {hasPermission("QUAN_LY_LOP") && (
-            <button type="button" className="admin-menu-item">
-              <span className="admin-menu-symbol">▤</span>
-
-              <span>Lớp học</span>
-            </button>
-          )}
 
           {/* =================================================
               BÁO CÁO
@@ -317,92 +350,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       ===================================================== */}
 
       <main className="admin-main">
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
-        <header className="admin-header">
-          <div>
-            <div className="admin-breadcrumb">
-              Admin
-              <span>/</span>
-              {isUserManagementActive
-                ? "Người dùng"
-                : isRoleManagementActive
-                  ? "Vai trò & quyền"
-                  : isChangePasswordActive
-                    ? "Đổi mật khẩu"
-                    : isProfileActive
-                      ? "Hồ sơ cá nhân"
-                      : "Trang chủ"}
-            </div>
-
-            <h1>
-              {isUserManagementActive
-                ? "Quản lý người dùng"
-                : isRoleManagementActive
-                  ? "Quản lý vai trò người dùng"
-                  : isChangePasswordActive
-                    ? "Đổi mật khẩu"
-                    : isProfileActive
-                      ? "Hồ sơ cá nhân"
-                      : "Trang chủ"}
-            </h1>
-
-            <p>
-              {isUserManagementActive
-                ? "Quản lý tài khoản người dùng trong hệ thống."
-                : isRoleManagementActive
-                  ? "Quản lý người dùng, tìm kiếm và phân quyền theo vai trò."
-                  : isChangePasswordActive
-                    ? "Cập nhật mật khẩu để bảo vệ tài khoản."
-                    : isProfileActive
-                      ? "Xem và cập nhật thông tin hồ sơ cá nhân."
-                      : "Tổng quan hệ thống quản lý đào tạo"}
-            </p>
-          </div>
-
-          {/* =================================================
-              HEADER RIGHT
-          ================================================= */}
-
-          <div className="admin-header-right">
-            {/* Notification */}
-
-            <button
-              type="button"
-              className="admin-notification"
-              title="Thông báo"
-            >
-              ♢<span></span>
-            </button>
-
-            {/* Profile */}
-
-            <div
-              className="admin-header-profile"
-              onClick={onProfile}
-              style={{ cursor: "pointer" }}
-            >
-              <div className="admin-header-avatar">
-                <AvatarImage
-                  source={avatarUrl}
-                  fallback={avatarLetter}
-                  alt={`Ảnh đại diện của ${userName}`}
-                />
-              </div>
-
-              <div>
-                <strong>{userName}</strong>
-
-                <small>{roleName}</small>
-              </div>
-
-              <span className="admin-arrow">▾</span>
-            </div>
-          </div>
-        </header>
-
         {/* =================================================
             CONTENT
         ================================================= */}

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
+import RolePermissionsPanel from "./RolePermissionsPanel";
 
 // =========================================================
 // INTERFACE
@@ -40,6 +42,9 @@ interface Pagination {
 // =========================================================
 
 const RoleManagement: React.FC = () => {
+  const [activeSection, setActiveSection] = useState<"users" | "permissions">(
+    "users",
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
@@ -408,125 +413,47 @@ const RoleManagement: React.FC = () => {
 
   const lastItem = Math.min(currentPage * LIMIT, pagination.total);
 
+  if (activeSection === "permissions") {
+    return (
+      <div style={{ padding: "28px 32px 40px" }}>
+        <button
+          type="button"
+          onClick={() => setActiveSection("users")}
+          style={{
+            marginBottom: "16px",
+            padding: "9px 13px",
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
+            background: "#fff",
+            color: "#334155",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          ← Quay lại gán vai trò
+        </button>
+        <RolePermissionsPanel roles={roles} />
+      </div>
+    );
+  }
+
   // =========================================================
   // RENDER
   // =========================================================
 
   return (
     <>
-      {/* =====================================================
-          TOAST - GÓC DƯỚI BÊN TRÁI
-      ===================================================== */}
-
-      <style>
-        {`
-          @keyframes toastSlideIn {
-            from {
-              opacity: 0;
-              transform: translateX(-25px);
-            }
-
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-        `}
-      </style>
-
       {(message || errorMessage) && (
-        <div
-          style={{
-            position: "fixed",
-            left: "18px",
-            bottom: "18px",
-            zIndex: 999999,
-            pointerEvents: "none",
-            animation: "toastSlideIn 0.25s ease-out",
+        <ToastNotification
+          type={message ? "success" : "error"}
+          text={message || errorMessage}
+          durationMs={3000}
+          onClose={() => {
+            setMessage("");
+            setErrorMessage("");
           }}
-        >
-          {message && (
-            <div
-              style={{
-                minWidth: "300px",
-                maxWidth: "420px",
-                padding: "14px 18px",
-                borderRadius: "12px",
-                background: "#16a34a",
-                color: "#ffffff",
-                fontSize: "14px",
-                fontWeight: 700,
-                lineHeight: "20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.20)",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-            >
-              <span
-                style={{
-                  width: "25px",
-                  height: "25px",
-                  minWidth: "25px",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "15px",
-                  fontWeight: 800,
-                }}
-              >
-                ✓
-              </span>
-
-              <span>{message}</span>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div
-              style={{
-                minWidth: "300px",
-                maxWidth: "420px",
-                padding: "14px 18px",
-                borderRadius: "12px",
-                background: "#dc2626",
-                color: "#ffffff",
-                fontSize: "14px",
-                fontWeight: 700,
-                lineHeight: "20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.20)",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-            >
-              <span
-                style={{
-                  width: "25px",
-                  height: "25px",
-                  minWidth: "25px",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "15px",
-                  fontWeight: 800,
-                }}
-              >
-                !
-              </span>
-
-              <span>{errorMessage}</span>
-            </div>
-          )}
-        </div>
+        />
       )}
-
       {/* =====================================================
           PAGE
       ===================================================== */}
@@ -627,6 +554,31 @@ const RoleManagement: React.FC = () => {
               Người dùng
             </div>
           </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: "16px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveSection("permissions")}
+            style={{
+              minHeight: "40px",
+              padding: "0 15px",
+              border: "1px solid #bfdbfe",
+              borderRadius: "9px",
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Cấu hình quyền theo vai trò
+          </button>
         </div>
 
         {/* =====================================================

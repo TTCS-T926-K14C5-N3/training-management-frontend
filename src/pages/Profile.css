@@ -1,6 +1,6 @@
 .profile-page {
   min-height: 100%;
-  padding: 36px;
+  padding: 0;
   background:
     radial-gradient(
       circle at top right,
@@ -16,54 +16,45 @@
   margin: 0 auto;
 }
 
-.profile-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
+.profile-hero {
+  min-height: 160px;
+  padding: 24px 32px 68px;
   margin-bottom: 26px;
 }
 
-.profile-eyebrow {
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  margin-bottom: 8px;
+.profile-hero .dashboard-hero-content {
+  max-width: 720px;
 }
 
-.profile-header h1 {
-  margin: 0;
-  color: #111827;
-  font-size: 34px;
-  line-height: 1.2;
-  font-weight: 800;
-}
-
-.profile-header p {
-  margin: 8px 0 0;
-  color: #6b7280;
-  font-size: 15px;
+.profile-hero .dashboard-hero-decoration {
+  display: none;
 }
 
 .profile-edit-button {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 9px;
   border: none;
   border-radius: 11px;
   padding: 12px 18px;
-  background: #2563eb;
-  color: #ffffff;
+  background: #ffffff;
+  color: #1e40af;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
-  transition: 0.2s ease;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.18);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .profile-edit-button:hover {
-  background: #1d4ed8;
+  background: #eff6ff;
   transform: translateY(-1px);
 }
 
@@ -173,12 +164,6 @@
   margin-bottom: 22px;
   font-size: 14px;
   font-weight: 600;
-}
-
-.profile-message-success {
-  color: #166534;
-  background: #ecfdf3;
-  border: 1px solid #bbf7d0;
 }
 
 .profile-message-error {
@@ -426,17 +411,14 @@
 }
 
 @media (max-width: 768px) {
-  .profile-page {
-    padding: 20px;
+  .profile-hero {
+    min-height: 175px;
+    padding: 22px 22px 68px;
   }
 
-  .profile-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .profile-header h1 {
-    font-size: 28px;
+  .profile-edit-button {
+    right: 18px;
+    bottom: 16px;
   }
 
   .profile-card {
