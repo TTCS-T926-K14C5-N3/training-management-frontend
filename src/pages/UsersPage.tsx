@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import api from "../services/api";
 
 interface User {
@@ -24,6 +24,13 @@ interface UserResponse {
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // =========================================================
+  // STATE & REF CHO TÍNH NĂNG IMPORT FILE
+  // =========================================================
+  const [file, setFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [search, setSearch] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -100,6 +107,81 @@ const UsersPage: React.FC = () => {
     }
 
     loadUsers();
+  };
+
+  // =========================================================
+  // XỬ LÝ CHỌN FILE
+  // =========================================================
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+    } else {
+      setFile(null);
+    }
+  };
+
+  // =========================================================
+  // NHẬP DỮ LIỆU TỪ FILE (IMPORT) - LUỒNG 2 BƯỚC
+  // Bước 1: Preview -> Bước 2: Import chính thức
+  // =========================================================
+  const handleImport = async () => {
+    if (!file) {
+      alert("Vui lòng chọn file trước khi nhập dữ liệu.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setIsLoading(true);
+      setMessage(null);
+
+      // Bước 1 - Xem trước (Preview): Gọi API endpoint preview
+      await api.post("/endpoint-preview-cua-backend", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Bước 2 - Nhập chính thức (Import): Nếu bước 1 thành công, tiếp tục gọi API import
+      await api.post("/endpoint-import-chinh-thuc", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Hiển thị thông báo thành công
+      alert("Nhập dữ liệu thành công");
+      setMessage({
+        type: "success",
+        text: "Nhập dữ liệu thành công",
+      });
+
+      // Tự động gọi lại hàm fetch danh sách dữ liệu để làm mới bảng
+      await loadUsers();
+
+      // Reset lại state file và input
+      setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error: any) {
+      console.error("Lỗi khi nhập dữ liệu:", error);
+
+      // Bắt và hiển thị error.response?.data?.detail nếu Backend có trả về lỗi
+      const detailError =
+        error?.response?.data?.detail ||
+        "Đã có lỗi xảy ra trong quá trình nhập dữ liệu.";
+
+      alert(typeof detailError === "string" ? detailError : JSON.stringify(detailError));
+      setMessage({
+        type: "error",
+        text: typeof detailError === "string" ? detailError : JSON.stringify(detailError),
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // =========================================================
@@ -223,17 +305,41 @@ const UsersPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          style={styles.primaryButton}
-          onClick={() =>
-            setMessage({
-              type: "success",
-              text: "Chức năng thêm người dùng sẽ được triển khai tiếp theo.",
-            })
-          }
-        >
-          + Thêm người dùng
-        </button>
+        <div style={styles.headerActions}>
+          {/* KHU VỰC NHẬP FILE (IMPORT FILE) */}
+          <div style={styles.importGroup}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              onChange={handleFileChange}
+              style={styles.fileInput}
+              disabled={isLoading}
+            />
+            <button
+              style={{
+                ...styles.importButton,
+                ...(isLoading || !file ? styles.disabledButton : {}),
+              }}
+              onClick={handleImport}
+              disabled={isLoading || !file}
+            >
+              {isLoading ? "Đang xử lý..." : "Nhập dữ liệu (Import)"}
+            </button>
+          </div>
+
+          <button
+            style={styles.primaryButton}
+            onClick={() =>
+              setMessage({
+                type: "success",
+                text: "Chức năng thêm người dùng sẽ được triển khai tiếp theo.",
+              })
+            }
+          >
+            + Thêm người dùng
+          </button>
+        </div>
       </div>
 
       {/* MESSAGE */}
@@ -479,6 +585,41 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: {
     marginTop: "8px",
     color: "#64748b",
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: "12px",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+
+  importGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    background: "#f8fafc",
+    padding: "6px 12px",
+    borderRadius: "10px",
+    border: "1px dashed #cbd5e1",
+  },
+
+  fileInput: {
+    fontSize: "13px",
+    color: "#475569",
+    cursor: "pointer",
+  },
+
+  importButton: {
+    border: "none",
+    borderRadius: "8px",
+    padding: "9px 15px",
+    background: "#059669",
+    color: "#fff",
+    fontWeight: 600,
+    fontSize: "13px",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
 
   primaryButton: {
