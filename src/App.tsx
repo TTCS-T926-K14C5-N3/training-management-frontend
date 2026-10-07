@@ -5,6 +5,7 @@ import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleManagement from "./pages/RoleManagement";
+import UsersPage from "./pages/UsersPage";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -972,28 +973,53 @@ function App() {
   const isAdmin = isAdminUser(user);
 
   // =========================================================
-  // QUẢN LÝ VAI TRÒ
-  // =========================================================
+// QUẢN LÝ VAI TRÒ
+// =========================================================
 
-  if (currentPath === "/quan-ly-vai-tro") {
-    if (!hasPermission(user, "ROLE_VIEW")) {
-      return <RedirectToHome />;
-    }
-
-    return (
-      <ProtectedRoute requiredPermission="ROLE_VIEW">
-        <AdminLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          permissions={user.quyen.map((q) => q.maQuyen)}
-          onLogout={handleLogout}
-          onRoleManagement={handleRoleManagement}
-        >
-          <RoleManagement />
-        </AdminLayout>
-      </ProtectedRoute>
-    );
+if (currentPath === "/quan-ly-vai-tro") {
+  if (!hasPermission(user, "ROLE_VIEW")) {
+    return <RedirectToHome />;
   }
+
+  return (
+    <ProtectedRoute requiredPermission="ROLE_VIEW">
+      <AdminLayout
+        userName={user.hoTen}
+        roleName={roleName}
+        permissions={user.quyen.map((q) => q.maQuyen)}
+        onLogout={handleLogout}
+        onRoleManagement={handleRoleManagement}
+      >
+        <RoleManagement />
+      </AdminLayout>
+    </ProtectedRoute>
+  );
+}
+
+// =========================================================
+// QUẢN LÝ NGƯỜI DÙNG
+// =========================================================
+
+if (currentPath === "/quan-ly-nguoi-dung") {
+  if (!hasPermission(user, "USER_VIEW")) {
+    return <RedirectToHome />;
+  }
+
+  return (
+    <ProtectedRoute requiredPermission="USER_VIEW">
+      <AdminLayout
+        userName={user.hoTen}
+        roleName={roleName}
+        permissions={user.quyen.map((q) => q.maQuyen)}
+        onLogout={handleLogout}
+        onRoleManagement={handleRoleManagement}
+      >
+        <UsersPage />
+      </AdminLayout>
+    </ProtectedRoute>
+  );
+}
+
 
   // =========================================================
   // QUYỀN THEO PATH

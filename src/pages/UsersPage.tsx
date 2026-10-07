@@ -41,7 +41,11 @@ const UsersPage: React.FC = () => {
 
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 
-  const currentUserId = currentUser?.nguoiDungId;
+  const currentUserId = Number(currentUser?.nguoiDungId);
+
+  // =========================================================
+  // TẢI DANH SÁCH NGƯỜI DÙNG
+  // =========================================================
 
   const loadUsers = async () => {
     try {
@@ -50,7 +54,7 @@ const UsersPage: React.FC = () => {
 
       const response = await api.get("/users/", {
         params: {
-          search: search || undefined,
+          search: search.trim() || undefined,
           role_id: roleId || undefined,
           status: status || undefined,
           page,
@@ -64,7 +68,9 @@ const UsersPage: React.FC = () => {
 
       setUsers(userList);
 
-      setTotal(typeof data.total === "number" ? data.total : userList.length);
+      setTotal(
+        typeof data.total === "number" ? data.total : userList.length,
+      );
     } catch (error: any) {
       console.error("Lỗi tải danh sách người dùng:", error);
 
@@ -83,10 +89,24 @@ const UsersPage: React.FC = () => {
     loadUsers();
   }, [page, roleId, status]);
 
+  // =========================================================
+  // TÌM KIẾM
+  // =========================================================
+
   const handleSearch = () => {
-    setPage(1);
+    if (page !== 1) {
+      setPage(1);
+      return;
+    }
+
     loadUsers();
   };
+
+  // =========================================================
+  // KHÓA NGƯỜI DÙNG
+  // PUT /users/{nguoi_dung_id}/lock
+  // Body: { ly_do_khoa }
+  // =========================================================
 
   const handleLock = async (user: User) => {
     if (user.nguoiDungId === currentUserId) {
@@ -97,12 +117,16 @@ const UsersPage: React.FC = () => {
       return;
     }
 
-    const reason = window.prompt(`Nhập lý do khóa tài khoản "${user.hoTen}":`);
+    const reason = window.prompt(
+      `Nhập lý do khóa tài khoản "${user.hoTen}":`,
+    );
 
+    // Người dùng nhấn Cancel
     if (reason === null) {
       return;
     }
 
+    // Không cho phép lý do rỗng
     if (!reason.trim()) {
       setMessage({
         type: "error",
@@ -112,25 +136,38 @@ const UsersPage: React.FC = () => {
     }
 
     try {
+      setLoading(true);
+      setMessage(null);
+
       await api.put(`/users/${user.nguoiDungId}/lock`, {
-        lyDoKhoa: reason.trim(),
+        ly_do_khoa: reason.trim(),
       });
 
       setMessage({
         type: "success",
-        text: "Khóa tài khoản thành công.",
+        text: `Đã khóa tài khoản "${user.hoTen}" thành công.`,
       });
 
-      loadUsers();
+      // Cập nhật lại danh sách sau khi khóa thành công
+      await loadUsers();
     } catch (error: any) {
       console.error("Lỗi khóa tài khoản:", error);
 
       setMessage({
         type: "error",
-        text: error?.response?.data?.detail || "Không thể khóa tài khoản.",
+        text:
+          error?.response?.data?.detail ||
+          "Không thể khóa tài khoản.",
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  // =========================================================
+  // MỞ KHÓA NGƯỜI DÙNG
+  // PUT /users/{nguoi_dung_id}/unlock
+  // =========================================================
 
   const handleUnlock = async (user: User) => {
     const confirmed = window.confirm(
@@ -142,31 +179,45 @@ const UsersPage: React.FC = () => {
     }
 
     try {
+      setLoading(true);
+      setMessage(null);
+
       await api.put(`/users/${user.nguoiDungId}/unlock`);
 
       setMessage({
         type: "success",
-        text: "Mở khóa tài khoản thành công.",
+        text: `Đã mở khóa tài khoản "${user.hoTen}" thành công.`,
       });
 
-      loadUsers();
+      // Cập nhật lại danh sách sau khi mở khóa thành công
+      await loadUsers();
     } catch (error: any) {
       console.error("Lỗi mở khóa tài khoản:", error);
 
       setMessage({
         type: "error",
-        text: error?.response?.data?.detail || "Không thể mở khóa tài khoản.",
+        text:
+          error?.response?.data?.detail ||
+          "Không thể mở khóa tài khoản.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
+  // =========================================================
+  // GIAO DIỆN
+  // =========================================================
+
   return (
     <div style={styles.page}>
+      {/* HEADER */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Người dùng</h1>
+
           <p style={styles.subtitle}>
             Quản lý tài khoản người dùng trong hệ thống
           </p>
@@ -185,17 +236,21 @@ const UsersPage: React.FC = () => {
         </button>
       </div>
 
+      {/* MESSAGE */}
       {message && (
         <div
           style={{
             ...styles.message,
-            ...(message.type === "success" ? styles.success : styles.error),
+            ...(message.type === "success"
+              ? styles.success
+              : styles.error),
           }}
         >
           {message.text}
         </div>
       )}
 
+      {/* BỘ LỌC */}
       <div style={styles.filterBox}>
         <div style={styles.searchGroup}>
           <input
@@ -210,7 +265,10 @@ const UsersPage: React.FC = () => {
             style={styles.input}
           />
 
-          <button style={styles.searchButton} onClick={handleSearch}>
+          <button
+            style={styles.searchButton}
+            onClick={handleSearch}
+          >
             Tìm kiếm
           </button>
         </div>
@@ -248,11 +306,16 @@ const UsersPage: React.FC = () => {
         </select>
       </div>
 
+      {/* BẢNG NGƯỜI DÙNG */}
       <div style={styles.tableContainer}>
         {loading ? (
-          <div style={styles.loading}>Đang tải danh sách người dùng...</div>
+          <div style={styles.loading}>
+            Đang tải danh sách người dùng...
+          </div>
         ) : users.length === 0 ? (
-          <div style={styles.empty}>Không tìm thấy người dùng.</div>
+          <div style={styles.empty}>
+            Không tìm thấy người dùng.
+          </div>
         ) : (
           <table style={styles.table}>
             <thead>
@@ -270,17 +333,25 @@ const UsersPage: React.FC = () => {
             <tbody>
               {users.map((user) => (
                 <tr key={user.nguoiDungId}>
-                  <td style={styles.td}>{user.nguoiDungId}</td>
+                  <td style={styles.td}>
+                    {user.nguoiDungId}
+                  </td>
 
                   <td style={styles.td}>
                     <strong>{user.hoTen}</strong>
                   </td>
 
-                  <td style={styles.td}>{user.email}</td>
+                  <td style={styles.td}>
+                    {user.email}
+                  </td>
 
-                  <td style={styles.td}>{user.soDienThoai || "—"}</td>
+                  <td style={styles.td}>
+                    {user.soDienThoai || "—"}
+                  </td>
 
-                  <td style={styles.td}>{user.vaiTro || "—"}</td>
+                  <td style={styles.td}>
+                    {user.vaiTro || "—"}
+                  </td>
 
                   <td style={styles.td}>
                     <span
@@ -291,12 +362,15 @@ const UsersPage: React.FC = () => {
                           : styles.locked),
                       }}
                     >
-                      {user.trangThai === "HoatDong" ? "Hoạt động" : "Bị khóa"}
+                      {user.trangThai === "HoatDong"
+                        ? "Hoạt động"
+                        : "Bị khóa"}
                     </span>
                   </td>
 
                   <td style={styles.td}>
                     <div style={styles.actions}>
+                      {/* SỬA */}
                       <button
                         style={styles.editButton}
                         onClick={() =>
@@ -309,11 +383,25 @@ const UsersPage: React.FC = () => {
                         Sửa
                       </button>
 
+                      {/* KHÓA / MỞ KHÓA */}
                       {user.trangThai === "HoatDong" ? (
                         <button
-                          style={styles.lockButton}
+                          style={{
+                            ...styles.lockButton,
+                            ...(user.nguoiDungId === currentUserId
+                              ? styles.disabledButton
+                              : {}),
+                          }}
                           onClick={() => handleLock(user)}
-                          disabled={user.nguoiDungId === currentUserId}
+                          disabled={
+                            user.nguoiDungId === currentUserId ||
+                            loading
+                          }
+                          title={
+                            user.nguoiDungId === currentUserId
+                              ? "Không thể tự khóa tài khoản"
+                              : "Khóa tài khoản"
+                          }
                         >
                           Khóa
                         </button>
@@ -321,6 +409,7 @@ const UsersPage: React.FC = () => {
                         <button
                           style={styles.unlockButton}
                           onClick={() => handleUnlock(user)}
+                          disabled={loading}
                         >
                           Mở khóa
                         </button>
@@ -334,11 +423,14 @@ const UsersPage: React.FC = () => {
         )}
       </div>
 
+      {/* PHÂN TRANG */}
       <div style={styles.pagination}>
         <button
           style={styles.pageButton}
-          disabled={page <= 1}
-          onClick={() => setPage((prev) => prev - 1)}
+          disabled={page <= 1 || loading}
+          onClick={() =>
+            setPage((prev) => prev - 1)
+          }
         >
           ← Trước
         </button>
@@ -349,8 +441,10 @@ const UsersPage: React.FC = () => {
 
         <button
           style={styles.pageButton}
-          disabled={page >= totalPages}
-          onClick={() => setPage((prev) => prev + 1)}
+          disabled={page >= totalPages || loading}
+          onClick={() =>
+            setPage((prev) => prev + 1)
+          }
         >
           Sau →
         </button>
@@ -358,6 +452,10 @@ const UsersPage: React.FC = () => {
     </div>
   );
 };
+
+// =========================================================
+// STYLES
+// =========================================================
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
@@ -534,6 +632,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "7px",
     padding: "7px 12px",
     cursor: "pointer",
+  },
+
+  disabledButton: {
+    opacity: 0.5,
+    cursor: "not-allowed",
   },
 
   loading: {
