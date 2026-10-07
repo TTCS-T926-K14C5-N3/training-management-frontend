@@ -4,12 +4,15 @@ import "./App.css";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
+
 import RoleManagement from "./pages/RoleManagement";
+import UsersPage from "./pages/UsersPage";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import Profile from "./pages/Profile";
+
 import api from "./services/api";
 
 // ===========================================================
@@ -35,6 +38,7 @@ interface User {
   quyen: Quyen[];
   token: string;
   expiresAt: number;
+  yeuCauDoiMatKhau?: boolean;
 }
 
 // ===========================================================
@@ -73,7 +77,9 @@ function isAdminUser(user: User | null): boolean {
 function RedirectToHome() {
   useEffect(() => {
     if (window.location.pathname !== "/") {
-      window.location.replace("/");
+      window.history.replaceState({}, "", "/");
+
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, []);
 
@@ -93,11 +99,14 @@ function ActivateAccountPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
     const token = params.get("token");
 
     if (!token) {
       setStatus("error");
+
       setMessage("Liên kết kích hoạt không hợp lệ hoặc đã bị thiếu token.");
+
       return;
     }
 
@@ -108,6 +117,7 @@ function ActivateAccountPage() {
         });
 
         setStatus("success");
+
         setMessage(response.data?.message || "Kích hoạt tài khoản thành công.");
       } catch (error: any) {
         console.error("Lỗi kích hoạt tài khoản:", error);
@@ -117,6 +127,7 @@ function ActivateAccountPage() {
           "Không thể kích hoạt tài khoản. Liên kết có thể đã hết hạn hoặc đã được sử dụng.";
 
         setStatus("error");
+
         setMessage(detail);
       }
     };
@@ -276,10 +287,12 @@ function App() {
   const navigate = (path: string) => {
     if (window.location.pathname === path) {
       setCurrentPath(path);
+
       return;
     }
 
     window.history.pushState({}, "", path);
+
     setCurrentPath(path);
   };
 
@@ -303,6 +316,7 @@ function App() {
 
       if (parsedUser.expiresAt && Date.now() >= parsedUser.expiresAt) {
         localStorage.removeItem("user");
+
         return null;
       }
 
@@ -313,6 +327,7 @@ function App() {
         vaiTro: Array.isArray(parsedUser.vaiTro) ? parsedUser.vaiTro : [],
         quyen: Array.isArray(parsedUser.quyen) ? parsedUser.quyen : [],
         token: parsedUser.token || "",
+        yeuCauDoiMatKhau: parsedUser.yeuCauDoiMatKhau === true,
         expiresAt: parsedUser.expiresAt || 0,
       };
     } catch (error) {
@@ -364,7 +379,9 @@ function App() {
 
     if (!normalizedEmail) {
       setLoginLockedUntil(null);
+
       setLockRemaining(0);
+
       return;
     }
 
@@ -374,7 +391,9 @@ function App() {
 
     if (!savedLock) {
       setLoginLockedUntil(null);
+
       setLockRemaining(0);
+
       return;
     }
 
@@ -384,6 +403,7 @@ function App() {
       localStorage.removeItem(storageKey);
 
       setLoginLockedUntil(null);
+
       setLockRemaining(0);
 
       return;
@@ -393,6 +413,7 @@ function App() {
       localStorage.removeItem(storageKey);
 
       setLoginLockedUntil(null);
+
       setLockRemaining(0);
 
       return;
@@ -418,6 +439,7 @@ function App() {
   useEffect(() => {
     if (!loginLockedUntil) {
       setLockRemaining(0);
+
       return;
     }
 
@@ -437,6 +459,7 @@ function App() {
         }
 
         setLoginLockedUntil(null);
+
         setLockRemaining(0);
       }
     };
@@ -477,6 +500,7 @@ function App() {
     }
 
     setMessage("");
+
     setMessageType("");
 
     // -------------------------------------------------------
@@ -537,6 +561,7 @@ function App() {
       localStorage.removeItem(`loginLockedUntil:${normalizedEmail}`);
 
       setLoginLockedUntil(null);
+
       setLockRemaining(0);
 
       const vaiTro: VaiTro[] = Array.isArray(data.vaiTro) ? data.vaiTro : [];
@@ -554,6 +579,7 @@ function App() {
         vaiTro,
         quyen,
         token: data.access_token,
+        yeuCauDoiMatKhau: data.yeuCauDoiMatKhau === true,
 
         // JWT hiện tại: 30 phút
         expiresAt: Date.now() + 30 * 60 * 1000,
@@ -572,7 +598,19 @@ function App() {
       setUser(loggedInUser);
 
       // -----------------------------------------------------
-      // LUÔN VỀ TRANG CHỦ
+      // BẮT BUỘC ĐỔI MẬT KHẨU
+      // -----------------------------------------------------
+
+      if (data.yeuCauDoiMatKhau === true) {
+        window.history.replaceState({}, "", "/change-password");
+
+        setCurrentPath("/change-password");
+
+        return;
+      }
+
+      // -----------------------------------------------------
+      // ĐĂNG NHẬP BÌNH THƯỜNG
       // -----------------------------------------------------
 
       window.history.replaceState({}, "", "/");
@@ -618,6 +656,7 @@ function App() {
       // -----------------------------------------------------
 
       setMessage(detail);
+
       setMessageType("error");
     } finally {
       setLoading(false);
@@ -631,10 +670,41 @@ function App() {
   const handleRoleManagement = () => {
     if (!hasPermission(user, "ROLE_VIEW")) {
       navigate("/");
+
       return;
     }
 
     navigate("/quan-ly-vai-tro");
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG TRANG CHỦ
+  // =========================================================
+
+  const handleHome = () => {
+    navigate("/");
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG QUẢN LÝ NGƯỜI DÙNG
+  // =========================================================
+
+  const handleUserManagement = () => {
+    if (!hasPermission(user, "USER_VIEW")) {
+      navigate("/");
+
+      return;
+    }
+
+    navigate("/quan-ly-nguoi-dung");
+  };
+
+  // =========================================================
+  // ĐIỀU HƯỚNG ĐỔI MẬT KHẨU
+  // =========================================================
+
+  const handleChangePassword = () => {
+    navigate("/change-password");
   };
 
   // =========================================================
@@ -925,7 +995,22 @@ function App() {
   }
 
   // =========================================================
-  // TỪ ĐÂY TRỞ XUỐNG: USER ĐÃ ĐĂNG NHẬP
+  // TỪ ĐÂY TRỞ XUỐNG:
+  // USER ĐÃ ĐĂNG NHẬP
+  // =========================================================
+
+  // ---------------------------------------------------------
+  // TÀI KHOẢN BẮT BUỘC ĐỔI MẬT KHẨU
+  // ---------------------------------------------------------
+
+  if (user.yeuCauDoiMatKhau === true && currentPath !== "/change-password") {
+    window.history.replaceState({}, "", "/change-password");
+
+    return <ChangePassword />;
+  }
+
+  // =========================================================
+  // ROLE NAME
   // =========================================================
 
   const roleName =
@@ -972,6 +1057,33 @@ function App() {
   const isAdmin = isAdminUser(user);
 
   // =========================================================
+  // QUẢN LÝ NGƯỜI DÙNG
+  // =========================================================
+
+  if (currentPath === "/quan-ly-nguoi-dung") {
+    if (!hasPermission(user, "USER_VIEW")) {
+      return <RedirectToHome />;
+    }
+
+    return (
+      <ProtectedRoute requiredPermission="USER_VIEW">
+        <AdminLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+          onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onChangePassword={handleChangePassword}
+        >
+          <UsersPage />
+        </AdminLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  // =========================================================
   // QUẢN LÝ VAI TRÒ
   // =========================================================
 
@@ -988,6 +1100,9 @@ function App() {
           permissions={user.quyen.map((q) => q.maQuyen)}
           onLogout={handleLogout}
           onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onChangePassword={handleChangePassword}
         >
           <RoleManagement />
         </AdminLayout>
@@ -1026,8 +1141,13 @@ function App() {
           permissions={user.quyen.map((q) => q.maQuyen)}
           onLogout={handleLogout}
           onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onChangePassword={handleChangePassword}
         >
-          {/* WELCOME */}
+          {/* =================================================
+              WELCOME
+          ================================================= */}
 
           <div className="admin-welcome">
             <div>
@@ -1043,7 +1163,9 @@ function App() {
             <div className="admin-welcome-icon">🎓</div>
           </div>
 
-          {/* STAT */}
+          {/* =================================================
+              STAT
+          ================================================= */}
 
           <div className="admin-stat-grid">
             <div className="admin-stat-card">
@@ -1095,12 +1217,21 @@ function App() {
             </div>
           </div>
 
-          {/* DASHBOARD */}
+          {/* =================================================
+              DASHBOARD
+          ================================================= */}
 
           <div className="admin-dashboard-grid">
-            {/* HOẠT ĐỘNG */}
+            {/* =================================================
+                HOẠT ĐỘNG
+            ================================================= */}
 
-            <div className="admin-panel">
+            <div
+              className="admin-panel"
+              style={{
+                gridColumn: "1 / -1",
+              }}
+            >
               <div className="admin-panel-header">
                 <div>
                   <h3>Hoạt động gần đây</h3>
@@ -1145,92 +1276,6 @@ function App() {
                     <small>Hiện tại</small>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* THAO TÁC NHANH */}
-
-            <div className="admin-panel">
-              <div className="admin-panel-header">
-                <div>
-                  <h3>Thao tác nhanh</h3>
-
-                  <p>Các chức năng thường dùng</p>
-                </div>
-              </div>
-
-              <div className="admin-quick-actions">
-                {/* ĐỔI MẬT KHẨU */}
-
-                <button
-                  type="button"
-                  onClick={() => navigate("/change-password")}
-                >
-                  <span className="quick-blue">🔐</span>
-
-                  <div>
-                    <strong>Đổi mật khẩu</strong>
-
-                    <small>Cập nhật mật khẩu tài khoản</small>
-                  </div>
-
-                  <b>→</b>
-                </button>
-
-                {/* QUẢN LÝ NGƯỜI DÙNG */}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (hasPermission(user, "USER_VIEW")) {
-                      navigate("/quan-ly-nguoi-dung");
-                    }
-                  }}
-                  disabled={!hasPermission(user, "USER_VIEW")}
-                  style={{
-                    opacity: hasPermission(user, "USER_VIEW") ? 1 : 0.5,
-                  }}
-                >
-                  <span className="quick-purple">👥</span>
-
-                  <div>
-                    <strong>Quản lý người dùng</strong>
-
-                    <small>Quản lý tài khoản hệ thống</small>
-                  </div>
-
-                  <b>→</b>
-                </button>
-
-                {/* VAI TRÒ & QUYỀN */}
-
-                {hasPermission(user, "ROLE_VIEW") && (
-                  <button type="button" onClick={handleRoleManagement}>
-                    <span className="quick-green">🛡️</span>
-
-                    <div>
-                      <strong>Vai trò & quyền</strong>
-
-                      <small>Quản lý phân quyền</small>
-                    </div>
-
-                    <b>→</b>
-                  </button>
-                )}
-
-                {/* BÁO CÁO */}
-
-                <button type="button">
-                  <span className="quick-orange">📊</span>
-
-                  <div>
-                    <strong>Báo cáo</strong>
-
-                    <small>Xem báo cáo hệ thống</small>
-                  </div>
-
-                  <b>→</b>
-                </button>
               </div>
             </div>
           </div>

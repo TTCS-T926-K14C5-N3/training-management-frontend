@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
+
 import api from "../services/api";
+
+import "./UsersPage.css";
+
+import UserImportModal from "../components/UserImportModal";
 
 interface User {
   nguoiDungId: number;
@@ -19,11 +24,27 @@ interface UserResponse {
   page?: number;
   limit?: number;
   total_pages?: number;
+  pagination?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    totalPages?: number;
+  };
 }
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // =====================================================
+  // MODAL IMPORT EXCEL
+  // =====================================================
+
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  // =====================================================
+  // TÌM KIẾM / LỌC / PHÂN TRANG
+  // =====================================================
 
   const [search, setSearch] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -31,22 +52,100 @@ const UsersPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-
   const [total, setTotal] = useState(0);
 
-  const [message, setMessage] = useState<{
+  // =====================================================
+  // TOAST THÔNG BÁO GÓC TRÁI
+  // =====================================================
+
+  const [toast, setToast] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // =====================================================
+  // TỰ ĐỘNG ẨN TOAST SAU 4 GIÂY
+  // =====================================================
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setToast(null);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [toast]);
+
+  // =====================================================
+  // THÔNG TIN NGƯỜI DÙNG ĐANG ĐĂNG NHẬP
+  // =====================================================
 
   const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 
   const currentUserId = currentUser?.nguoiDungId;
 
+  const permissions: string[] = Array.isArray(currentUser?.quyen)
+    ? currentUser.quyen.map((permission: any) => permission.maQuyen)
+    : [];
+
+  const canCreateUser = permissions.includes("USER_CREATE");
+  const canUpdateUser = permissions.includes("USER_UPDATE");
+  const canLockUser = permissions.includes("USER_LOCK");
+  const canUnlockUser = permissions.includes("USER_UNLOCK");
+  const canDeleteUser = permissions.includes("USER_DELETE");
+
+  // =====================================================
+  // FORM TẠO TÀI KHOẢN
+  // =====================================================
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createSuccess, setCreateSuccess] = useState("");
+
+  const [createForm, setCreateForm] = useState({
+    hoTen: "",
+    email: "",
+    vaiTroId: "",
+  });
+
+  const resetCreateForm = () => {
+    setCreateForm({
+      hoTen: "",
+      email: "",
+      vaiTroId: "",
+    });
+
+    setCreateError("");
+    setCreateSuccess("");
+  };
+
+  const openCreateModal = () => {
+    resetCreateForm();
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    if (createLoading) {
+      return;
+    }
+
+    setShowCreateModal(false);
+    resetCreateForm();
+  };
+
+  // =====================================================
+  // TẢI DANH SÁCH NGƯỜI DÙNG
+  // =====================================================
+
   const loadUsers = async () => {
     try {
       setLoading(true);
-      setMessage(null);
 
       const response = await api.get("/users/", {
         params: {
@@ -64,11 +163,28 @@ const UsersPage: React.FC = () => {
 
       setUsers(userList);
 
-      setTotal(typeof data.total === "number" ? data.total : userList.length);
+      // Backend hiện tại trả:
+      //
+      // {
+      //   data: [...],
+      //   pagination: {
+      //     total: ...
+      //   }
+      // }
+      //
+      // Ưu tiên pagination.total.
+
+      if (typeof data.pagination?.total === "number") {
+        setTotal(data.pagination.total);
+      } else if (typeof data.total === "number") {
+        setTotal(data.total);
+      } else {
+        setTotal(userList.length);
+      }
     } catch (error: any) {
       console.error("Lỗi tải danh sách người dùng:", error);
 
-      setMessage({
+      setToast({
         type: "error",
         text:
           error?.response?.data?.detail ||
@@ -83,17 +199,119 @@ const UsersPage: React.FC = () => {
     loadUsers();
   }, [page, roleId, status]);
 
+  // =====================================================
+  // TẠO TÀI KHOẢN
+  // =====================================================
+
+  const handleCreateAccount = async () => {
+    const hoTen = createForm.hoTen.trim();
+    const email = createForm.email.trim().toLowerCase();
+    const vaiTroId = Number(createForm.vaiTroId);
+
+    setCreateError("");
+    setCreateSuccess("");
+
+    if (!hoTen) {
+      setCreateError("Vui lòng nhập họ tên.");
+      return;
+    }
+
+    if (!email) {
+      setCreateError("Vui lòng nhập email.");
+      return;
+    }
+
+    // Kiểm tra email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setCreateError("Email không hợp lệ.");
+      return;
+    }
+
+    if (!vaiTroId) {
+      setCreateError("Vui lòng chọn vai trò.");
+      return;
+    }
+
+    try {
+      setCreateLoading(true);
+
+      await api.post("/users/create-account", {
+        ho_ten: hoTen,
+        email,
+        vai_tro_id: vaiTroId,
+      });
+
+      setCreateSuccess(
+        "Tạo tài khoản thành công. Thông tin đăng nhập tạm thời đã được gửi tới email.",
+      );
+
+      // Toast góc trái
+      setToast({
+        type: "success",
+        text: "Tạo tài khoản thành công.",
+      });
+
+      setCreateForm({
+        hoTen: "",
+        email: "",
+        vaiTroId: "",
+      });
+
+      await loadUsers();
+
+      window.setTimeout(() => {
+        setShowCreateModal(false);
+        setCreateSuccess("");
+      }, 1800);
+    } catch (error: any) {
+      console.error("Lỗi tạo tài khoản:", error);
+
+      const responseStatus = error?.response?.status;
+
+      const detail =
+        error?.response?.data?.detail ||
+        "Không thể tạo tài khoản. Vui lòng thử lại.";
+
+      if (responseStatus === 400 && detail === "Email đã tồn tại") {
+        setCreateError("Email đã tồn tại");
+      } else if (
+        typeof detail === "string" &&
+        detail.toLowerCase().includes("email") &&
+        detail.toLowerCase().includes("tồn tại")
+      ) {
+        setCreateError("Email đã tồn tại");
+      } else {
+        setCreateError(detail);
+      }
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // =====================================================
+  // TÌM KIẾM
+  // =====================================================
+
   const handleSearch = () => {
-    setPage(1);
+    if (page !== 1) {
+      setPage(1);
+      return;
+    }
+
     loadUsers();
   };
 
+  // =====================================================
+  // KHÓA TÀI KHOẢN
+  // =====================================================
+
   const handleLock = async (user: User) => {
     if (user.nguoiDungId === currentUserId) {
-      setMessage({
+      setToast({
         type: "error",
         text: "Bạn không thể tự khóa tài khoản đang đăng nhập.",
       });
+
       return;
     }
 
@@ -104,10 +322,11 @@ const UsersPage: React.FC = () => {
     }
 
     if (!reason.trim()) {
-      setMessage({
+      setToast({
         type: "error",
         text: "Vui lòng nhập lý do khóa tài khoản.",
       });
+
       return;
     }
 
@@ -116,21 +335,25 @@ const UsersPage: React.FC = () => {
         lyDoKhoa: reason.trim(),
       });
 
-      setMessage({
+      setToast({
         type: "success",
         text: "Khóa tài khoản thành công.",
       });
 
-      loadUsers();
+      await loadUsers();
     } catch (error: any) {
       console.error("Lỗi khóa tài khoản:", error);
 
-      setMessage({
+      setToast({
         type: "error",
         text: error?.response?.data?.detail || "Không thể khóa tài khoản.",
       });
     }
   };
+
+  // =====================================================
+  // MỞ KHÓA TÀI KHOẢN
+  // =====================================================
 
   const handleUnlock = async (user: User) => {
     const confirmed = window.confirm(
@@ -144,60 +367,166 @@ const UsersPage: React.FC = () => {
     try {
       await api.put(`/users/${user.nguoiDungId}/unlock`);
 
-      setMessage({
+      setToast({
         type: "success",
         text: "Mở khóa tài khoản thành công.",
       });
 
-      loadUsers();
+      await loadUsers();
     } catch (error: any) {
       console.error("Lỗi mở khóa tài khoản:", error);
 
-      setMessage({
+      setToast({
         type: "error",
         text: error?.response?.data?.detail || "Không thể mở khóa tài khoản.",
       });
     }
   };
 
+  // =====================================================
+  // XÓA TÀI KHOẢN
+  // =====================================================
+
+  const handleDelete = async (user: User) => {
+    if (user.nguoiDungId === currentUserId) {
+      setToast({
+        type: "error",
+        text: "Bạn không thể tự xóa tài khoản đang đăng nhập.",
+      });
+
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn xóa tài khoản "${user.hoTen}"?\n\nEmail: ${user.email}\n\nSau khi xóa, tài khoản này sẽ không còn trong hệ thống.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await api.delete(`/users/${user.nguoiDungId}`);
+
+      // Toast góc trái
+      setToast({
+        type: "success",
+        text: response?.data?.message || "Xóa tài khoản thành công.",
+      });
+
+      if (users.length === 1 && page > 1) {
+        setPage((prev) => prev - 1);
+      } else {
+        await loadUsers();
+      }
+    } catch (error: any) {
+      console.error("Lỗi xóa tài khoản:", error);
+
+      setToast({
+        type: "error",
+        text: error?.response?.data?.detail || "Không thể xóa tài khoản.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
+  // =====================================================
+  // GIAO DIỆN
+  // =====================================================
+
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Người dùng</h1>
-          <p style={styles.subtitle}>
-            Quản lý tài khoản người dùng trong hệ thống
-          </p>
-        </div>
+    <div className="users-page">
+      {/* =====================================================
+          TOAST THÔNG BÁO GÓC TRÁI
+          ===================================================== */}
 
-        <button
-          style={styles.primaryButton}
-          onClick={() =>
-            setMessage({
-              type: "success",
-              text: "Chức năng thêm người dùng sẽ được triển khai tiếp theo.",
-            })
-          }
-        >
-          + Thêm người dùng
-        </button>
-      </div>
-
-      {message && (
+      {toast && (
         <div
-          style={{
-            ...styles.message,
-            ...(message.type === "success" ? styles.success : styles.error),
-          }}
+          className={`users-toast ${
+            toast.type === "success"
+              ? "users-toast-success"
+              : "users-toast-error"
+          }`}
         >
-          {message.text}
+          <div className="users-toast-icon">
+            {toast.type === "success" ? "✓" : "!"}
+          </div>
+
+          <div className="users-toast-content">
+            <strong>{toast.type === "success" ? "Thành công" : "Lỗi"}</strong>
+
+            <span>{toast.text}</span>
+          </div>
+
+          <button
+            type="button"
+            className="users-toast-close"
+            onClick={() => setToast(null)}
+          >
+            ×
+          </button>
         </div>
       )}
 
-      <div style={styles.filterBox}>
-        <div style={styles.searchGroup}>
+      {/* =====================================================
+          HEADER
+          ===================================================== */}
+
+      <div className="users-header">
+        <div>
+          <div className="users-breadcrumb">
+            Quản lý <span>/</span> Người dùng
+          </div>
+
+          <h1>Người dùng</h1>
+
+          <p>Quản lý tài khoản người dùng trong hệ thống</p>
+        </div>
+
+        {/* CÁC NÚT CHỨC NĂNG */}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          {canCreateUser && (
+            <>
+              {/* IMPORT EXCEL */}
+
+              <button
+                className="users-import-button"
+                onClick={() => setShowImportModal(true)}
+              >
+                ↑ Import Excel
+              </button>
+
+              {/* TẠO TÀI KHOẢN */}
+
+              <button className="users-create-button" onClick={openCreateModal}>
+                <span className="button-plus">+</span>
+                Tạo tài khoản
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================
+          FILTER
+          ===================================================== */}
+
+      <div className="users-filter-card">
+        <div className="users-search-wrapper">
+          <span className="users-search-icon">⌕</span>
+
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -207,12 +536,7 @@ const UsersPage: React.FC = () => {
               }
             }}
             placeholder="Tìm theo họ tên, email, số điện thoại..."
-            style={styles.input}
           />
-
-          <button style={styles.searchButton} onClick={handleSearch}>
-            Tìm kiếm
-          </button>
         </div>
 
         <select
@@ -221,9 +545,10 @@ const UsersPage: React.FC = () => {
             setRoleId(e.target.value);
             setPage(1);
           }}
-          style={styles.select}
+          className="users-filter-select"
         >
           <option value="">Tất cả vai trò</option>
+
           <option value="1">Guest</option>
           <option value="2">Student</option>
           <option value="3">Instructor</option>
@@ -240,334 +565,408 @@ const UsersPage: React.FC = () => {
             setStatus(e.target.value);
             setPage(1);
           }}
-          style={styles.select}
+          className="users-filter-select"
         >
           <option value="">Tất cả trạng thái</option>
+
           <option value="HoatDong">Hoạt động</option>
+
           <option value="BiKhoa">Bị khóa</option>
         </select>
+
+        <button className="users-search-button" onClick={handleSearch}>
+          Tìm kiếm
+        </button>
       </div>
 
-      <div style={styles.tableContainer}>
+      {/* =====================================================
+          TABLE CARD
+          ===================================================== */}
+
+      <div className="users-table-card">
+        <div className="users-table-header">
+          <div>
+            <h2>Danh sách người dùng</h2>
+
+            <span>{total} người dùng</span>
+          </div>
+        </div>
+
         {loading ? (
-          <div style={styles.loading}>Đang tải danh sách người dùng...</div>
+          <div className="users-loading">
+            <div className="users-spinner" />
+
+            <p>Đang tải danh sách người dùng...</p>
+          </div>
         ) : users.length === 0 ? (
-          <div style={styles.empty}>Không tìm thấy người dùng.</div>
+          <div className="users-empty">
+            <div className="users-empty-icon">👤</div>
+
+            <h3>Không tìm thấy người dùng</h3>
+
+            <p>Không có tài khoản nào phù hợp với điều kiện tìm kiếm.</p>
+          </div>
         ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>ID</th>
-                <th style={styles.th}>Họ tên</th>
-                <th style={styles.th}>Email</th>
-                <th style={styles.th}>Số điện thoại</th>
-                <th style={styles.th}>Vai trò</th>
-                <th style={styles.th}>Trạng thái</th>
-                <th style={styles.th}>Thao tác</th>
-              </tr>
-            </thead>
+          <>
+            <div className="users-table-wrapper">
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Họ tên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
 
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.nguoiDungId}>
-                  <td style={styles.td}>{user.nguoiDungId}</td>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.nguoiDungId}>
+                      <td className="users-id">{user.nguoiDungId}</td>
 
-                  <td style={styles.td}>
-                    <strong>{user.hoTen}</strong>
-                  </td>
+                      <td>
+                        <div className="users-name">
+                          <div className="users-avatar">
+                            {user.hoTen?.charAt(0)?.toUpperCase() || "U"}
+                          </div>
 
-                  <td style={styles.td}>{user.email}</td>
+                          <div>
+                            <strong>{user.hoTen}</strong>
 
-                  <td style={styles.td}>{user.soDienThoai || "—"}</td>
+                            <small>ID: {user.nguoiDungId}</small>
+                          </div>
+                        </div>
+                      </td>
 
-                  <td style={styles.td}>{user.vaiTro || "—"}</td>
+                      <td>
+                        <span className="users-email">{user.email}</span>
+                      </td>
 
-                  <td style={styles.td}>
-                    <span
-                      style={{
-                        ...styles.status,
-                        ...(user.trangThai === "HoatDong"
-                          ? styles.active
-                          : styles.locked),
-                      }}
-                    >
-                      {user.trangThai === "HoatDong" ? "Hoạt động" : "Bị khóa"}
-                    </span>
-                  </td>
+                      <td>
+                        {user.soDienThoai || (
+                          <span className="users-empty-value">—</span>
+                        )}
+                      </td>
 
-                  <td style={styles.td}>
-                    <div style={styles.actions}>
-                      <button
-                        style={styles.editButton}
-                        onClick={() =>
-                          setMessage({
-                            type: "success",
-                            text: "Chức năng sửa người dùng sẽ được triển khai tiếp theo.",
-                          })
-                        }
-                      >
-                        Sửa
-                      </button>
+                      <td>
+                        {user.vaiTro ? (
+                          <span className="users-role">{user.vaiTro}</span>
+                        ) : (
+                          <span className="users-empty-value">—</span>
+                        )}
+                      </td>
 
-                      {user.trangThai === "HoatDong" ? (
-                        <button
-                          style={styles.lockButton}
-                          onClick={() => handleLock(user)}
-                          disabled={user.nguoiDungId === currentUserId}
+                      <td>
+                        <span
+                          className={`users-status ${
+                            user.trangThai === "HoatDong"
+                              ? "users-status-active"
+                              : "users-status-locked"
+                          }`}
                         >
-                          Khóa
-                        </button>
-                      ) : (
-                        <button
-                          style={styles.unlockButton}
-                          onClick={() => handleUnlock(user)}
-                        >
-                          Mở khóa
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                          <span className="status-dot" />
+
+                          {user.trangThai === "HoatDong"
+                            ? "Hoạt động"
+                            : "Bị khóa"}
+                        </span>
+                      </td>
+
+                      <td>
+                        <div className="users-actions">
+                          {/* SỬA */}
+
+                          {canUpdateUser && (
+                            <button
+                              className="action-edit"
+                              onClick={() =>
+                                setToast({
+                                  type: "success",
+                                  text: "Chức năng sửa người dùng sẽ được triển khai tiếp theo.",
+                                })
+                              }
+                            >
+                              Sửa
+                            </button>
+                          )}
+
+                          {/* KHÓA / MỞ KHÓA */}
+
+                          {user.trangThai === "HoatDong"
+                            ? canLockUser && (
+                                <button
+                                  className="action-lock"
+                                  onClick={() => handleLock(user)}
+                                  disabled={user.nguoiDungId === currentUserId}
+                                >
+                                  Khóa
+                                </button>
+                              )
+                            : canUnlockUser && (
+                                <button
+                                  className="action-unlock"
+                                  onClick={() => handleUnlock(user)}
+                                >
+                                  Mở khóa
+                                </button>
+                              )}
+
+                          {/* XÓA */}
+
+                          {canDeleteUser && (
+                            <button
+                              className="action-delete"
+                              onClick={() => handleDelete(user)}
+                              disabled={user.nguoiDungId === currentUserId}
+                              title={
+                                user.nguoiDungId === currentUserId
+                                  ? "Không thể tự xóa tài khoản đang đăng nhập"
+                                  : "Xóa tài khoản"
+                              }
+                            >
+                              Xóa
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* =====================================================
+                PAGINATION
+                ===================================================== */}
+
+            <div className="users-pagination">
+              <div className="users-pagination-info">
+                Hiển thị <strong>{users.length}</strong> / {total} người dùng
+              </div>
+
+              <div className="users-pagination-controls">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage((prev) => prev - 1)}
+                >
+                  ←
+                </button>
+
+                <span className="users-current-page">{page}</span>
+
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((prev) => prev + 1)}
+                >
+                  →
+                </button>
+
+                <span className="users-page-total">
+                  {page} / {totalPages}
+                </span>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
-      <div style={styles.pagination}>
-        <button
-          style={styles.pageButton}
-          disabled={page <= 1}
-          onClick={() => setPage((prev) => prev - 1)}
-        >
-          ← Trước
-        </button>
+      {/* =====================================================
+          MODAL TẠO TÀI KHOẢN
+          ===================================================== */}
 
-        <span style={styles.pageText}>
-          Trang {page} / {totalPages}
-        </span>
-
-        <button
-          style={styles.pageButton}
-          disabled={page >= totalPages}
-          onClick={() => setPage((prev) => prev + 1)}
+      {showCreateModal && (
+        <div
+          className="users-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              closeCreateModal();
+            }
+          }}
         >
-          Sau →
-        </button>
-      </div>
+          <div className="users-modal">
+            {/* HEADER */}
+
+            <div className="users-modal-header">
+              <div>
+                <h2>Tạo tài khoản</h2>
+
+                <p>
+                  Nhập thông tin người dùng. Mật khẩu tạm thời sẽ được hệ thống
+                  tự động tạo và gửi qua email.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="users-modal-close"
+                onClick={closeCreateModal}
+                disabled={createLoading}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ERROR */}
+
+            {createError && (
+              <div className="users-form-error">{createError}</div>
+            )}
+
+            {/* SUCCESS */}
+
+            {createSuccess && (
+              <div className="users-form-success">✓ {createSuccess}</div>
+            )}
+
+            {/* HỌ TÊN */}
+
+            <div className="users-form-group">
+              <label>
+                Họ tên <span>*</span>
+              </label>
+
+              <input
+                type="text"
+                value={createForm.hoTen}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    hoTen: e.target.value,
+                  }))
+                }
+                placeholder="Nhập họ và tên"
+                disabled={createLoading}
+                autoFocus
+              />
+            </div>
+
+            {/* EMAIL */}
+
+            <div className="users-form-group">
+              <label>
+                Email <span>*</span>
+              </label>
+
+              <input
+                type="email"
+                value={createForm.email}
+                onChange={(e) => {
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }));
+
+                  setCreateError("");
+                }}
+                placeholder="Nhập email đăng nhập"
+                disabled={createLoading}
+                className={
+                  createError === "Email đã tồn tại" ? "input-error" : ""
+                }
+              />
+
+              {createError === "Email đã tồn tại" && (
+                <div className="users-inline-error">Email đã tồn tại</div>
+              )}
+            </div>
+
+            {/* VAI TRÒ */}
+
+            <div className="users-form-group">
+              <label>
+                Vai trò <span>*</span>
+              </label>
+
+              <select
+                value={createForm.vaiTroId}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    vaiTroId: e.target.value,
+                  }))
+                }
+                disabled={createLoading}
+              >
+                <option value="">-- Chọn vai trò --</option>
+
+                <option value="1">Guest</option>
+
+                <option value="2">Student</option>
+
+                <option value="3">Instructor</option>
+
+                <option value="4">TA</option>
+
+                <option value="5">Admissions</option>
+
+                <option value="6">Accountant</option>
+
+                <option value="7">Training Manager</option>
+
+                <option value="8">Admin</option>
+              </select>
+            </div>
+
+            {/* INFO */}
+
+            <div className="users-info-box">
+              <strong>Lưu ý:</strong> Không cần nhập mật khẩu. Hệ thống sẽ tự
+              động tạo mật khẩu tạm thời và gửi thông tin đăng nhập tới email
+              của người dùng.
+            </div>
+
+            {/* BUTTON */}
+
+            <div className="users-modal-actions">
+              <button
+                type="button"
+                className="users-cancel-button"
+                onClick={closeCreateModal}
+                disabled={createLoading}
+              >
+                Hủy
+              </button>
+
+              <button
+                type="button"
+                className="users-submit-button"
+                onClick={handleCreateAccount}
+                disabled={createLoading}
+              >
+                {createLoading ? "Đang tạo..." : "Tạo tài khoản"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================
+          MODAL IMPORT EXCEL
+          ===================================================== */}
+
+      {showImportModal && (
+        <UserImportModal
+          onClose={() => setShowImportModal(false)}
+          onImported={async () => {
+            // Đóng modal
+            setShowImportModal(false);
+
+            // Tải lại danh sách
+            await loadUsers();
+
+            // Toast góc trái
+            setToast({
+              type: "success",
+              text: "Import người dùng thành công.",
+            });
+          }}
+        />
+      )}
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    padding: "30px",
-    minHeight: "100%",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "24px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "30px",
-    fontWeight: 700,
-  },
-
-  subtitle: {
-    marginTop: "8px",
-    color: "#64748b",
-  },
-
-  primaryButton: {
-    border: "none",
-    borderRadius: "10px",
-    padding: "12px 18px",
-    background: "#2563eb",
-    color: "#fff",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  message: {
-    padding: "13px 16px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-  },
-
-  success: {
-    background: "#ecfdf5",
-    color: "#047857",
-    border: "1px solid #a7f3d0",
-  },
-
-  error: {
-    background: "#fef2f2",
-    color: "#dc2626",
-    border: "1px solid #fecaca",
-  },
-
-  filterBox: {
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    flexWrap: "wrap",
-    background: "#fff",
-    padding: "18px",
-    borderRadius: "14px",
-    marginBottom: "20px",
-    boxShadow: "0 2px 10px rgba(15, 23, 42, 0.06)",
-  },
-
-  searchGroup: {
-    display: "flex",
-    gap: "8px",
-    flex: 1,
-    minWidth: "320px",
-  },
-
-  input: {
-    flex: 1,
-    padding: "11px 13px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    outline: "none",
-    fontSize: "14px",
-  },
-
-  searchButton: {
-    border: "none",
-    borderRadius: "8px",
-    padding: "0 18px",
-    background: "#2563eb",
-    color: "#fff",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  select: {
-    padding: "11px 13px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    background: "#fff",
-    minWidth: "170px",
-  },
-
-  tableContainer: {
-    background: "#fff",
-    borderRadius: "14px",
-    overflowX: "auto",
-    boxShadow: "0 2px 10px rgba(15, 23, 42, 0.06)",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    minWidth: "1000px",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f8fafc",
-    borderBottom: "1px solid #e5e7eb",
-    color: "#475569",
-    fontSize: "14px",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #eef2f7",
-    color: "#334155",
-    fontSize: "14px",
-  },
-
-  status: {
-    display: "inline-block",
-    padding: "5px 10px",
-    borderRadius: "999px",
-    fontSize: "12px",
-    fontWeight: 600,
-  },
-
-  active: {
-    background: "#dcfce7",
-    color: "#15803d",
-  },
-
-  locked: {
-    background: "#fee2e2",
-    color: "#dc2626",
-  },
-
-  actions: {
-    display: "flex",
-    gap: "8px",
-  },
-
-  editButton: {
-    border: "1px solid #cbd5e1",
-    background: "#fff",
-    color: "#334155",
-    borderRadius: "7px",
-    padding: "7px 12px",
-    cursor: "pointer",
-  },
-
-  lockButton: {
-    border: "none",
-    background: "#fee2e2",
-    color: "#dc2626",
-    borderRadius: "7px",
-    padding: "7px 12px",
-    cursor: "pointer",
-  },
-
-  unlockButton: {
-    border: "none",
-    background: "#dcfce7",
-    color: "#15803d",
-    borderRadius: "7px",
-    padding: "7px 12px",
-    cursor: "pointer",
-  },
-
-  loading: {
-    padding: "50px",
-    textAlign: "center",
-    color: "#64748b",
-  },
-
-  empty: {
-    padding: "50px",
-    textAlign: "center",
-    color: "#64748b",
-  },
-
-  pagination: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: "18px",
-    marginTop: "20px",
-  },
-
-  pageButton: {
-    border: "1px solid #cbd5e1",
-    background: "#fff",
-    borderRadius: "8px",
-    padding: "9px 14px",
-    cursor: "pointer",
-  },
-
-  pageText: {
-    color: "#475569",
-    fontWeight: 600,
-  },
 };
 
 export default UsersPage;

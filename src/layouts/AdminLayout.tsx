@@ -10,6 +10,15 @@ interface AdminLayoutProps {
 
   // Điều hướng đến trang quản lý vai trò & quyền
   onRoleManagement: () => void;
+
+  // Điều hướng đến trang chủ
+  onHome: () => void;
+
+  // Điều hướng đến trang quản lý người dùng
+  onUserManagement: () => void;
+
+  // Điều hướng đến trang đổi mật khẩu
+  onChangePassword: () => void;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
@@ -19,18 +28,43 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   permissions,
   onLogout,
   onRoleManagement,
+  onHome,
+  onUserManagement,
+  onChangePassword,
 }) => {
   const avatarLetter = userName?.charAt(0)?.toUpperCase() || "A";
 
   const hasPermission = (maQuyen: string) => permissions.includes(maQuyen);
+
+  // =========================================================
+  // PATH HIỆN TẠI
+  // =========================================================
+
+  const currentPath = window.location.pathname;
+
+  // =========================================================
+  // KIỂM TRA MENU ĐANG ACTIVE
+  // =========================================================
+
+  const isHomeActive = currentPath === "/";
+
+  const isUserManagementActive = currentPath === "/quan-ly-nguoi-dung";
+
+  const isRoleManagementActive = currentPath === "/quan-ly-vai-tro";
+
+  const isChangePasswordActive = currentPath === "/change-password";
 
   return (
     <div className="admin-layout">
       {/* =====================================================
           SIDEBAR
       ===================================================== */}
+
       <aside className="admin-sidebar">
-        {/* Logo */}
+        {/* =================================================
+            LOGO
+        ================================================= */}
+
         <div className="admin-logo">
           <div className="admin-logo-mark">E</div>
 
@@ -44,11 +78,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         {/* =================================================
             MENU
         ================================================= */}
+
         <div className="admin-navigation">
-          {/* Tổng quan */}
+          {/* =================================================
+              TỔNG QUAN
+          ================================================= */}
+
           <div className="admin-section-title">TỔNG QUAN</div>
 
-          <button type="button" className="admin-menu-item admin-menu-active">
+          {/* =================================================
+              TRANG CHỦ
+          ================================================= */}
+
+          <button
+            type="button"
+            className={`admin-menu-item ${
+              isHomeActive ? "admin-menu-active" : ""
+            }`}
+            onClick={onHome}
+          >
             <span className="admin-menu-symbol">▦</span>
 
             <span>Trang chủ</span>
@@ -57,22 +105,37 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           {/* =================================================
               QUẢN LÝ
           ================================================= */}
+
           <div className="admin-section-title">QUẢN LÝ</div>
 
-          {/* Người dùng */}
+          {/* =================================================
+              NGƯỜI DÙNG
+          ================================================= */}
+
           {hasPermission("USER_VIEW") && (
-            <button type="button" className="admin-menu-item">
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isUserManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onUserManagement}
+            >
               <span className="admin-menu-symbol">♙</span>
 
               <span>Người dùng</span>
             </button>
           )}
 
-          {/* Vai trò & quyền */}
+          {/* =================================================
+              VAI TRÒ & QUYỀN
+          ================================================= */}
+
           {hasPermission("ROLE_VIEW") && (
             <button
               type="button"
-              className="admin-menu-item"
+              className={`admin-menu-item ${
+                isRoleManagementActive ? "admin-menu-active" : ""
+              }`}
               onClick={onRoleManagement}
             >
               <span className="admin-menu-symbol">◇</span>
@@ -81,14 +144,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
-          {/* Đào tạo */}
+          {/* =================================================
+              ĐÀO TẠO
+          ================================================= */}
+
           <button type="button" className="admin-menu-item">
             <span className="admin-menu-symbol">▣</span>
 
             <span>Đào tạo</span>
           </button>
 
-          {/* Lớp học */}
+          {/* =================================================
+              LỚP HỌC
+          ================================================= */}
+
           {hasPermission("QUAN_LY_LOP") && (
             <button type="button" className="admin-menu-item">
               <span className="admin-menu-symbol">▤</span>
@@ -97,7 +166,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
-          {/* Báo cáo */}
+          {/* =================================================
+              BÁO CÁO
+          ================================================= */}
+
           <button type="button" className="admin-menu-item">
             <span className="admin-menu-symbol">◫</span>
 
@@ -107,9 +179,29 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           {/* =================================================
               HỆ THỐNG
           ================================================= */}
+
           <div className="admin-section-title">HỆ THỐNG</div>
 
-          {/* Cài đặt */}
+          {/* =================================================
+              ĐỔI MẬT KHẨU
+          ================================================= */}
+
+          <button
+            type="button"
+            className={`admin-menu-item ${
+              isChangePasswordActive ? "admin-menu-active" : ""
+            }`}
+            onClick={onChangePassword}
+          >
+            <span className="admin-menu-symbol">🔐</span>
+
+            <span>Đổi mật khẩu</span>
+          </button>
+
+          {/* =================================================
+              CÀI ĐẶT
+          ================================================= */}
+
           <button type="button" className="admin-menu-item">
             <span className="admin-menu-symbol">⚙</span>
 
@@ -117,12 +209,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </button>
         </div>
 
-        {/* =================================================
+        {/* =====================================================
             USER FOOTER
-        ================================================= */}
+        ===================================================== */}
+
         <div className="admin-sidebar-footer">
           <div className="admin-account">
             {/* Avatar */}
+
             <div className="admin-avatar">
               {avatarLetter}
 
@@ -130,6 +224,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
 
             {/* Thông tin tài khoản */}
+
             <div className="admin-account-info">
               <strong>{userName}</strong>
 
@@ -137,7 +232,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
           </div>
 
-          {/* Đăng xuất */}
+          {/* =================================================
+              ĐĂNG XUẤT
+          ================================================= */}
+
           <button type="button" className="admin-logout" onClick={onLogout}>
             <span>↪</span>
             Đăng xuất
@@ -148,25 +246,54 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* =====================================================
           MAIN
       ===================================================== */}
+
       <main className="admin-main">
         {/* =================================================
             HEADER
         ================================================= */}
+
         <header className="admin-header">
           <div>
             <div className="admin-breadcrumb">
               Admin
               <span>/</span>
-              Trang chủ
+              {isUserManagementActive
+                ? "Người dùng"
+                : isRoleManagementActive
+                  ? "Vai trò & quyền"
+                  : isChangePasswordActive
+                    ? "Đổi mật khẩu"
+                    : "Trang chủ"}
             </div>
 
-            <h1>Trang chủ</h1>
+            <h1>
+              {isUserManagementActive
+                ? "Quản lý người dùng"
+                : isRoleManagementActive
+                  ? "Quản lý vai trò người dùng"
+                  : isChangePasswordActive
+                    ? "Đổi mật khẩu"
+                    : "Trang chủ"}
+            </h1>
 
-            <p>Tổng quan hệ thống quản lý đào tạo</p>
+            <p>
+              {isUserManagementActive
+                ? "Quản lý tài khoản người dùng trong hệ thống."
+                : isRoleManagementActive
+                  ? "Quản lý người dùng, tìm kiếm và phân quyền theo vai trò."
+                  : isChangePasswordActive
+                    ? "Cập nhật mật khẩu để bảo vệ tài khoản."
+                    : "Tổng quan hệ thống quản lý đào tạo"}
+            </p>
           </div>
+
+          {/* =================================================
+              HEADER RIGHT
+          ================================================= */}
 
           <div className="admin-header-right">
             {/* Notification */}
+
             <button
               type="button"
               className="admin-notification"
@@ -176,6 +303,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
 
             {/* Profile */}
+
             <div className="admin-header-profile">
               <div className="admin-header-avatar">{avatarLetter}</div>
 
@@ -193,6 +321,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         {/* =================================================
             CONTENT
         ================================================= */}
+
         <section className="admin-content">{children}</section>
       </main>
     </div>

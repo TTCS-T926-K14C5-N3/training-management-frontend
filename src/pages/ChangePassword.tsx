@@ -21,6 +21,7 @@ const ChangePassword: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Xóa thông báo cũ
     setError("");
     setSuccessMsg("");
 
@@ -47,7 +48,7 @@ const ChangePassword: React.FC = () => {
       setIsLoading(true);
 
       // =====================================================
-      // GỌI API
+      // GỌI API ĐỔI MẬT KHẨU
       // =====================================================
 
       const response = await api.post("/change-password", {
@@ -55,43 +56,82 @@ const ChangePassword: React.FC = () => {
         new_password: newPassword,
       });
 
-      console.log("Đổi mật khẩu:", response.data);
+      console.log("Đổi mật khẩu thành công:", response.data);
 
       // =====================================================
-      // CẬP NHẬT TOKEN MỚI
+      // CẬP NHẬT USER TRONG LOCAL STORAGE
       // =====================================================
 
-      const newToken = response.data?.token;
+      const storedUser = localStorage.getItem("user");
 
-      if (newToken) {
-        const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
 
-        if (storedUser) {
-          try {
-            const user = JSON.parse(storedUser);
+          // -------------------------------------------------
+          // Backend có thể trả token với một trong hai tên
+          // -------------------------------------------------
 
+          const newToken =
+            response.data?.access_token || response.data?.token || null;
+
+          if (newToken) {
             user.token = newToken;
-
-            localStorage.setItem("user", JSON.stringify(user));
-          } catch (error) {
-            console.error("Lỗi cập nhật user:", error);
           }
+
+          // -------------------------------------------------
+          // ĐÃ ĐỔI MẬT KHẨU THÀNH CÔNG
+          // KHÔNG CÒN BẮT BUỘC ĐỔI MẬT KHẨU
+          // -------------------------------------------------
+
+          user.yeuCauDoiMatKhau = false;
+          user.batBuocDoiMatKhau = false;
+          user.canDoiMatKhau = false;
+
+          // Lưu lại user
+          localStorage.setItem("user", JSON.stringify(user));
+
+          console.log(
+            "User sau khi cập nhật:",
+            JSON.parse(localStorage.getItem("user") || "null"),
+          );
+        } catch (parseError) {
+          console.error(
+            "Lỗi đọc/cập nhật user trong localStorage:",
+            parseError,
+          );
         }
       }
 
       // =====================================================
-      // THÔNG BÁO THÀNH CÔNG
+      // XÓA DỮ LIỆU FORM
+      // =====================================================
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+      // =====================================================
+      // HIỂN THỊ THÔNG BÁO THÀNH CÔNG
       // =====================================================
 
       setSuccessMsg("Đổi mật khẩu thành công!");
 
       // =====================================================
-      // CHUYỂN VỀ DASHBOARD
+      // CHUYỂN VỀ TRANG CHỦ
+      //
+      // QUAN TRỌNG:
+      // Dùng location.assign("/") để reload lại App.
+      //
+      // Không dùng:
+      // window.history.replaceState(...)
+      //
+      // vì App.tsx đang quản lý currentPath bằng state.
       // =====================================================
 
       window.setTimeout(() => {
-        window.location.replace("/");
-      }, 1200);
+        window.location.assign("/");
+      }, 1000);
     } catch (err: any) {
       console.error("Lỗi đổi mật khẩu:", err);
 
@@ -119,7 +159,7 @@ const ChangePassword: React.FC = () => {
           }
 
           .change-password-page {
-            min-height: calc(100vh - 0px);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -346,20 +386,10 @@ const ChangePassword: React.FC = () => {
             position: relative;
           }
 
-          .input-icon {
-            position: absolute;
-            top: 50%;
-            left: 13px;
-            transform: translateY(-50%);
-            color: #94a3b8;
-            font-size: 16px;
-            pointer-events: none;
-          }
-
           .form-input {
             width: 100%;
             height: 46px;
-            padding: 0 14px 0 42px;
+            padding: 0 14px;
             border: 1px solid #dbe2ea;
             border-radius: 9px;
             outline: none;
@@ -555,7 +585,9 @@ const ChangePassword: React.FC = () => {
             <p>Cập nhật mật khẩu đăng nhập của bạn</p>
           </div>
 
-          {/* ERROR */}
+          {/* =================================================
+              ERROR
+              ================================================= */}
 
           {error && (
             <div className="alert alert-error">
@@ -565,7 +597,9 @@ const ChangePassword: React.FC = () => {
             </div>
           )}
 
-          {/* SUCCESS */}
+          {/* =================================================
+              SUCCESS
+              ================================================= */}
 
           {successMsg && (
             <div className="alert alert-success">
@@ -573,7 +607,9 @@ const ChangePassword: React.FC = () => {
 
               <span>
                 {successMsg}
+
                 <br />
+
                 <span
                   style={{
                     fontWeight: 400,
@@ -585,6 +621,10 @@ const ChangePassword: React.FC = () => {
               </span>
             </div>
           )}
+
+          {/* =================================================
+              FORM
+              ================================================= */}
 
           <form onSubmit={handleSubmit}>
             {/* =================================================
@@ -667,8 +707,13 @@ const ChangePassword: React.FC = () => {
             </button>
           </form>
 
+          {/* =================================================
+              FOOTER
+              ================================================= */}
+
           <div className="form-footer">
             <span>🔒</span>
+
             <span>Thông tin của bạn được bảo mật</span>
           </div>
         </div>
