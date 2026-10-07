@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import api from "../services/api";
+import AvatarImage from "../components/AvatarImage";
 
 import "./UsersPage.css";
 
@@ -10,6 +11,7 @@ interface User {
   nguoiDungId: number;
   hoTen: string;
   email: string;
+  anhDaiDien?: string | null;
   soDienThoai?: string;
   trangThai: string;
   vaiTro?: string;
@@ -93,11 +95,27 @@ const UsersPage: React.FC = () => {
     ? currentUser.quyen.map((permission: any) => permission.maQuyen)
     : [];
 
-  const canCreateUser = permissions.includes("USER_CREATE");
-  const canUpdateUser = permissions.includes("USER_UPDATE");
-  const canLockUser = permissions.includes("USER_LOCK");
-  const canUnlockUser = permissions.includes("USER_UNLOCK");
-  const canDeleteUser = permissions.includes("USER_DELETE");
+  const isAdmin = Array.isArray(currentUser?.vaiTro)
+    ? currentUser.vaiTro.some((role: any) => {
+        const roleName =
+          typeof role?.tenVaiTro === "string"
+            ? role.tenVaiTro.trim().toLowerCase()
+            : "";
+
+        return (
+          roleName === "admin" ||
+          roleName === "quản trị hệ thống" ||
+          roleName === "quản trị viên hệ thống" ||
+          role?.vaiTroId === 8
+        );
+      })
+    : false;
+
+  const canCreateUser = isAdmin || permissions.includes("USER_CREATE");
+  const canUpdateUser = isAdmin || permissions.includes("USER_UPDATE");
+  const canLockUser = isAdmin || permissions.includes("USER_LOCK");
+  const canUnlockUser = isAdmin || permissions.includes("USER_UNLOCK");
+  const canDeleteUser = isAdmin || permissions.includes("USER_DELETE");
 
   // =====================================================
   // FORM TẠO TÀI KHOẢN
@@ -630,7 +648,14 @@ const UsersPage: React.FC = () => {
                       <td>
                         <div className="users-name">
                           <div className="users-avatar">
-                            {user.hoTen?.charAt(0)?.toUpperCase() || "U"}
+                            <AvatarImage
+                              source={user.anhDaiDien}
+                              userId={user.nguoiDungId}
+                              fallback={
+                                user.hoTen?.charAt(0)?.toUpperCase() || "U"
+                              }
+                              alt={`Ảnh đại diện của ${user.hoTen}`}
+                            />
                           </div>
 
                           <div>

@@ -1,10 +1,13 @@
 import React from "react";
+import AvatarImage from "../components/AvatarImage";
 import "./AdminLayout.css";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   userName: string;
   roleName: string;
+  avatarUrl?: string | null;
+  isAdmin: boolean;
   permissions: string[];
   onLogout: () => void;
 
@@ -19,22 +22,66 @@ interface AdminLayoutProps {
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
+
+  // Điều hướng đến trang hồ sơ cá nhân
+  onProfile: () => void;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   userName,
   roleName,
+  avatarUrl,
+  isAdmin,
   permissions,
   onLogout,
   onRoleManagement,
   onHome,
   onUserManagement,
   onChangePassword,
+  onProfile,
 }) => {
+  // =========================================================
+  // AVATAR
+  // =========================================================
+
   const avatarLetter = userName?.charAt(0)?.toUpperCase() || "A";
 
-  const hasPermission = (maQuyen: string) => permissions.includes(maQuyen);
+  // =========================================================
+  // KIỂM TRA ADMIN
+  // =========================================================
+
+  const isAdminRole = () => {
+    const normalizedRoleName = roleName.trim().toLowerCase();
+
+    return (
+      isAdmin ||
+      normalizedRoleName === "admin" ||
+      normalizedRoleName.includes("quản trị hệ thống") ||
+      normalizedRoleName.includes("quản trị viên hệ thống")
+    );
+  };
+
+  // =========================================================
+  // KIỂM TRA QUYỀN
+  // =========================================================
+
+  const hasPermission = (maQuyen: string): boolean => {
+    /*
+     * Admin hệ thống luôn được phép truy cập:
+     * - Quản lý người dùng
+     * - Quản lý vai trò & quyền
+     *
+     * Việc này giúp tránh trường hợp tài khoản Admin
+     * bị thiếu USER_VIEW / ROLE_VIEW trong danh sách
+     * permission từ frontend nhưng vẫn phải có quyền quản trị.
+     */
+    if (isAdminRole() && (maQuyen === "USER_VIEW" || maQuyen === "ROLE_VIEW")) {
+      return true;
+    }
+
+    return permissions.includes(maQuyen);
+  };
 
   // =========================================================
   // PATH HIỆN TẠI
@@ -53,6 +100,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isRoleManagementActive = currentPath === "/quan-ly-vai-tro";
 
   const isChangePasswordActive = currentPath === "/change-password";
+
+  const isProfileActive = currentPath === "/ho-so-ca-nhan";
 
   return (
     <div className="admin-layout">
@@ -183,6 +232,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           <div className="admin-section-title">HỆ THỐNG</div>
 
           {/* =================================================
+              HỒ SƠ CÁ NHÂN
+          ================================================= */}
+
+          <button
+            type="button"
+            className={`admin-menu-item ${
+              isProfileActive ? "admin-menu-active" : ""
+            }`}
+            onClick={onProfile}
+          >
+            <span className="admin-menu-symbol">👤</span>
+
+            <span>Hồ sơ cá nhân</span>
+          </button>
+
+          {/* =================================================
               ĐỔI MẬT KHẨU
           ================================================= */}
 
@@ -218,7 +283,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             {/* Avatar */}
 
             <div className="admin-avatar">
-              {avatarLetter}
+              <AvatarImage
+                source={avatarUrl}
+                fallback={avatarLetter}
+                alt={`Ảnh đại diện của ${userName}`}
+              />
 
               <span className="admin-online"></span>
             </div>
@@ -263,7 +332,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   ? "Vai trò & quyền"
                   : isChangePasswordActive
                     ? "Đổi mật khẩu"
-                    : "Trang chủ"}
+                    : isProfileActive
+                      ? "Hồ sơ cá nhân"
+                      : "Trang chủ"}
             </div>
 
             <h1>
@@ -273,7 +344,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   ? "Quản lý vai trò người dùng"
                   : isChangePasswordActive
                     ? "Đổi mật khẩu"
-                    : "Trang chủ"}
+                    : isProfileActive
+                      ? "Hồ sơ cá nhân"
+                      : "Trang chủ"}
             </h1>
 
             <p>
@@ -283,7 +356,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   ? "Quản lý người dùng, tìm kiếm và phân quyền theo vai trò."
                   : isChangePasswordActive
                     ? "Cập nhật mật khẩu để bảo vệ tài khoản."
-                    : "Tổng quan hệ thống quản lý đào tạo"}
+                    : isProfileActive
+                      ? "Xem và cập nhật thông tin hồ sơ cá nhân."
+                      : "Tổng quan hệ thống quản lý đào tạo"}
             </p>
           </div>
 
@@ -304,8 +379,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
             {/* Profile */}
 
-            <div className="admin-header-profile">
-              <div className="admin-header-avatar">{avatarLetter}</div>
+            <div
+              className="admin-header-profile"
+              onClick={onProfile}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="admin-header-avatar">
+                <AvatarImage
+                  source={avatarUrl}
+                  fallback={avatarLetter}
+                  alt={`Ảnh đại diện của ${userName}`}
+                />
+              </div>
 
               <div>
                 <strong>{userName}</strong>

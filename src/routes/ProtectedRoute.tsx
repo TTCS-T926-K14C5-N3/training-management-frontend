@@ -46,15 +46,36 @@ function ProtectedRoute({ children, requiredPermission }: ProtectedRouteProps) {
   // =========================================================
 
   const permissions = Array.isArray(session.quyen) ? session.quyen : [];
+  const isAdmin = Array.isArray(session.vaiTro)
+    ? session.vaiTro.some((role: any) => {
+        const roleName =
+          typeof role?.tenVaiTro === "string"
+            ? role.tenVaiTro.trim().toLowerCase()
+            : "";
+
+        return (
+          roleName === "admin" ||
+          roleName === "quản trị hệ thống" ||
+          roleName === "quản trị viên hệ thống" ||
+          role?.vaiTroId === 8
+        );
+      })
+    : false;
 
   // =========================================================
   // KIỂM TRA QUYỀN
   // =========================================================
 
   if (requiredPermission) {
-    const hasPermission = permissions.some(
-      (permission: any) => permission?.maQuyen === requiredPermission,
-    );
+    const hasAdminAccess =
+      isAdmin &&
+      (requiredPermission === "USER_VIEW" ||
+        requiredPermission === "ROLE_VIEW");
+    const hasPermission =
+      hasAdminAccess ||
+      permissions.some(
+        (permission: any) => permission?.maQuyen === requiredPermission,
+      );
 
     // Không có quyền → về trang chủ chung
     if (!hasPermission) {
