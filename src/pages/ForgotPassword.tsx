@@ -1,5 +1,6 @@
 import { forgotPassword } from "../services/authService";
 import React, { useState } from "react";
+import ToastNotification from "../components/ToastNotification";
 
 export const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -44,14 +45,21 @@ export const ForgotPassword: React.FC = () => {
           khôi phục.
         </p>
 
-        {message && (
+        {message?.type === "success" && (
+          <ToastNotification
+            type="success"
+            text={message.text}
+            onClose={() => setMessage(null)}
+          />
+        )}
+
+        {message?.type === "error" && (
           <div
             style={{
               ...styles.alert,
-              backgroundColor:
-                message.type === "success" ? "#e6f4ea" : "#fce8e6",
-              color: message.type === "success" ? "#137333" : "#c5221f",
-              borderColor: message.type === "success" ? "#ceead6" : "#fad2cf",
+              backgroundColor: "#fce8e6",
+              color: "#c5221f",
+              borderColor: "#fad2cf",
             }}
           >
             {message.text}

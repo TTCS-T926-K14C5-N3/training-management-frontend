@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../services/api";
 import AvatarImage from "../components/AvatarImage";
+import ToastNotification from "../components/ToastNotification";
 import { getAvatarPath, processAvatar } from "../utils/avatar";
 import "./Profile.css";
 
@@ -401,11 +402,11 @@ const Profile: React.FC<ProfileProps> = ({
             HEADER
         ===================================================== */}
 
-        <div className="profile-header">
-          <div>
-            <div className="profile-eyebrow">TÀI KHOẢN CÁ NHÂN</div>
+        <section className="dashboard-hero profile-hero">
+          <div className="dashboard-hero-content">
+            <div className="dashboard-hero-label">TÀI KHOẢN CÁ NHÂN</div>
 
-            <h1>Hồ sơ cá nhân</h1>
+            <h2>Hồ sơ cá nhân</h2>
 
             <p>Xem và quản lý thông tin cá nhân của bạn.</p>
           </div>
@@ -419,7 +420,7 @@ const Profile: React.FC<ProfileProps> = ({
               ✎<span>Sửa hồ sơ</span>
             </button>
           )}
-        </div>
+        </section>
 
         {/* =====================================================
             PROFILE CARD
@@ -472,11 +473,11 @@ const Profile: React.FC<ProfileProps> = ({
           =================================================== */}
 
           {success && (
-            <div className="profile-message profile-message-success">
-              <span>✓</span>
-
-              <span>{success}</span>
-            </div>
+            <ToastNotification
+              type="success"
+              text={success}
+              onClose={() => setSuccess("")}
+            />
           )}
 
           {error && (

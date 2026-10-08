@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+
+import ToastNotification from "../components/ToastNotification";
+import RolePermissionsPanel from "./RolePermissionsPanel";
+import AvatarImage from "../components/AvatarImage";
+import "./RoleManagement.css";
+import "./UsersPage.css";
+
 import RolePermissionsTab from "../components/RolePermissionsTab";
+
 
 // =========================================================
 // INTERFACE
@@ -10,7 +18,9 @@ interface User {
   nguoiDungId: number;
   hoTen: string;
   email: string;
+  avatarUrl?: string | null;
   soDienThoai?: string | null;
+  vaiTro?: string;
   trangThai?: string;
   ngayTao?: string;
   ngayCapNhat?: string;
@@ -41,7 +51,13 @@ interface Pagination {
 // =========================================================
 
 const RoleManagement: React.FC = () => {
+
+  const [activeSection, setActiveSection] = useState<"users" | "permissions">(
+    "users",
+  );
+
   const [activeTab, setActiveTab] = useState<"USERS" | "PERMISSIONS">("USERS");
+
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
@@ -286,25 +302,11 @@ const RoleManagement: React.FC = () => {
   const handleRoleFilterChange = (value: string) => {
     setRoleFilter(value);
     setCurrentPage(1);
-
-    loadUsers(1, search, value, statusFilter);
   };
 
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value);
     setCurrentPage(1);
-
-    loadUsers(1, search, roleFilter, value);
-  };
-
-  const handleClearFilters = () => {
-    setSearch("");
-    setSearchInput("");
-    setRoleFilter("");
-    setStatusFilter("");
-    setCurrentPage(1);
-
-    loadUsers(1, "", "", "");
   };
 
   // =========================================================
@@ -402,13 +404,29 @@ const RoleManagement: React.FC = () => {
     }
   };
 
-  // =========================================================
-  // PAGINATION DISPLAY
-  // =========================================================
-
-  const firstItem = pagination.total === 0 ? 0 : (currentPage - 1) * LIMIT + 1;
-
-  const lastItem = Math.min(currentPage * LIMIT, pagination.total);
+  if (activeSection === "permissions") {
+    return (
+      <div style={{ padding: "28px 32px 40px" }}>
+        <button
+          type="button"
+          onClick={() => setActiveSection("users")}
+          style={{
+            marginBottom: "16px",
+            padding: "9px 13px",
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
+            background: "#fff",
+            color: "#334155",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          ← Quay lại gán vai trò
+        </button>
+        <RolePermissionsPanel roles={roles} />
+      </div>
+    );
+  }
 
   // =========================================================
   // RENDER
@@ -416,119 +434,17 @@ const RoleManagement: React.FC = () => {
 
   return (
     <>
-      {/* =====================================================
-          TOAST - GÓC DƯỚI BÊN TRÁI
-      ===================================================== */}
-
-      <style>
-        {`
-          @keyframes toastSlideIn {
-            from {
-              opacity: 0;
-              transform: translateX(-25px);
-            }
-
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-        `}
-      </style>
-
       {(message || errorMessage) && (
-        <div
-          style={{
-            position: "fixed",
-            left: "18px",
-            bottom: "18px",
-            zIndex: 999999,
-            pointerEvents: "none",
-            animation: "toastSlideIn 0.25s ease-out",
+        <ToastNotification
+          type={message ? "success" : "error"}
+          text={message || errorMessage}
+          durationMs={3000}
+          onClose={() => {
+            setMessage("");
+            setErrorMessage("");
           }}
-        >
-          {message && (
-            <div
-              style={{
-                minWidth: "300px",
-                maxWidth: "420px",
-                padding: "14px 18px",
-                borderRadius: "12px",
-                background: "#16a34a",
-                color: "#ffffff",
-                fontSize: "14px",
-                fontWeight: 700,
-                lineHeight: "20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.20)",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-            >
-              <span
-                style={{
-                  width: "25px",
-                  height: "25px",
-                  minWidth: "25px",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "15px",
-                  fontWeight: 800,
-                }}
-              >
-                ✓
-              </span>
-
-              <span>{message}</span>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div
-              style={{
-                minWidth: "300px",
-                maxWidth: "420px",
-                padding: "14px 18px",
-                borderRadius: "12px",
-                background: "#dc2626",
-                color: "#ffffff",
-                fontSize: "14px",
-                fontWeight: 700,
-                lineHeight: "20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.20)",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-            >
-              <span
-                style={{
-                  width: "25px",
-                  height: "25px",
-                  minWidth: "25px",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "15px",
-                  fontWeight: 800,
-                }}
-              >
-                !
-              </span>
-
-              <span>{errorMessage}</span>
-            </div>
-          )}
-        </div>
+        />
       )}
-
       {/* =====================================================
           PAGE
       ===================================================== */}
@@ -631,6 +547,7 @@ const RoleManagement: React.FC = () => {
           </div>
         </div>
 
+
         {/* TABS */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
           <button
@@ -671,409 +588,123 @@ const RoleManagement: React.FC = () => {
                 FILTER
             ===================================================== */}
 
+
         <div
           style={{
-            background: "#ffffff",
-            border: "1px solid #e8edf5",
-            borderRadius: "16px",
-            padding: "20px",
-            marginBottom: "20px",
-            boxShadow: "0 4px 18px rgba(15, 23, 42, 0.04)",
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: "16px",
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={() => setActiveSection("permissions")}
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "15px",
+              minHeight: "40px",
+              padding: "0 15px",
+              border: "1px solid #bfdbfe",
+              borderRadius: "9px",
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              fontWeight: 700,
+              cursor: "pointer",
             }}
           >
-            <div>
-              <div
-                style={{
-                  fontSize: "15px",
-                  fontWeight: 750,
-                  color: "#172033",
-                }}
-              >
-                Bộ lọc người dùng
-              </div>
+            Cấu hình quyền theo vai trò
+          </button>
+        </div>
 
-              <div
-                style={{
-                  marginTop: "3px",
-                  fontSize: "12px",
-                  color: "#94a3b8",
-                }}
-              >
-                Tìm kiếm và lọc danh sách theo nhu cầu
-              </div>
-            </div>
+        {/* =====================================================
+            FILTER
+        ===================================================== */}
 
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 10px",
-                borderRadius: "999px",
-                background: "#eff6ff",
-                color: "#2563eb",
-                fontSize: "11px",
-                fontWeight: 700,
-              }}
-            >
-              ● {pagination.total} tài khoản
-            </span>
+        <div className="users-filter-card">
+          <div className="users-search-wrapper">
+            <span className="users-search-icon">⌕</span>
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Tìm theo họ tên, email, số điện thoại..."
+            />
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(280px, 1fr) 210px 190px auto",
-              gap: "12px",
-              alignItems: "end",
-            }}
+          <select
+            value={roleFilter}
+            onChange={(event) => handleRoleFilterChange(event.target.value)}
+            className="users-filter-select"
           >
-            {/* SEARCH */}
+            <option value="">Tất cả vai trò</option>
+            {roles.map((role) => (
+              <option key={role.vaiTroId} value={role.vaiTroId}>
+                {role.tenVaiTro}
+              </option>
+            ))}
+          </select>
 
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "7px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "#475569",
-                }}
-              >
-                Tìm kiếm
-              </label>
+          <select
+            value={statusFilter}
+            onChange={(event) => handleStatusFilterChange(event.target.value)}
+            className="users-filter-select"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="HoatDong">Hoạt động</option>
+            <option value="BiKhoa">Bị khóa</option>
+          </select>
 
-              <div style={{ position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: "13px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "#94a3b8",
-                    fontSize: "15px",
-                  }}
-                >
-                  ⌕
-                </span>
-
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder="Tên, email hoặc số điện thoại..."
-                  style={{
-                    width: "100%",
-                    height: "44px",
-                    padding: "0 13px 0 38px",
-                    boxSizing: "border-box",
-                    border: "1px solid #dce3ed",
-                    borderRadius: "10px",
-                    outline: "none",
-                    fontSize: "13px",
-                    color: "#172033",
-                    background: "#fbfcfe",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* ROLE */}
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "7px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "#475569",
-                }}
-              >
-                Vai trò
-              </label>
-
-              <select
-                value={roleFilter}
-                onChange={(event) => handleRoleFilterChange(event.target.value)}
-                style={{
-                  width: "100%",
-                  height: "44px",
-                  padding: "0 12px",
-                  border: "1px solid #dce3ed",
-                  borderRadius: "10px",
-                  background: "#fbfcfe",
-                  fontSize: "13px",
-                  color: "#172033",
-                  outline: "none",
-                }}
-              >
-                <option value="">Tất cả vai trò</option>
-
-                {roles.map((role) => (
-                  <option key={role.vaiTroId} value={role.vaiTroId}>
-                    {role.tenVaiTro}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* STATUS */}
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "7px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "#475569",
-                }}
-              >
-                Trạng thái
-              </label>
-
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  handleStatusFilterChange(event.target.value)
-                }
-                style={{
-                  width: "100%",
-                  height: "44px",
-                  padding: "0 12px",
-                  border: "1px solid #dce3ed",
-                  borderRadius: "10px",
-                  background: "#fbfcfe",
-                  fontSize: "13px",
-                  color: "#172033",
-                  outline: "none",
-                }}
-              >
-                <option value="">Tất cả trạng thái</option>
-                <option value="HoatDong">Hoạt động</option>
-                <option value="BiKhoa">Bị khóa</option>
-              </select>
-            </div>
-
-            {/* BUTTONS */}
-
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={handleSearch}
-                style={{
-                  height: "44px",
-                  padding: "0 17px",
-                  border: "none",
-                  borderRadius: "10px",
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  boxShadow: "0 5px 12px rgba(37,99,235,0.2)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Tìm kiếm
-              </button>
-
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                style={{
-                  height: "44px",
-                  padding: "0 14px",
-                  border: "1px solid #dce3ed",
-                  borderRadius: "10px",
-                  background: "#ffffff",
-                  color: "#475569",
-                  fontWeight: 650,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Xóa lọc
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="users-search-button"
+            onClick={handleSearch}
+          >
+            Tìm kiếm
+          </button>
         </div>
 
         {/* =====================================================
             MAIN CONTENT
         ===================================================== */}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(560px, 1.35fr) minmax(390px, 0.9fr)",
-            gap: "20px",
-            alignItems: "start",
-          }}
-        >
+        <div className="role-content-grid">
           {/* ===================================================
               USER LIST
           =================================================== */}
 
-          <div
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e8edf5",
-              borderRadius: "16px",
-              overflow: "hidden",
-              boxShadow: "0 4px 18px rgba(15,23,42,0.04)",
-            }}
-          >
+          <div className="users-table-card role-users-list">
             {/* HEADER */}
 
-            <div
-              style={{
-                padding: "19px 20px",
-                borderBottom: "1px solid #edf1f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
+            <div className="users-table-header">
               <div>
-                <div
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: 750,
-                    color: "#172033",
-                  }}
-                >
-                  Danh sách người dùng
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "12px",
-                    color: "#94a3b8",
-                  }}
-                >
-                  Chọn người dùng để xem và quản lý vai trò
-                </div>
+                <h2>Danh sách người dùng</h2>
+                <span>{pagination.total} người dùng</span>
               </div>
-
-              {loadingUsers && (
-                <div
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: "999px",
-                    background: "#eff6ff",
-                    color: "#2563eb",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                  }}
-                >
-                  Đang tải...
-                </div>
-              )}
             </div>
 
             {/* TABLE */}
 
-            <div
-              style={{
-                overflowX: "auto",
-              }}
-            >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                }}
-              >
+            <div className="users-table-wrapper">
+              <table className="users-table role-users-select-table">
                 <thead>
-                  <tr
-                    style={{
-                      background: "#f8fafc",
-                    }}
-                  >
-                    <th
-                      style={{
-                        padding: "12px 18px",
-                        textAlign: "left",
-                        fontSize: "11px",
-                        color: "#64748b",
-                        fontWeight: 750,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      Người dùng
-                    </th>
-
-                    <th
-                      style={{
-                        padding: "12px 12px",
-                        textAlign: "left",
-                        fontSize: "11px",
-                        color: "#64748b",
-                        fontWeight: 750,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Số điện thoại
-                    </th>
-
-                    <th
-                      style={{
-                        padding: "12px 18px",
-                        textAlign: "center",
-                        fontSize: "11px",
-                        color: "#64748b",
-                        fontWeight: 750,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Trạng thái
-                    </th>
+                  <tr>
+                    <th>ID</th>
+                    <th>Họ tên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {loadingUsers ? (
                     <tr>
-                      <td
-                        colSpan={3}
-                        style={{
-                          padding: "65px 20px",
-                          textAlign: "center",
-                          color: "#94a3b8",
-                        }}
-                      >
+                      <td colSpan={6} className="role-users-table-message">
                         Đang tải danh sách...
                       </td>
                     </tr>
                   ) : users.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={3}
-                        style={{
-                          padding: "65px 20px",
-                          textAlign: "center",
-                          color: "#94a3b8",
-                        }}
-                      >
+                      <td colSpan={6} className="role-users-table-message">
                         Không tìm thấy người dùng.
                       </td>
                     </tr>
@@ -1085,118 +716,63 @@ const RoleManagement: React.FC = () => {
                         <tr
                           key={user.nguoiDungId}
                           onClick={() => setSelectedUserId(user.nguoiDungId)}
-                          style={{
-                            cursor: "pointer",
-                            background: selected ? "#f0f6ff" : "#ffffff",
-                            borderBottom: "1px solid #edf1f6",
-                            transition: "background 0.15s ease",
-                          }}
+                          className={
+                            selected ? "role-users-row-selected" : undefined
+                          }
+                          aria-selected={selected}
                         >
-                          <td
-                            style={{
-                              padding: "14px 18px",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "11px",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: "38px",
-                                  height: "38px",
-                                  borderRadius: "11px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  background: selected ? "#2563eb" : "#eef2ff",
-                                  color: selected ? "#ffffff" : "#4f46e5",
-                                  fontSize: "14px",
-                                  fontWeight: 800,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {user.hoTen?.charAt(0)?.toUpperCase() || "U"}
+                          <td className="users-id">{user.nguoiDungId}</td>
+
+                          <td>
+                            <div className="users-name">
+                              <div className="users-avatar">
+                                <AvatarImage
+                                  source={user.avatarUrl}
+                                  userId={user.nguoiDungId}
+                                  fallback={
+                                    user.hoTen?.charAt(0)?.toUpperCase() || "U"
+                                  }
+                                  alt={`Ảnh đại diện của ${user.hoTen}`}
+                                />
                               </div>
-
                               <div>
-                                <div
-                                  style={{
-                                    fontWeight: 700,
-                                    color: "#172033",
-                                    fontSize: "13px",
-                                  }}
-                                >
-                                  {user.hoTen}
-                                </div>
-
-                                <div
-                                  style={{
-                                    marginTop: "4px",
-                                    fontSize: "11px",
-                                    color: "#94a3b8",
-                                  }}
-                                >
-                                  {user.email}
-                                </div>
+                                <strong>{user.hoTen}</strong>
+                                <small>ID: {user.nguoiDungId}</small>
                               </div>
                             </div>
                           </td>
 
-                          <td
-                            style={{
-                              padding: "14px 12px",
-                              fontSize: "12px",
-                              color: "#64748b",
-                            }}
-                          >
-                            {user.soDienThoai || "—"}
+                          <td>
+                            <span className="users-email">{user.email}</span>
                           </td>
 
-                          <td
-                            style={{
-                              padding: "14px 18px",
-                              textAlign: "center",
-                            }}
-                          >
-                            {user.trangThai === "BiKhoa" ? (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "5px",
-                                  padding: "5px 9px",
-                                  borderRadius: "999px",
-                                  background: "#fef2f2",
-                                  color: "#dc2626",
-                                  fontSize: "10px",
-                                  fontWeight: 800,
-                                }}
-                              >
-                                <span>●</span>
-                                Bị khóa
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "5px",
-                                  padding: "5px 9px",
-                                  borderRadius: "999px",
-                                  background: "#ecfdf5",
-                                  color: "#16a34a",
-                                  fontSize: "10px",
-                                  fontWeight: 800,
-                                }}
-                              >
-                                <span>●</span>
-                                Hoạt động
-                              </span>
+                          <td>
+                            {user.soDienThoai || (
+                              <span className="users-empty-value">—</span>
                             )}
+                          </td>
+
+                          <td>
+                            {user.vaiTro ? (
+                              <span className="users-role">{user.vaiTro}</span>
+                            ) : (
+                              <span className="users-empty-value">—</span>
+                            )}
+                          </td>
+
+                          <td>
+                            <span
+                              className={`users-status ${
+                                user.trangThai === "HoatDong"
+                                  ? "users-status-active"
+                                  : "users-status-locked"
+                              }`}
+                            >
+                              <span className="status-dot" />
+                              {user.trangThai === "HoatDong"
+                                ? "Hoạt động"
+                                : "Bị khóa"}
+                            </span>
                           </td>
                         </tr>
                       );
@@ -1208,106 +784,22 @@ const RoleManagement: React.FC = () => {
 
             {/* PAGINATION */}
 
-            <div
-              style={{
-                padding: "14px 18px",
-                borderTop: "1px solid #edf1f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "10px",
-                flexWrap: "wrap",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: "#64748b",
-                }}
-              >
-                Hiển thị <strong>{firstItem}</strong> -{" "}
-                <strong>{lastItem}</strong> /{" "}
-                <strong>{pagination.total}</strong>
-              </span>
+            <div className="users-pagination">
+              <div className="users-pagination-info">
+                Hiển thị <strong>{users.length}</strong> / {pagination.total}{" "}
+                người dùng
+              </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "5px",
-                }}
-              >
+              <div className="users-pagination-controls">
                 <button
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => handlePageChange(currentPage - 1)}
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    border: "1px solid #dce3ed",
-                    borderRadius: "8px",
-                    background: currentPage <= 1 ? "#f8fafc" : "#ffffff",
-                    color: "#475569",
-                    cursor: currentPage <= 1 ? "not-allowed" : "pointer",
-                  }}
                 >
-                  ‹
+                  ←
                 </button>
 
-                {Array.from(
-                  {
-                    length: pagination.totalPages,
-                  },
-                  (_, index) => index + 1,
-                )
-                  .filter(
-                    (page) =>
-                      page === 1 ||
-                      page === pagination.totalPages ||
-                      Math.abs(page - currentPage) <= 1,
-                  )
-                  .map((page, index, pages) => {
-                    const previous = pages[index - 1];
-
-                    const needDots = previous && page - previous > 1;
-
-                    return (
-                      <React.Fragment key={page}>
-                        {needDots && (
-                          <span
-                            style={{
-                              padding: "0 3px",
-                              color: "#94a3b8",
-                            }}
-                          >
-                            ...
-                          </span>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => handlePageChange(page)}
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            border:
-                              page === currentPage
-                                ? "1px solid #2563eb"
-                                : "1px solid #dce3ed",
-                            borderRadius: "8px",
-                            background:
-                              page === currentPage ? "#2563eb" : "#ffffff",
-                            color: page === currentPage ? "#ffffff" : "#475569",
-                            cursor: "pointer",
-                            fontWeight: 700,
-                            fontSize: "12px",
-                          }}
-                        >
-                          {page}
-                        </button>
-                      </React.Fragment>
-                    );
-                  })}
+                <span className="users-current-page">{currentPage}</span>
 
                 <button
                   type="button"
@@ -1316,26 +808,13 @@ const RoleManagement: React.FC = () => {
                     currentPage >= pagination.totalPages
                   }
                   onClick={() => handlePageChange(currentPage + 1)}
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    border: "1px solid #dce3ed",
-                    borderRadius: "8px",
-                    background:
-                      pagination.totalPages === 0 ||
-                      currentPage >= pagination.totalPages
-                        ? "#f8fafc"
-                        : "#ffffff",
-                    color: "#475569",
-                    cursor:
-                      pagination.totalPages === 0 ||
-                      currentPage >= pagination.totalPages
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
                 >
-                  ›
+                  →
                 </button>
+
+                <span className="users-page-total">
+                  {currentPage} / {Math.max(1, pagination.totalPages)}
+                </span>
               </div>
             </div>
           </div>

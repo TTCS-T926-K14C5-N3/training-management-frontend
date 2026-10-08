@@ -1,7 +1,8 @@
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
+import { API_URL } from "../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const SESSION_EXPIRED_EVENT = "session-expired";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -26,14 +27,60 @@ const getStoredUser = () => {
   }
 };
 
+export const getTokenExpiresAt = (token: string): number | null => {
+  try {
+    const payload = token.split(".")[1];
+
+    if (!payload) {
+      return null;
+    }
+
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedBase64 = base64.padEnd(
+      Math.ceil(base64.length / 4) * 4,
+      "=",
+    );
+    const binaryPayload = atob(paddedBase64);
+    const payloadBytes = Uint8Array.from(binaryPayload, (character) =>
+      character.charCodeAt(0),
+    );
+    const decodedPayload = JSON.parse(
+      new TextDecoder().decode(payloadBytes),
+    );
+
+    return typeof decodedPayload.exp === "number"
+      ? decodedPayload.exp * 1000
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+export const expireSession = (expectedToken?: string) => {
+  const user = getStoredUser();
+  if (!user || (expectedToken && user.token !== expectedToken)) {
+    return;
+  }
+
+  localStorage.removeItem("user");
+  window.dispatchEvent(
+    new CustomEvent(SESSION_EXPIRED_EVENT, {
+      detail: { email: user?.email },
+    }),
+  );
+};
+
 // ===========================================================
 // LƯU TOKEN MỚI SAU KHI REFRESH
 // ===========================================================
 
-const saveRefreshedToken = (newToken: string) => {
+const saveRefreshedToken = (
+  newToken: string,
+  expectedToken: string,
+) => {
   const user = getStoredUser();
 
-  if (!user) {
+  if (!user || user.token !== expectedToken) {
     return;
   }
 
@@ -42,7 +89,8 @@ const saveRefreshedToken = (newToken: string) => {
     token: newToken,
 
     // Token backend có thời hạn 30 phút
-    expiresAt: Date.now() + 30 * 60 * 1000,
+    expiresAt:
+      getTokenExpiresAt(newToken) ?? Date.now() + 30 * 60 * 1000,
   };
 
   localStorage.setItem("user", JSON.stringify(updatedUser));
@@ -52,12 +100,16 @@ const saveRefreshedToken = (newToken: string) => {
 // REFRESH ACCESS TOKEN
 // ===========================================================
 
-const refreshAccessToken = async (): Promise<string | null> => {
+let refreshFailureStatus: number | null = null;
+
+const performRefreshAccessToken = async (): Promise<string | null> => {
   const user = getStoredUser();
 
   if (!user?.token) {
     return null;
   }
+
+  refreshFailureStatus = null;
 
   try {
     // Dùng axios trực tiếp, KHÔNG dùng api.post()
@@ -79,15 +131,35 @@ const refreshAccessToken = async (): Promise<string | null> => {
       return null;
     }
 
-    saveRefreshedToken(newToken);
+    saveRefreshedToken(newToken, user.token);
 
     console.log("✅ Access token đã được tự động gia hạn.");
 
     return newToken;
   } catch (error) {
+    refreshFailureStatus = axios.isAxiosError(error)
+      ? error.response?.status ?? null
+      : null;
     console.error("❌ Không thể refresh access token:", error);
+
+    if (refreshFailureStatus === 401) {
+      expireSession(user.token);
+    }
+
     return null;
   }
+};
+
+let refreshInProgress: Promise<string | null> | null = null;
+
+export const refreshAccessToken = (): Promise<string | null> => {
+  if (!refreshInProgress) {
+    refreshInProgress = performRefreshAccessToken().finally(() => {
+      refreshInProgress = null;
+    });
+  }
+
+  return refreshInProgress;
 };
 
 // ===========================================================
@@ -119,7 +191,8 @@ api.interceptors.request.use(
     // KIỂM TRA TOKEN SẮP HẾT HẠN
     // =======================================================
 
-    const expiresAt = user.expiresAt;
+    const expiresAt =
+      getTokenExpiresAt(user.token) ?? user.expiresAt;
 
     if (expiresAt) {
       const now = Date.now();
@@ -137,7 +210,9 @@ api.interceptors.request.use(
           return config;
         }
 
-        console.warn("⚠️ Refresh thất bại, tiếp tục dùng token cũ.");
+        if (refreshFailureStatus !== 401) {
+          console.warn("Không thể refresh phiên; giữ phiên hiện tại để thử lại.");
+        }
       }
     }
 
@@ -202,13 +277,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       }
 
-      // Refresh thất bại
-      localStorage.removeItem("user");
-
-      alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-
-      window.location.replace("/");
-
       return Promise.reject(error);
     }
 
@@ -217,15 +285,7 @@ api.interceptors.response.use(
     // =======================================================
 
     if (status === 403) {
-      const currentPath = window.location.pathname;
-
-      const adminPaths = ["/quan-ly-vai-tro", "/quan-ly-nguoi-dung"];
-
-      if (adminPaths.includes(currentPath)) {
-        window.location.replace("/");
-      } else {
-        console.warn("403 - Không có quyền:", url);
-      }
+      console.warn("403 - Không có quyền:", url);
     }
 
     return Promise.reject(error);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+import ToastNotification from "../components/ToastNotification";
+import { API_URL } from "../config/api";
 
 export const ResetPassword: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
@@ -267,14 +267,21 @@ export const ResetPassword: React.FC = () => {
         {/* THÔNG BÁO */}
         {/* ================================================== */}
 
-        {message && (
+        {message?.type === "success" && (
+          <ToastNotification
+            type="success"
+            text={message.text}
+            onClose={() => setMessage(null)}
+          />
+        )}
+
+        {message?.type === "error" && (
           <div
             style={{
               ...styles.alert,
-              backgroundColor:
-                message.type === "success" ? "#e6f4ea" : "#fce8e6",
-              color: message.type === "success" ? "#137333" : "#c5221f",
-              borderColor: message.type === "success" ? "#ceead6" : "#fad2cf",
+              backgroundColor: "#fce8e6",
+              color: "#c5221f",
+              borderColor: "#fad2cf",
             }}
           >
             {message.text}

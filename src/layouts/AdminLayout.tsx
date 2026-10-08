@@ -20,9 +20,16 @@ interface AdminLayoutProps {
   // Điều hướng đến trang quản lý người dùng
   onUserManagement: () => void;
 
+
+  onGradeManagement: () => void;
+  onClassManagement: () => void;
+  onTrainingCatalog: () => void;
+  onAdmissionsLeads: () => void;
+
   // Điều hướng đến các trang quản lý đào tạo
   onGradeManagement: () => void;
   onClassManagement: () => void;
+
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -44,6 +51,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUserManagement,
   onGradeManagement,
   onClassManagement,
+
+  onTrainingCatalog,
+  onAdmissionsLeads,
+
   onChangePassword,
   onProfile,
 }) => {
@@ -109,6 +120,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
 
+
+  const isTrainingCatalogActive = currentPath === "/danh-muc-dao-tao";
+
+  const isAdmissionsLeadsActive = currentPath === "/quan-ly-lead";
+
   const isChangePasswordActive = currentPath === "/change-password";
 
   const isProfileActive = currentPath === "/ho-so-ca-nhan";
@@ -125,7 +141,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         ================================================= */}
 
         <div className="admin-logo">
-          <div className="admin-logo-mark">E</div>
+          <img
+            className="admin-logo-mark"
+            src="/images/edumanage-cap.png"
+            alt="Logo EduManage"
+          />
 
           <div className="admin-logo-text">
             <div>EduManage</div>
@@ -203,7 +223,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
+
+          {hasPermission("GRADE_VIEW") && (
+
           {hasPermission("QUAN_LY_DIEM") && (
+
             <button
               type="button"
               className={`admin-menu-item ${
@@ -212,9 +236,54 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               onClick={onGradeManagement}
             >
               <span className="admin-menu-symbol">▥</span>
+
+
+
               <span>Quản lý điểm</span>
             </button>
           )}
+
+
+          {hasPermission("QUAN_LY_LOP") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isClassManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onClassManagement}
+            >
+              <span className="admin-menu-symbol">▤</span>
+
+              <span>Quản lý lớp</span>
+            </button>
+          )}
+
+          {hasPermission("CURRICULUM_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isTrainingCatalogActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onTrainingCatalog}
+            >
+              <span className="admin-menu-symbol">▧</span>
+              <span>Danh mục đào tạo</span>
+            </button>
+          )}
+
+          {hasPermission("LEAD_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isAdmissionsLeadsActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onAdmissionsLeads}
+            >
+              <span className="admin-menu-symbol">♧</span>
+              <span>Lead tư vấn</span>
+            </button>
+          )}
+
 
           {/* =================================================
               ĐÀO TẠO
@@ -230,6 +299,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               LỚP HỌC
           ================================================= */}
 
+
           {hasPermission("QUAN_LY_LOP") && (
             <button
               type="button"
@@ -243,6 +313,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span>Lớp học</span>
             </button>
           )}
+
 
           {/* =================================================
               BÁO CÁO
@@ -347,6 +418,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
       <main className="admin-main">
         {/* =================================================
+
             HEADER
         ================================================= */}
 
@@ -445,7 +517,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </header>
 
         {/* =================================================
-            CONTENT
+          CONTENT
         ================================================= */}
 
         <section className="admin-content">{children}</section>

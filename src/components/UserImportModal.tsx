@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import api from "../services/api";
+import ToastNotification from "./ToastNotification";
 
 interface ValidUser {
   row: number;
@@ -31,7 +32,11 @@ interface PreviewResponse {
   invalidData: InvalidUser[];
 }
 
-interface ImportResponse extends PreviewResponse {
+interface ImportResponse {
+  message: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
   createdRows: number;
   failedRows: number;
   createdUsers: Array<{
@@ -42,6 +47,7 @@ interface ImportResponse extends PreviewResponse {
     vaiTroId: number;
     vaiTro: string;
   }>;
+  invalidData: InvalidUser[];
   failedData: InvalidUser[];
 }
 
@@ -58,6 +64,7 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
+  const [importResult, setImportResult] = useState<ImportResponse | null>(null);
 
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
@@ -72,6 +79,7 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
     setError("");
     setSuccess("");
     setPreview(null);
+    setImportResult(null);
 
     if (!file) {
       setSelectedFile(null);
@@ -135,6 +143,7 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
       setError("");
       setSuccess("");
       setPreview(null);
+      setImportResult(null);
 
       const formData = new FormData();
 
@@ -201,6 +210,10 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
 
       const result = response.data;
 
+      setImportResult(result);
+      setSuccess("Đã hoàn tất nhập dữ liệu. Xem báo cáo tổng kết bên dưới.");
+
+
       if (result.createdRows === 0) {
         setError(
           result.failedRows > 0
@@ -217,6 +230,7 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
       } else {
         setSuccess(`Import thành công ${result.createdRows} tài khoản.`);
       }
+
 
       await onImported(result.createdRows, result.failedRows);
     } catch (err: any) {
@@ -411,18 +425,11 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
         {/* SUCCESS */}
 
         {success && (
-          <div
-            style={{
-              background: "#f0fdf4",
-              color: "#15803d",
-              border: "1px solid #bbf7d0",
-              borderRadius: "6px",
-              padding: "10px 12px",
-              marginBottom: "16px",
-            }}
-          >
-            {success}
-          </div>
+          <ToastNotification
+            type="success"
+            text={success}
+            onClose={() => setSuccess("")}
+          />
         )}
 
         {/* PREVIEW BUTTON */}
@@ -453,6 +460,167 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
             {loadingPreview ? "Đang kiểm tra..." : "Kiểm tra file"}
           </button>
         </div>
+
+        {importResult && (
+          <section
+            aria-labelledby="import-report-title"
+            style={{
+              marginBottom: "24px",
+              padding: "18px",
+              border: "1px solid #bfdbfe",
+              borderRadius: "10px",
+              background: "#f8fbff",
+            }}
+          >
+            <h3
+              id="import-report-title"
+              style={{ margin: "0 0 14px", color: "#1e3a8a" }}
+            >
+              Báo cáo tổng kết nhập dữ liệu
+            </h3>
+            <p style={{ margin: "0 0 14px", color: "#475569" }}>
+              {importResult.message}
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              {[
+                {
+                  label: "Tổng dòng dữ liệu",
+                  value: importResult.totalRows,
+                  color: "#1f2937",
+                },
+                {
+                  label: "Hợp lệ trước khi nhập",
+                  value: importResult.validRows,
+                  color: "#1d4ed8",
+                },
+                {
+                  label: "Bỏ qua do lỗi kiểm tra",
+                  value: importResult.invalidRows,
+                  color: "#b91c1c",
+                },
+                {
+                  label: "Tạo thành công",
+                  value: importResult.createdRows,
+                  color: "#15803d",
+                },
+                {
+                  label: "Lỗi khi tạo tài khoản",
+                  value: importResult.failedRows,
+                  color: "#c2410c",
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    padding: "12px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    background: "#fff",
+                  }}
+                >
+                  <div style={{ color: "#64748b", fontSize: "12px" }}>
+                    {item.label}
+                  </div>
+                  <strong style={{ color: item.color, fontSize: "22px" }}>
+                    {item.value}
+                  </strong>
+                </div>
+              ))}
+            </div>
+
+            {importResult.createdUsers.length > 0 && (
+              <div style={{ marginTop: "20px" }}>
+                <h4 style={{ margin: "0 0 10px", color: "#166534" }}>
+                  Tài khoản đã tạo ({importResult.createdUsers.length})
+                </h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      background: "#fff",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#f0fdf4" }}>
+                        <th style={thStyle}>Dòng</th>
+                        <th style={thStyle}>Họ tên</th>
+                        <th style={thStyle}>Email</th>
+                        <th style={thStyle}>Vai trò</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importResult.createdUsers.map((item) => (
+                        <tr key={`${item.row}-${item.nguoiDungId}`}>
+                          <td style={tdStyle}>{item.row}</td>
+                          <td style={tdStyle}>{item.hoTen}</td>
+                          <td style={tdStyle}>{item.email}</td>
+                          <td style={tdStyle}>{item.vaiTro}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {importResult.invalidData.length + importResult.failedData.length >
+              0 && (
+              <div style={{ marginTop: "20px" }}>
+                <h4 style={{ margin: "0 0 10px", color: "#b91c1c" }}>
+                  Các dòng bị bỏ qua hoặc thất bại
+                </h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      background: "#fff",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#fef2f2" }}>
+                        <th style={thStyle}>Dòng</th>
+                        <th style={thStyle}>Email</th>
+                        <th style={thStyle}>Kết quả</th>
+                        <th style={thStyle}>Chi tiết lỗi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ...importResult.invalidData.map((item) => ({
+                          ...item,
+                          outcome: "Bỏ qua - dữ liệu không hợp lệ",
+                        })),
+                        ...importResult.failedData.map((item) => ({
+                          ...item,
+                          outcome: "Thất bại khi tạo tài khoản",
+                        })),
+                      ].map((item) => (
+                        <tr key={`${item.row}-${item.outcome}`}>
+                          <td style={tdStyle}>{item.row}</td>
+                          <td style={tdStyle}>{item.email || "-"}</td>
+                          <td style={tdStyle}>{item.outcome}</td>
+                          <td style={{ ...tdStyle, color: "#b91c1c" }}>
+                            {item.errors.join(", ")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* PREVIEW RESULT */}
 

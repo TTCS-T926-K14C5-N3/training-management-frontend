@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import AvatarImage from "../components/AvatarImage";
 import "./MainLayout.css";
 
@@ -6,7 +6,6 @@ interface MainLayoutProps {
   children: React.ReactNode;
 
   userName: string;
-  email: string;
   roleName: string;
   avatarUrl?: string | null;
   permissions: string[];
@@ -18,54 +17,36 @@ interface MainLayoutProps {
   // =========================================================
 
   onHome: () => void;
+  onGradeManagement: () => void;
+  onClassManagement: () => void;
+  onTrainingCatalog: () => void;
+  onAdmissionsLeads: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
 
-  onGradeManagement?: () => void;
-  onClassManagement?: () => void;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
   children,
   userName,
-  email,
   roleName,
   avatarUrl,
   permissions,
   onLogout,
 
   onHome,
-  onProfile,
-  onChangePassword,
-
   onGradeManagement,
   onClassManagement,
+  onTrainingCatalog,
+  onAdmissionsLeads,
+  onProfile,
+  onChangePassword,
 }) => {
-  // =========================================================
-  // STATE
-  // =========================================================
-
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-
-  // =========================================================
-  // REF
-  // =========================================================
-
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-
   // =========================================================
   // PATH HIỆN TẠI
   // =========================================================
 
   const currentPath = window.location.pathname;
-
-  // =========================================================
-  // KIỂM TRA QUYỀN
-  // =========================================================
-
-  const hasPermission = (maQuyen: string) => {
-    return permissions.includes(maQuyen);
-  };
 
   // =========================================================
   // KIỂM TRA ACTIVE MENU
@@ -74,52 +55,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const isActive = (path: string) => {
     return currentPath === path;
   };
-
-  // =========================================================
-  // ĐÓNG POPUP KHI BẤM RA NGOÀI
-  // =========================================================
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        accountMenuRef.current &&
-        !accountMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowAccountMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // =========================================================
-  // ĐÓNG POPUP KHI NHẤN ESC
-  // =========================================================
-
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowAccountMenu(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, []);
+  const canViewGrades = permissions.includes("GRADE_VIEW");
+  const canViewClasses = permissions.includes("CLASS_VIEW");
+  const canViewCatalog = permissions.includes("CURRICULUM_VIEW");
+  const canViewLeads = permissions.includes("LEAD_VIEW");
+  const canManageGrades =
+    permissions.includes("GRADE_CREATE") ||
+    permissions.includes("GRADE_UPDATE");
 
   // =========================================================
   // ĐIỀU HƯỚNG TRANG CHỦ
   // =========================================================
 
   const handleHome = () => {
-    setShowAccountMenu(false);
     onHome();
   };
 
@@ -128,7 +76,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   // =========================================================
 
   const handleProfile = () => {
-    setShowAccountMenu(false);
     onProfile();
   };
 
@@ -137,36 +84,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   // =========================================================
 
   const handleChangePassword = () => {
-    setShowAccountMenu(false);
     onChangePassword();
-  };
-
-  // =========================================================
-  // ĐIỀU HƯỚNG QUẢN LÝ ĐIỂM
-  // =========================================================
-
-  const handleGradeManagement = () => {
-    setShowAccountMenu(false);
-
-    if (!onGradeManagement) {
-      return;
-    }
-
-    onGradeManagement();
-  };
-
-  // =========================================================
-  // ĐIỀU HƯỚNG QUẢN LÝ LỚP
-  // =========================================================
-
-  const handleClassManagement = () => {
-    setShowAccountMenu(false);
-
-    if (!onClassManagement) {
-      return;
-    }
-
-    onClassManagement();
   };
 
   // =========================================================
@@ -174,7 +92,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   // =========================================================
 
   const handleLogout = () => {
-    setShowAccountMenu(false);
     onLogout();
   };
 
@@ -214,9 +131,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Trang chủ</span>
           </button>
 
-          {/* =================================================
-              HỒ SƠ CÁ NHÂN
-          ================================================= */}
+          <div className="sidebar-section-title">CÁ NHÂN</div>
 
           <button
             type="button"
@@ -230,10 +145,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Hồ sơ cá nhân</span>
           </button>
 
-          {/* =================================================
-              ĐỔI MẬT KHẨU
-          ================================================= */}
-
           <button
             type="button"
             className={`sidebar-item ${
@@ -246,40 +157,63 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Đổi mật khẩu</span>
           </button>
 
-          {/* =================================================
-              QUẢN LÝ ĐIỂM
-          ================================================= */}
+          {(canViewGrades || canViewClasses || canViewCatalog) && (
+            <>
+              <div className="sidebar-section-title">ĐÀO TẠO</div>
 
-          {hasPermission("QUAN_LY_DIEM") && (
-            <button
-              type="button"
-              className={`sidebar-item ${
-                isActive("/quan-ly-diem") ? "active" : ""
-              }`}
-              onClick={handleGradeManagement}
-            >
-              <span className="sidebar-item-icon">📊</span>
+              {canViewGrades && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/quan-ly-diem") ? "active" : ""
+                  }`}
+                  onClick={onGradeManagement}
+                >
+                  <span className="sidebar-item-icon">▥</span>
+                  <span>{canManageGrades ? "Quản lý điểm" : "Xem điểm"}</span>
+                </button>
+              )}
 
-              <span>Quản lý điểm</span>
-            </button>
+              {canViewClasses && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/quan-ly-lop") ? "active" : ""
+                  }`}
+                  onClick={onClassManagement}
+                >
+                  <span className="sidebar-item-icon">▤</span>
+                  <span>Xem lớp</span>
+                </button>
+              )}
+              {canViewCatalog && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/danh-muc-dao-tao") ? "active" : ""
+                  }`}
+                  onClick={onTrainingCatalog}
+                >
+                  <span className="sidebar-item-icon">▧</span>
+                  <span>Danh mục đào tạo</span>
+                </button>
+              )}
+            </>
           )}
-
-          {/* =================================================
-              QUẢN LÝ LỚP
-          ================================================= */}
-
-          {hasPermission("QUAN_LY_LOP") && (
-            <button
-              type="button"
-              className={`sidebar-item ${
-                isActive("/quan-ly-lop") ? "active" : ""
-              }`}
-              onClick={handleClassManagement}
-            >
-              <span className="sidebar-item-icon">🏫</span>
-
-              <span>Quản lý lớp</span>
-            </button>
+          {canViewLeads && (
+            <>
+              <div className="sidebar-section-title">TUYỂN SINH</div>
+              <button
+                type="button"
+                className={`sidebar-item ${
+                  isActive("/quan-ly-lead") ? "active" : ""
+                }`}
+                onClick={onAdmissionsLeads}
+              >
+                <span className="sidebar-item-icon">♧</span>
+                <span>Lead tư vấn</span>
+              </button>
+            </>
           )}
         </nav>
 
@@ -326,183 +260,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
       </aside>
 
-      {/* =====================================================
-          MAIN CONTENT
-      ===================================================== */}
-
       <main className="main-content">
-        {/* ===================================================
-            TOP HEADER
-        =================================================== */}
-
-        <header className="top-header">
-          <div>
-            <p>Hệ thống quản lý đào tạo</p>
-          </div>
-
-          {/* =================================================
-              ACCOUNT BUTTON + POPUP
-          ================================================= */}
-
-          <div className="header-account-wrapper" ref={accountMenuRef}>
-            {/* =================================================
-                ACCOUNT BUTTON
-            ================================================= */}
-
-            <button
-              type="button"
-              className={`header-user ${
-                showAccountMenu ? "header-user-active" : ""
-              }`}
-              onClick={() => setShowAccountMenu((prev) => !prev)}
-              aria-expanded={showAccountMenu}
-              aria-haspopup="true"
-            >
-              <div className="header-user-avatar">
-                <AvatarImage
-                  source={avatarUrl}
-                  fallback={userName.charAt(0).toUpperCase()}
-                  alt={`Ảnh đại diện của ${userName}`}
-                />
-              </div>
-
-              <span>{userName}</span>
-
-              <span
-                className={`header-user-arrow ${
-                  showAccountMenu ? "rotate" : ""
-                }`}
-              >
-                ▾
-              </span>
-            </button>
-
-            {/* =================================================
-                ACCOUNT DROPDOWN
-            ================================================= */}
-
-            {showAccountMenu && (
-              <div className="account-dropdown">
-                {/* =================================================
-                    DROPDOWN HEADER
-                ================================================= */}
-
-                <div className="account-dropdown-header">
-                  <div className="account-dropdown-avatar">
-                    <AvatarImage
-                      source={avatarUrl}
-                      fallback={userName.charAt(0).toUpperCase()}
-                      alt={`Ảnh đại diện của ${userName}`}
-                    />
-                  </div>
-
-                  <div>
-                    <strong>{userName}</strong>
-
-                    <span>{roleName}</span>
-                  </div>
-                </div>
-
-                {/* =================================================
-                    DIVIDER
-                ================================================= */}
-
-                <div className="account-dropdown-divider"></div>
-
-                {/* =================================================
-                    THÔNG TIN TÀI KHOẢN
-                ================================================= */}
-
-                <div className="account-dropdown-section">
-                  {/* HỌ VÀ TÊN */}
-
-                  <div className="account-dropdown-item">
-                    <div className="account-dropdown-icon">👤</div>
-
-                    <div>
-                      <span>Họ và tên</span>
-
-                      <strong>{userName}</strong>
-                    </div>
-                  </div>
-
-                  {/* EMAIL */}
-
-                  <div className="account-dropdown-item">
-                    <div className="account-dropdown-icon">✉️</div>
-
-                    <div>
-                      <span>Email</span>
-
-                      <strong>{email}</strong>
-                    </div>
-                  </div>
-
-                  {/* VAI TRÒ */}
-
-                  <div className="account-dropdown-item">
-                    <div className="account-dropdown-icon">🛡️</div>
-
-                    <div>
-                      <span>Vai trò</span>
-
-                      <strong>{roleName}</strong>
-                    </div>
-                  </div>
-
-                  {/* SỐ QUYỀN */}
-
-                  <div className="account-dropdown-item">
-                    <div className="account-dropdown-icon">🔐</div>
-
-                    <div>
-                      <span>Số quyền</span>
-
-                      <strong>{permissions.length} quyền</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* =================================================
-                    ACTIONS
-                ================================================= */}
-
-                <div className="account-dropdown-actions">
-                  {/* HỒ SƠ */}
-
-                  <button type="button" onClick={handleProfile}>
-                    <span>👤</span>
-
-                    <span>Hồ sơ cá nhân</span>
-                  </button>
-
-                  {/* ĐỔI MẬT KHẨU */}
-
-                  <button type="button" onClick={handleChangePassword}>
-                    <span>🔐</span>
-
-                    <span>Đổi mật khẩu</span>
-                  </button>
-                </div>
-
-                {/* =================================================
-                    TRẠNG THÁI
-                ================================================= */}
-
-                <div className="account-dropdown-status">
-                  <span className="account-status-dot">●</span>
-
-                  <div>
-                    <strong>Tài khoản đang hoạt động</strong>
-
-                    <span>Phiên đăng nhập hiện tại bình thường.</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </header>
-
         {/* ===================================================
             PAGE CONTENT
         =================================================== */}

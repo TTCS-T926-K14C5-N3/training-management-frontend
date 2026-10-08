@@ -1,0 +1,246 @@
+.admissions-public {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  align-content: start;
+  padding: 32px 18px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(96, 165, 250, 0.25), transparent 32%),
+    linear-gradient(135deg, #eff6ff 0%, #f8fafc 55%, #e0e7ff 100%);
+  color: #172033;
+}
+
+.admissions-login-link {
+  margin: 12px 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.admissions-login-link a {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.admissions-public-card {
+  width: min(100%, 560px);
+  margin-block: auto;
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(30, 64, 175, 0.12);
+}
+
+@media (max-height: 760px) {
+  .admissions-public {
+    place-items: start center;
+    padding-block: 18px;
+  }
+
+  .admissions-public-card {
+    margin-block: 0;
+  }
+
+  .admissions-public-brand {
+    margin-bottom: 22px;
+  }
+}
+
+@media (max-width: 600px) {
+  .admissions-public {
+    padding-inline: 12px;
+  }
+
+  .admissions-public-card {
+    width: 100%;
+  }
+}
+
+.admissions-public-brand {
+  margin-bottom: 34px;
+  color: #2563eb;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.admissions-eyebrow {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.admissions-public-card h1 {
+  margin: 0;
+  color: #172033;
+  font-size: clamp(25px, 4vw, 34px);
+  line-height: 1.2;
+}
+
+.admissions-intro,
+.admissions-confirmation p {
+  margin: 12px 0 24px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.admissions-form {
+  display: grid;
+  gap: 16px;
+}
+
+.admissions-form label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admissions-form input,
+.admissions-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+  font-weight: 400;
+}
+
+.admissions-form input:focus,
+.admissions-form select:focus {
+  border-color: #3b82f6;
+  outline: 3px solid rgba(59, 130, 246, 0.14);
+}
+
+.admissions-form button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(100deg, #2563eb, #3b82f6);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.admissions-form button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.admissions-form small {
+  color: #64748b;
+  text-align: center;
+}
+
+.admissions-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.admissions-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.admissions-confirmation {
+  padding: 18px 0 6px;
+  text-align: center;
+}
+
+.admissions-confirmation-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.lead-assignments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+}
+
+.lead-assignments legend {
+  padding: 0 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lead-assignments label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.admissions-duplicate-warning {
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lead-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lead-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.lead-row-actions button {
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #1e40af;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lead-history {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: #475569;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .lead-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 500px) {
+  .lead-filters {
+    grid-template-columns: 1fr;
+  }
+}
