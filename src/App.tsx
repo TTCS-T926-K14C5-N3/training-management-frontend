@@ -10,6 +10,9 @@ import RoleManagement from "./pages/RoleManagement";
 import UsersPage from "./pages/UsersPage";
 import GradeManagement from "./pages/GradeManagement";
 import ClassManagement from "./pages/ClassManagement";
+import AdmissionsInquiry from "./pages/AdmissionsInquiry";
+import TrainingCatalog from "./pages/TrainingCatalog";
+import AdmissionsLeads from "./pages/AdmissionsLeads";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -1036,6 +1039,22 @@ function App() {
     navigate("/quan-ly-lop");
   };
 
+  const handleTrainingCatalog = () => {
+    if (!hasPermission(user, "CURRICULUM_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/danh-muc-dao-tao");
+  };
+
+  const handleAdmissionsLeads = () => {
+    if (!hasPermission(user, "LEAD_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-lead");
+  };
+
   // =========================================================
   // ĐIỀU HƯỚNG HỒ SƠ CÁ NHÂN
   // =========================================================
@@ -1131,6 +1150,10 @@ function App() {
 
   if (currentPath === "/reset-password") {
     return <ResetPassword />;
+  }
+
+  if (currentPath === "/dang-ky-tu-van") {
+    return <AdmissionsInquiry />;
   }
 
   // =========================================================
@@ -1262,6 +1285,11 @@ function App() {
                 </a>
               </div>
 
+              <p className="admissions-login-link">
+                Muốn tìm hiểu chương trình học?{" "}
+                <a href="/dang-ky-tu-van">Đăng ký tư vấn tuyển sinh</a>
+              </p>
+
               <button
                 type="submit"
                 className="login-button"
@@ -1356,24 +1384,52 @@ function App() {
   if (currentPath === "/ho-so-ca-nhan") {
     return (
       <ProtectedRoute>
-        <MainLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          permissions={currentPermissions}
-          onLogout={handleLogout}
-          onHome={handleHome}
-          onGradeManagement={handleGradeManagement}
-          onClassManagement={handleClassManagement}
-          onProfile={handleProfile}
-          onChangePassword={handleChangePassword}
-        >
-          <Profile
-            user={user}
-            onBack={handleHome}
-            onProfileUpdated={handleProfileUpdated}
-          />
-        </MainLayout>
+        {isAdminUser(user) ? (
+          <AdminLayout
+            userName={user.hoTen}
+            roleName={roleName}
+            avatarUrl={user.anhDaiDien}
+            isAdmin
+            permissions={currentPermissions}
+            onLogout={handleLogout}
+            onRoleManagement={handleRoleManagement}
+            onHome={handleHome}
+            onUserManagement={handleUserManagement}
+            onGradeManagement={handleGradeManagement}
+            onClassManagement={handleClassManagement}
+            onTrainingCatalog={handleTrainingCatalog}
+            onAdmissionsLeads={handleAdmissionsLeads}
+            onChangePassword={handleChangePassword}
+            onProfile={handleProfile}
+          >
+            <Profile
+              user={user}
+              onBack={handleHome}
+              onProfileUpdated={handleProfileUpdated}
+            />
+          </AdminLayout>
+        ) : (
+          <MainLayout
+            userName={user.hoTen}
+            roleName={roleName}
+            avatarUrl={user.anhDaiDien}
+            permissions={currentPermissions}
+            onLogout={handleLogout}
+            onHome={handleHome}
+            onGradeManagement={handleGradeManagement}
+            onClassManagement={handleClassManagement}
+            onTrainingCatalog={handleTrainingCatalog}
+            onAdmissionsLeads={handleAdmissionsLeads}
+            onProfile={handleProfile}
+            onChangePassword={handleChangePassword}
+          >
+            <Profile
+              user={user}
+              onBack={handleHome}
+              onProfileUpdated={handleProfileUpdated}
+            />
+          </MainLayout>
+        )}
       </ProtectedRoute>
     );
   }
@@ -1385,20 +1441,44 @@ function App() {
   if (currentPath === "/change-password") {
     return (
       <ProtectedRoute>
-        <MainLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          permissions={currentPermissions}
-          onLogout={handleLogout}
-          onHome={handleHome}
-          onGradeManagement={handleGradeManagement}
-          onClassManagement={handleClassManagement}
-          onProfile={handleProfile}
-          onChangePassword={handleChangePassword}
-        >
-          <ChangePassword />
-        </MainLayout>
+        {isAdminUser(user) ? (
+          <AdminLayout
+            userName={user.hoTen}
+            roleName={roleName}
+            avatarUrl={user.anhDaiDien}
+            isAdmin
+            permissions={currentPermissions}
+            onLogout={handleLogout}
+            onRoleManagement={handleRoleManagement}
+            onHome={handleHome}
+            onUserManagement={handleUserManagement}
+            onGradeManagement={handleGradeManagement}
+            onClassManagement={handleClassManagement}
+            onTrainingCatalog={handleTrainingCatalog}
+            onAdmissionsLeads={handleAdmissionsLeads}
+            onChangePassword={handleChangePassword}
+            onProfile={handleProfile}
+          >
+            <ChangePassword />
+          </AdminLayout>
+        ) : (
+          <MainLayout
+            userName={user.hoTen}
+            roleName={roleName}
+            avatarUrl={user.anhDaiDien}
+            permissions={currentPermissions}
+            onLogout={handleLogout}
+            onHome={handleHome}
+            onGradeManagement={handleGradeManagement}
+            onClassManagement={handleClassManagement}
+            onTrainingCatalog={handleTrainingCatalog}
+            onAdmissionsLeads={handleAdmissionsLeads}
+            onProfile={handleProfile}
+            onChangePassword={handleChangePassword}
+          >
+            <ChangePassword />
+          </MainLayout>
+        )}
       </ProtectedRoute>
     );
   }
@@ -1422,6 +1502,8 @@ function App() {
         onUserManagement={handleUserManagement}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onTrainingCatalog={handleTrainingCatalog}
+        onAdmissionsLeads={handleAdmissionsLeads}
         onChangePassword={handleChangePassword}
         onProfile={handleProfile}
       >
@@ -1437,6 +1519,8 @@ function App() {
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onTrainingCatalog={handleTrainingCatalog}
+        onAdmissionsLeads={handleAdmissionsLeads}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
@@ -1457,12 +1541,44 @@ function App() {
       onUserManagement={handleUserManagement}
       onGradeManagement={handleGradeManagement}
       onClassManagement={handleClassManagement}
+      onTrainingCatalog={handleTrainingCatalog}
+      onAdmissionsLeads={handleAdmissionsLeads}
       onChangePassword={handleChangePassword}
       onProfile={handleProfile}
     >
       {children}
     </AdminLayout>
   );
+
+  if (currentPath === "/danh-muc-dao-tao") {
+    if (!hasPermission(user, "CURRICULUM_VIEW")) {
+      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+    }
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="CURRICULUM_VIEW">
+        <TrainingCatalog permissions={currentPermissions} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lead") {
+    if (!hasPermission(user, "LEAD_VIEW")) {
+      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+    }
+    const isTrainingManager = user.vaiTro.some(
+      (role) =>
+        role.vaiTroId === 7 ||
+        role.tenVaiTro.trim().toLowerCase() === "quản lý đào tạo",
+    );
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="LEAD_VIEW">
+        <AdmissionsLeads
+          permissions={currentPermissions}
+          isTrainingManager={isTrainingManager || isAdmin}
+        />
+      </ProtectedRoute>,
+    );
+  }
 
   // =========================================================
   // QUẢN LÝ NGƯỜI DÙNG
@@ -1546,6 +1662,8 @@ function App() {
           onUserManagement={handleUserManagement}
           onGradeManagement={handleGradeManagement}
           onClassManagement={handleClassManagement}
+          onTrainingCatalog={handleTrainingCatalog}
+          onAdmissionsLeads={handleAdmissionsLeads}
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
@@ -1712,6 +1830,8 @@ function App() {
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onTrainingCatalog={handleTrainingCatalog}
+        onAdmissionsLeads={handleAdmissionsLeads}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >

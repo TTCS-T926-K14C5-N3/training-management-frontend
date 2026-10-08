@@ -22,6 +22,8 @@ interface AdminLayoutProps {
 
   onGradeManagement: () => void;
   onClassManagement: () => void;
+  onTrainingCatalog: () => void;
+  onAdmissionsLeads: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -43,6 +45,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUserManagement,
   onGradeManagement,
   onClassManagement,
+  onTrainingCatalog,
+  onAdmissionsLeads,
   onChangePassword,
   onProfile,
 }) => {
@@ -107,6 +111,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isGradeManagementActive = currentPath === "/quan-ly-diem";
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
+
+  const isTrainingCatalogActive = currentPath === "/danh-muc-dao-tao";
+
+  const isAdmissionsLeadsActive = currentPath === "/quan-ly-lead";
 
   const isChangePasswordActive = currentPath === "/change-password";
 
@@ -231,6 +239,32 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span className="admin-menu-symbol">▤</span>
 
               <span>Quản lý lớp</span>
+            </button>
+          )}
+
+          {hasPermission("CURRICULUM_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isTrainingCatalogActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onTrainingCatalog}
+            >
+              <span className="admin-menu-symbol">▧</span>
+              <span>Danh mục đào tạo</span>
+            </button>
+          )}
+
+          {hasPermission("LEAD_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isAdmissionsLeadsActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onAdmissionsLeads}
+            >
+              <span className="admin-menu-symbol">♧</span>
+              <span>Lead tư vấn</span>
             </button>
           )}
 

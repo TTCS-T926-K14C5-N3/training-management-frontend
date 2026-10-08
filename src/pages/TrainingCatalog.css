@@ -1,0 +1,196 @@
+.academic-form-grid textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.academic-wide-field {
+  grid-column: 1 / -1;
+}
+
+.academic-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.academic-form-actions button,
+.academic-program-subject button,
+.academic-session-editor > button,
+.academic-table td button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #1e40af;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academic-form-actions button:first-child {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.academic-form-actions button:disabled,
+.academic-program-subject button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.academic-program-select {
+  display: grid;
+  min-width: min(360px, 100%);
+  gap: 7px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academic-program-select select,
+.academic-prerequisite select {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #172033;
+}
+
+.academic-program-subject-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.7fr);
+  gap: 24px;
+}
+
+.academic-program-subject-grid h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.academic-subject-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 4px;
+  border-bottom: 1px solid #edf1f5;
+  color: #334155;
+  font-size: 13px;
+}
+
+.academic-subject-choice input {
+  margin-top: 3px;
+}
+
+.academic-program-subject {
+  margin-bottom: 10px;
+  padding: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.academic-program-subject-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.academic-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.academic-prerequisite {
+  display: grid;
+  max-width: 360px;
+  gap: 6px;
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.academic-session-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.academic-session-row {
+  display: grid;
+  grid-template-columns: 70px minmax(120px, 1fr) minmax(180px, 1.5fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.academic-session-row strong {
+  padding-top: 10px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.academic-session-row input,
+.academic-session-row textarea {
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.academic-session-row textarea {
+  min-height: 55px;
+  resize: vertical;
+}
+
+.academic-muted {
+  display: block;
+  max-width: 450px;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.academic-error,
+.academic-success {
+  padding: 12px 15px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.academic-error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.academic-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+@media (max-width: 900px) {
+  .academic-program-subject-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .academic-program-subject-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .academic-session-row {
+    grid-template-columns: 1fr;
+  }
+}

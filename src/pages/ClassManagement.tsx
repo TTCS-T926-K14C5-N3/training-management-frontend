@@ -130,6 +130,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
     maMonHoc: "",
     tenMonHoc: "",
     soTinChi: "",
+    soBuoi: "1",
+    trongSo: "1",
+    moTaChuanDauRa: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -304,8 +307,18 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
         maMonHoc: subjectForm.maMonHoc,
         tenMonHoc: subjectForm.tenMonHoc,
         soTinChi: subjectForm.soTinChi ? Number(subjectForm.soTinChi) : null,
+        soBuoi: Number(subjectForm.soBuoi),
+        trongSo: Number(subjectForm.trongSo),
+        moTaChuanDauRa: subjectForm.moTaChuanDauRa || null,
       });
-      setSubjectForm({ maMonHoc: "", tenMonHoc: "", soTinChi: "" });
+      setSubjectForm({
+        maMonHoc: "",
+        tenMonHoc: "",
+        soTinChi: "",
+        soBuoi: "1",
+        trongSo: "1",
+        moTaChuanDauRa: "",
+      });
       setSuccessMessage("Đã thêm môn học.");
       await loadData();
     } catch (error: unknown) {
@@ -859,6 +872,52 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
                 setSubjectForm((current) => ({
                   ...current,
                   soTinChi: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label>
+            Số buổi học
+            <input
+              required
+              type="number"
+              min="1"
+              max="100"
+              value={subjectForm.soBuoi}
+              onChange={(event) =>
+                setSubjectForm((current) => ({
+                  ...current,
+                  soBuoi: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label>
+            Trọng số (0-1)
+            <input
+              required
+              type="number"
+              min="0.01"
+              max="1"
+              step="0.01"
+              value={subjectForm.trongSo}
+              onChange={(event) =>
+                setSubjectForm((current) => ({
+                  ...current,
+                  trongSo: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="academic-wide-field">
+            Mô tả chuẩn đầu ra
+            <textarea
+              maxLength={2000}
+              value={subjectForm.moTaChuanDauRa}
+              onChange={(event) =>
+                setSubjectForm((current) => ({
+                  ...current,
+                  moTaChuanDauRa: event.target.value,
                 }))
               }
             />

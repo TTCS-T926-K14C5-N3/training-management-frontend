@@ -19,6 +19,8 @@ interface MainLayoutProps {
   onHome: () => void;
   onGradeManagement: () => void;
   onClassManagement: () => void;
+  onTrainingCatalog: () => void;
+  onAdmissionsLeads: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
 
@@ -35,6 +37,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onHome,
   onGradeManagement,
   onClassManagement,
+  onTrainingCatalog,
+  onAdmissionsLeads,
   onProfile,
   onChangePassword,
 }) => {
@@ -53,6 +57,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   };
   const canViewGrades = permissions.includes("GRADE_VIEW");
   const canViewClasses = permissions.includes("CLASS_VIEW");
+  const canViewCatalog = permissions.includes("CURRICULUM_VIEW");
+  const canViewLeads = permissions.includes("LEAD_VIEW");
   const canManageGrades =
     permissions.includes("GRADE_CREATE") ||
     permissions.includes("GRADE_UPDATE");
@@ -151,7 +157,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Đổi mật khẩu</span>
           </button>
 
-          {(canViewGrades || canViewClasses) && (
+          {(canViewGrades || canViewClasses || canViewCatalog) && (
             <>
               <div className="sidebar-section-title">ĐÀO TẠO</div>
 
@@ -180,6 +186,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                   <span>Xem lớp</span>
                 </button>
               )}
+              {canViewCatalog && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/danh-muc-dao-tao") ? "active" : ""
+                  }`}
+                  onClick={onTrainingCatalog}
+                >
+                  <span className="sidebar-item-icon">▧</span>
+                  <span>Danh mục đào tạo</span>
+                </button>
+              )}
+            </>
+          )}
+          {canViewLeads && (
+            <>
+              <div className="sidebar-section-title">TUYỂN SINH</div>
+              <button
+                type="button"
+                className={`sidebar-item ${
+                  isActive("/quan-ly-lead") ? "active" : ""
+                }`}
+                onClick={onAdmissionsLeads}
+              >
+                <span className="sidebar-item-icon">♧</span>
+                <span>Lead tư vấn</span>
+              </button>
             </>
           )}
         </nav>
