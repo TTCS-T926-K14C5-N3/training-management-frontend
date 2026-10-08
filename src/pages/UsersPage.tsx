@@ -178,7 +178,14 @@ const UsersPage: React.FC = () => {
       setCreateSuccess("Tao tai khoan thanh cong. Thong tin dang nhap tam thoi da duoc gui toi email.");
       setToast({ type: "success", text: "Tao tai khoan thanh cong." });
       setCreateForm({ hoTen: "", email: "", vaiTroId: "" });
-      await loadUsers();
+      if (search || roleId || status || page !== 1) {
+        setSearch("");
+        setRoleId("");
+        setStatus("");
+        setPage(1);
+      } else {
+        await loadUsers();
+      }
       window.setTimeout(() => { setShowCreateModal(false); setCreateSuccess(""); }, 1800);
     } catch (error: any) {
       const responseStatus = error?.response?.status;
@@ -512,10 +519,22 @@ const UsersPage: React.FC = () => {
       {showImportModal && (
         <UserImportModal
           onClose={() => setShowImportModal(false)}
-          onImported={async () => {
+          onImported={async (createdRows, failedRows) => {
             setShowImportModal(false);
-            await loadUsers();
-            setToast({ type: "success", text: "Import người dùng thành công." });
+            setToast({
+              type: "success",
+              text: failedRows > 0
+                ? `Đã import ${createdRows} tài khoản; ${failedRows} dòng bị lỗi.`
+                : `Đã import thành công ${createdRows} tài khoản.`,
+            });
+            if (search || roleId || status || page !== 1) {
+              setSearch("");
+              setRoleId("");
+              setStatus("");
+              setPage(1);
+            } else {
+              await loadUsers();
+            }
           }}
         />
       )}

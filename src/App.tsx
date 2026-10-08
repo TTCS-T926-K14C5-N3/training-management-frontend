@@ -7,6 +7,10 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 
 import RoleManagement from "./pages/RoleManagement";
 import UsersPage from "./pages/UsersPage";
+import {
+  ClassManagementPage,
+  GradeManagementPage,
+} from "./pages/AcademicManagement";
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -714,7 +718,7 @@ function App() {
       return;
     }
 
-    alert("Chức năng Quản lý điểm đang được phát triển!");
+    navigate("/quan-ly-diem");
   };
 
   // =========================================================
@@ -728,7 +732,7 @@ function App() {
       return;
     }
 
-    alert("Chức năng Quản lý lớp đang được phát triển!");
+    navigate("/quan-ly-lop");
   };
 
   // =========================================================
@@ -1120,6 +1124,8 @@ function App() {
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
@@ -1150,6 +1156,8 @@ function App() {
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
@@ -1177,6 +1185,37 @@ function App() {
     requiredPermission = "QUAN_LY_HOC_PHI";
   }
 
+  if (currentPath === "/quan-ly-diem" || currentPath === "/quan-ly-lop") {
+    const isGradePage = currentPath === "/quan-ly-diem";
+    const pagePermission = isGradePage ? "QUAN_LY_DIEM" : "QUAN_LY_LOP";
+
+    if (!hasPermission(user, pagePermission)) {
+      return <RedirectToHome />;
+    }
+
+    return (
+      <ProtectedRoute requiredPermission={pagePermission}>
+        <AdminLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+          onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
+          onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
+        >
+          {isGradePage ? <GradeManagementPage /> : <ClassManagementPage />}
+        </AdminLayout>
+      </ProtectedRoute>
+    );
+  }
+
   // =========================================================
   // ADMIN DASHBOARD
   // =========================================================
@@ -1194,6 +1233,8 @@ function App() {
           onRoleManagement={handleRoleManagement}
           onHome={handleHome}
           onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
