@@ -369,6 +369,184 @@ body {
 }
 
 /* =========================================================
+   HEADER
+   ========================================================= */
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 18px 38px;
+
+  background: #ffffff;
+
+  border-bottom: 1px solid #e6ebf1;
+
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+
+  flex-shrink: 0;
+
+  z-index: 10;
+}
+
+.admin-breadcrumb {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  margin-bottom: 3px;
+
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-breadcrumb span {
+  color: #cbd5e1;
+}
+
+.admin-header h1 {
+  margin: 0;
+
+  color: #0f172a;
+
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.admin-header p {
+  margin: 3px 0 0;
+
+  color: #64748b;
+
+  font-size: 11px;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+
+  gap: 16px;
+}
+
+.admin-notification {
+  position: relative;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #64748b;
+
+  font-size: 16px;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.admin-notification:hover {
+  background: #f8fafc;
+
+  border-color: #cbd5e1;
+
+  color: #1e293b;
+}
+
+.admin-header-profile {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 5px 12px 5px 6px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+
+  background: #ffffff;
+
+  transition: all 0.2s ease;
+}
+
+.admin-header-profile:hover {
+  background: #f8fafc;
+
+  border-color: #cbd5e1;
+}
+
+.admin-header-avatar {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: linear-gradient(135deg, #2563eb, #6366f1);
+
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  overflow: hidden;
+}
+
+.admin-header-avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+}
+
+.admin-header-profile > div:not(.admin-header-avatar) {
+  display: flex;
+  flex-direction: column;
+
+  line-height: 1.25;
+}
+
+.admin-header-profile strong {
+  color: #1e293b;
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.admin-header-profile small {
+  color: #64748b;
+
+  font-size: 10px;
+}
+
+.admin-arrow {
+  margin-left: 2px;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+}
+
+/* =========================================================
    CONTENT
    ========================================================= */
 

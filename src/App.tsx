@@ -15,11 +15,6 @@ import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
 
-import {
-  ClassManagementPage,
-  GradeManagementPage,
-} from "./pages/AcademicManagement";
-
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -931,14 +926,10 @@ function App() {
         quyen,
         token: data.access_token,
 
-        yeuCauDoiMatKhau: data.yeuCauDoiMatKhau === true,
-        expiresAt:
-          getTokenExpiresAt(data.access_token) ?? Date.now() + 30 * 60 * 1000,
-
         yeuCauDoiMatKhau:
           data.yeuCauDoiMatKhau === true || u.yeuCauDoiMatKhau === true,
-        expiresAt: Date.now() + 30 * 60 * 1000,
-
+        expiresAt:
+          getTokenExpiresAt(data.access_token) ?? Date.now() + 30 * 60 * 1000,
       };
 
       localStorage.setItem("user", JSON.stringify(loggedInUser));
@@ -1626,29 +1617,8 @@ function App() {
 
     return renderAdminLayout(
       <ProtectedRoute requiredPermission="USER_VIEW">
-
         <UsersPage />
       </ProtectedRoute>,
-
-        <AdminLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          isAdmin={isAdmin}
-          permissions={user.quyen.map((q) => q.maQuyen)}
-          onLogout={handleLogout}
-          onRoleManagement={handleRoleManagement}
-          onHome={handleHome}
-          onUserManagement={handleUserManagement}
-          onGradeManagement={handleGradeManagement}
-          onClassManagement={handleClassManagement}
-          onChangePassword={handleChangePassword}
-          onProfile={handleProfile}
-        >
-          <UsersPage />
-        </AdminLayout>
-      </ProtectedRoute>
-
     );
   }
 
@@ -1681,26 +1651,7 @@ function App() {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="CLASS_VIEW">
         <ClassManagement permissions={currentPermissions} />
-
-        <AdminLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          isAdmin={isAdmin}
-          permissions={user.quyen.map((q) => q.maQuyen)}
-          onLogout={handleLogout}
-          onRoleManagement={handleRoleManagement}
-          onHome={handleHome}
-          onUserManagement={handleUserManagement}
-          onGradeManagement={handleGradeManagement}
-          onClassManagement={handleClassManagement}
-          onChangePassword={handleChangePassword}
-          onProfile={handleProfile}
-        >
-          <RoleManagement />
-        </AdminLayout>
-
-      </ProtectedRoute>
+      </ProtectedRoute>,
     );
   }
 
@@ -1719,36 +1670,7 @@ function App() {
     return renderAcademicLayout(<AppStatusPage status="not-found" />);
   }
 
-  if (currentPath === "/quan-ly-diem" || currentPath === "/quan-ly-lop") {
-    const isGradePage = currentPath === "/quan-ly-diem";
-    const pagePermission = isGradePage ? "QUAN_LY_DIEM" : "QUAN_LY_LOP";
 
-    if (!hasPermission(user, pagePermission)) {
-      return <RedirectToHome />;
-    }
-
-    return (
-      <ProtectedRoute requiredPermission={pagePermission}>
-        <AdminLayout
-          userName={user.hoTen}
-          roleName={roleName}
-          avatarUrl={user.anhDaiDien}
-          isAdmin={isAdmin}
-          permissions={user.quyen.map((q) => q.maQuyen)}
-          onLogout={handleLogout}
-          onRoleManagement={handleRoleManagement}
-          onHome={handleHome}
-          onUserManagement={handleUserManagement}
-          onGradeManagement={handleGradeManagement}
-          onClassManagement={handleClassManagement}
-          onChangePassword={handleChangePassword}
-          onProfile={handleProfile}
-        >
-          {isGradePage ? <GradeManagementPage /> : <ClassManagementPage />}
-        </AdminLayout>
-      </ProtectedRoute>
-    );
-  }
 
   // =========================================================
   // ADMIN DASHBOARD
