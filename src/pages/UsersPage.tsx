@@ -12,10 +12,20 @@ interface User {
   hoTen: string;
   email: string;
   anhDaiDien?: string | null;
-  soDienThoai?: string;
+  soDienThoai?: string | null;
   trangThai: string;
   vaiTro?: string;
   vaiTroId?: number;
+}
+
+interface Role {
+  vaiTroId: number;
+  tenVaiTro: string;
+  moTa?: string | null;
+}
+
+interface UserRole {
+  vaiTroId: number;
 }
 
 interface UserResponse {
@@ -33,6 +43,42 @@ interface UserResponse {
     totalPages?: number;
   };
 }
+
+const isValidEmailFormat = (email: string): boolean => {
+  if (email.length > 254) {
+    return false;
+  }
+
+  const parts = email.split("@");
+  if (parts.length !== 2) {
+    return false;
+  }
+
+  const [localPart, domain] = parts;
+  if (
+    !localPart ||
+    localPart.length > 64 ||
+    localPart.startsWith(".") ||
+    localPart.endsWith(".") ||
+    localPart.includes("..")
+  ) {
+    return false;
+  }
+
+  const domainLabels = domain.split(".");
+  return (
+    /^[^\s@]+$/.test(localPart) &&
+    domainLabels.length >= 2 &&
+    domainLabels.every(
+      (label) =>
+        label.length > 0 &&
+        label.length <= 63 &&
+        /^[a-z\d](?:[a-z\d-]*[a-z\d])?$/i.test(label),
+    ) &&
+    (domainLabels[domainLabels.length - 1].length >= 2 ||
+      domainLabels[domainLabels.length - 1].startsWith("xn--"))
+  );
+};
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -98,6 +144,10 @@ const UsersPage: React.FC = () => {
   const canLockUser = isAdmin || permissions.includes("USER_LOCK");
   const canUnlockUser = isAdmin || permissions.includes("USER_UNLOCK");
   const canDeleteUser = isAdmin || permissions.includes("USER_DELETE");
+  const canManageUserRoles =
+    isAdmin ||
+    (permissions.includes("ROLE_VIEW") &&
+      permissions.includes("ROLE_UPDATE"));
 
   // =====================================================
   // FORM TẠO TÀI KHOẢN
@@ -112,6 +162,25 @@ const UsersPage: React.FC = () => {
     email: "",
     vaiTroId: "",
   });
+
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({
+    hoTen: "",
+    email: "",
+    soDienThoai: "",
+  });
+  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [currentRoleIds, setCurrentRoleIds] = useState<number[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editRolesLoaded, setEditRolesLoaded] = useState(false);
+  const [editRoleLoadError, setEditRoleLoadError] = useState("");
+  const [editError, setEditError] = useState("");
+  const [editFieldErrors, setEditFieldErrors] = useState<{
+    email?: string;
+    soDienThoai?: string;
+  }>({});
 
   const resetCreateForm = () => {
     setCreateForm({
@@ -197,6 +266,162 @@ const UsersPage: React.FC = () => {
     loadUsers();
   }, [page, roleId, status]);
 
+  const openEditModal = async (user: User) => {
+    setEditingUser(user);
+    setEditForm({
+      hoTen: user.hoTen,
+      email: user.email,
+      soDienThoai: user.soDienThoai || "",
+    });
+    setEditError("");
+    setEditFieldErrors({});
+    setEditRoleLoadError("");
+    setEditRolesLoaded(false);
+    setAvailableRoles([]);
+    setCurrentRoleIds([]);
+    setSelectedRoleIds([]);
+
+    if (!canManageUserRoles) {
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const [rolesResponse, userRolesResponse] = await Promise.all([
+        api.get<Role[]>("/roles/"),
+        api.get<UserRole[]>(`/roles/users/${user.nguoiDungId}`),
+      ]);
+      const roles = Array.isArray(rolesResponse.data)
+        ? rolesResponse.data
+        : [];
+      const roleIds = Array.isArray(userRolesResponse.data)
+        ? userRolesResponse.data.map((role) => role.vaiTroId)
+        : [];
+
+      setAvailableRoles(roles);
+      setCurrentRoleIds(roleIds);
+      setSelectedRoleIds(roleIds);
+      setEditRolesLoaded(true);
+    } catch (error: any) {
+      console.error("Lỗi tải vai trò người dùng:", error);
+      setEditRoleLoadError(
+        error?.response?.data?.detail ||
+          "Không thể tải vai trò. Bạn vẫn có thể sửa thông tin người dùng.",
+      );
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const closeEditModal = () => {
+    if (editSaving) {
+      return;
+    }
+
+    setEditingUser(null);
+    setEditError("");
+    setEditFieldErrors({});
+    setEditRoleLoadError("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) {
+      return;
+    }
+
+    const hoTen = editForm.hoTen.trim();
+    const email = editForm.email.trim().toLowerCase();
+    const soDienThoai = editForm.soDienThoai.trim();
+    const fieldErrors: { email?: string; soDienThoai?: string } = {};
+
+    if (!hoTen) {
+      setEditError("Vui lòng nhập họ tên.");
+      return;
+    }
+    if (!isValidEmailFormat(email)) {
+      fieldErrors.email = "Email không đúng định dạng.";
+    }
+    if (
+      soDienThoai &&
+      !/^(?:0|\+84)(?:3|5|7|8|9)\d{8}$/.test(soDienThoai)
+    ) {
+      fieldErrors.soDienThoai =
+        "Nhập số di động Việt Nam hợp lệ, ví dụ 0912345678 hoặc +84912345678.";
+    }
+    setEditFieldErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      setEditError("");
+      return;
+    }
+
+    setEditError("");
+    setEditSaving(true);
+    let profileSaved = false;
+
+    try {
+      await api.put(`/users/${editingUser.nguoiDungId}`, {
+        ho_ten: hoTen,
+        email,
+        so_dien_thoai: soDienThoai || null,
+      });
+      profileSaved = true;
+
+      if (canManageUserRoles && editRolesLoaded) {
+        const rolesToAssign = selectedRoleIds.filter(
+          (id) => !currentRoleIds.includes(id),
+        );
+        const rolesToRemove = currentRoleIds.filter(
+          (id) => !selectedRoleIds.includes(id),
+        );
+
+        try {
+          for (const roleId of rolesToAssign) {
+            await api.post(
+              `/roles/users/${editingUser.nguoiDungId}/${roleId}`,
+            );
+          }
+          for (const roleId of rolesToRemove) {
+            await api.delete(
+              `/roles/users/${editingUser.nguoiDungId}/${roleId}`,
+            );
+          }
+        } catch (roleError) {
+          try {
+            const response = await api.get<UserRole[]>(
+              `/roles/users/${editingUser.nguoiDungId}`,
+            );
+            const roleIds = Array.isArray(response.data)
+              ? response.data.map((role) => role.vaiTroId)
+              : [];
+            setCurrentRoleIds(roleIds);
+            setSelectedRoleIds(roleIds);
+          } catch (reloadError) {
+            console.error("Lỗi tải lại vai trò người dùng:", reloadError);
+          }
+          throw roleError;
+        }
+      }
+
+      setToast({
+        type: "success",
+        text: "Cập nhật thông tin người dùng thành công.",
+      });
+      setEditingUser(null);
+      await loadUsers();
+    } catch (error: any) {
+      console.error("Lỗi cập nhật người dùng:", error);
+      const detail =
+        error?.response?.data?.detail || "Không thể cập nhật người dùng.";
+      setEditError(
+        profileSaved
+          ? `Thông tin cơ bản đã được lưu nhưng cập nhật vai trò chưa hoàn tất: ${detail}`
+          : detail,
+      );
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   // =====================================================
   // TẠO TÀI KHOẢN
   // =====================================================
@@ -218,7 +443,7 @@ const UsersPage: React.FC = () => {
     }
 
     // Kiểm tra email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidEmailFormat(email)) {
       setCreateError("Email không hợp lệ.");
       return;
     }
@@ -641,12 +866,7 @@ const UsersPage: React.FC = () => {
                           {canUpdateUser && (
                             <button
                               className="action-edit"
-                              onClick={() =>
-                                setToast({
-                                  type: "success",
-                                  text: "Chức năng sửa người dùng sẽ được triển khai tiếp theo.",
-                                })
-                              }
+                              onClick={() => void openEditModal(user)}
                             >
                               Sửa
                             </button>
@@ -731,6 +951,213 @@ const UsersPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {editingUser && (
+        <div
+          className="users-modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeEditModal();
+            }
+          }}
+        >
+          <div
+            className="users-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-user-title"
+          >
+            <div className="users-modal-header">
+              <div>
+                <h2 id="edit-user-title">Sửa thông tin người dùng</h2>
+                <p>
+                  Cập nhật thông tin và vai trò của {editingUser.hoTen}.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="users-modal-close"
+                onClick={closeEditModal}
+                disabled={editSaving}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            {editError && (
+              <div className="users-form-error" role="alert">
+                {editError}
+              </div>
+            )}
+
+            <div className="users-form-group">
+              <label htmlFor="edit-user-name">
+                Họ tên <span>*</span>
+              </label>
+              <input
+                id="edit-user-name"
+                type="text"
+                value={editForm.hoTen}
+                onChange={(event) =>
+                  setEditForm((previous) => ({
+                    ...previous,
+                    hoTen: event.target.value,
+                  }))
+                }
+                disabled={editSaving}
+                autoFocus
+              />
+            </div>
+
+            <div className="users-form-group">
+              <label htmlFor="edit-user-email">
+                Email <span>*</span>
+              </label>
+              <input
+                id="edit-user-email"
+                type="email"
+                value={editForm.email}
+                onChange={(event) => {
+                  setEditForm((previous) => ({
+                    ...previous,
+                    email: event.target.value,
+                  }));
+                  setEditFieldErrors((previous) => ({
+                    ...previous,
+                    email: undefined,
+                  }));
+                }}
+                disabled={editSaving}
+                maxLength={254}
+                aria-invalid={Boolean(editFieldErrors.email)}
+                aria-describedby={
+                  editFieldErrors.email ? "edit-user-email-error" : undefined
+                }
+                className={editFieldErrors.email ? "input-error" : undefined}
+              />
+              {editFieldErrors.email && (
+                <div
+                  id="edit-user-email-error"
+                  className="users-inline-error"
+                  role="alert"
+                >
+                  {editFieldErrors.email}
+                </div>
+              )}
+            </div>
+
+            <div className="users-form-group">
+              <label htmlFor="edit-user-phone">Số điện thoại</label>
+              <input
+                id="edit-user-phone"
+                type="tel"
+                inputMode="tel"
+                value={editForm.soDienThoai}
+                onChange={(event) => {
+                  setEditForm((previous) => ({
+                    ...previous,
+                    soDienThoai: event.target.value,
+                  }));
+                  setEditFieldErrors((previous) => ({
+                    ...previous,
+                    soDienThoai: undefined,
+                  }));
+                }}
+                disabled={editSaving}
+                maxLength={13}
+                placeholder="0912345678 hoặc +84912345678"
+                aria-invalid={Boolean(editFieldErrors.soDienThoai)}
+                aria-describedby={
+                  editFieldErrors.soDienThoai
+                    ? "edit-user-phone-error"
+                    : undefined
+                }
+                className={
+                  editFieldErrors.soDienThoai ? "input-error" : undefined
+                }
+              />
+              {editFieldErrors.soDienThoai && (
+                <div
+                  id="edit-user-phone-error"
+                  className="users-inline-error"
+                  role="alert"
+                >
+                  {editFieldErrors.soDienThoai}
+                </div>
+              )}
+            </div>
+
+            <div className="users-edit-roles">
+              <div className="users-edit-roles-heading">
+                <strong>Vai trò</strong>
+                {editLoading && <span>Đang tải vai trò...</span>}
+              </div>
+              {canManageUserRoles ? (
+                editRoleLoadError ? (
+                  <div className="users-edit-roles-error" role="alert">
+                    {editRoleLoadError}
+                  </div>
+                ) : (
+                  <div className="users-edit-roles-list">
+                    {availableRoles.map((role) => (
+                      <label
+                        className="users-edit-role-option"
+                        key={role.vaiTroId}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedRoleIds.includes(role.vaiTroId)}
+                          onChange={(event) => {
+                            setSelectedRoleIds((previous) =>
+                              event.target.checked
+                                ? [...previous, role.vaiTroId]
+                                : previous.filter(
+                                    (id) => id !== role.vaiTroId,
+                                  ),
+                            );
+                          }}
+                          disabled={
+                            editSaving || editLoading || !editRolesLoaded
+                          }
+                        />
+                        <span>
+                          <strong>{role.tenVaiTro}</strong>
+                          {role.moTa && <small>{role.moTa}</small>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="users-edit-roles-error">
+                  Bạn chưa có quyền xem và gán vai trò. Có thể lưu thông tin
+                  cá nhân mà không thay đổi vai trò.
+                </div>
+              )}
+            </div>
+
+            <div className="users-modal-actions">
+              <button
+                type="button"
+                className="users-cancel-button"
+                onClick={closeEditModal}
+                disabled={editSaving}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="users-submit-button"
+                onClick={handleSaveEdit}
+                disabled={editSaving || editLoading}
+              >
+                {editSaving ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* =====================================================
           MODAL TẠO TÀI KHOẢN

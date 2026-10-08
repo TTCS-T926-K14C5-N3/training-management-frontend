@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
+import { API_URL } from "../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 const SESSION_EXPIRED_EVENT = "session-expired";
 
 const api = axios.create({
@@ -56,8 +56,12 @@ export const getTokenExpiresAt = (token: string): number | null => {
   }
 };
 
-export const expireSession = () => {
+export const expireSession = (expectedToken?: string) => {
   const user = getStoredUser();
+  if (!user || (expectedToken && user.token !== expectedToken)) {
+    return;
+  }
+
   localStorage.removeItem("user");
   window.dispatchEvent(
     new CustomEvent(SESSION_EXPIRED_EVENT, {
@@ -70,10 +74,13 @@ export const expireSession = () => {
 // LƯU TOKEN MỚI SAU KHI REFRESH
 // ===========================================================
 
-const saveRefreshedToken = (newToken: string) => {
+const saveRefreshedToken = (
+  newToken: string,
+  expectedToken: string,
+) => {
   const user = getStoredUser();
 
-  if (!user) {
+  if (!user || user.token !== expectedToken) {
     return;
   }
 
@@ -124,7 +131,7 @@ const performRefreshAccessToken = async (): Promise<string | null> => {
       return null;
     }
 
-    saveRefreshedToken(newToken);
+    saveRefreshedToken(newToken, user.token);
 
     console.log("✅ Access token đã được tự động gia hạn.");
 
@@ -136,7 +143,7 @@ const performRefreshAccessToken = async (): Promise<string | null> => {
     console.error("❌ Không thể refresh access token:", error);
 
     if (refreshFailureStatus === 401) {
-      expireSession();
+      expireSession(user.token);
     }
 
     return null;

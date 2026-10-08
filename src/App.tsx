@@ -522,6 +522,14 @@ function App() {
 
   const loginRequestInProgress = useRef(false);
 
+  const clearExpiredSessionNotice = () => {
+    sessionStorage.removeItem("expiredSessionEmail");
+    if (message === "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.") {
+      setMessage("");
+      setMessageType("");
+    }
+  };
+
   useEffect(() => {
     if (sessionStorage.getItem("expiredSessionEmail") !== null) {
       sessionStorage.removeItem("expiredSessionEmail");
@@ -529,6 +537,10 @@ function App() {
     }
 
     const handleSessionExpired = (event: Event) => {
+      if (!user || loginRequestInProgress.current) {
+        return;
+      }
+
       const detail = (event as CustomEvent<{ email?: string }>).detail;
 
       saveExpiredSessionDraft(window.location.pathname);
@@ -547,7 +559,7 @@ function App() {
     };
 
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === "user" && event.newValue === null) {
+      if (user && event.key === "user" && event.newValue === null) {
         window.dispatchEvent(
           new CustomEvent("session-expired", {
             detail: { email: user?.email },
@@ -629,7 +641,7 @@ function App() {
         localStorage.setItem("user", JSON.stringify(currentUser));
 
         if (Date.now() >= expiresAt) {
-          expireSession();
+          expireSession(currentUser.token);
           return;
         }
 
@@ -649,9 +661,12 @@ function App() {
             localStorage.getItem("user") || "null",
           );
 
-          if (refreshedUser) {
+          if (
+            refreshedUser?.token === refreshedToken &&
+            refreshedUser.nguoiDungId === currentUser.nguoiDungId
+          ) {
             setUser((current) =>
-              current
+              current && current.token === currentUser.token
                 ? {
                     ...current,
                     token: refreshedToken,
@@ -820,6 +835,7 @@ function App() {
       return;
     }
 
+    sessionStorage.removeItem("expiredSessionEmail");
     setMessage("");
 
     setMessageType("");
@@ -913,15 +929,30 @@ function App() {
       console.error("Lỗi đăng nhập:", error);
 
       const status = error.response?.status;
-
+      const responseDetail: unknown = error.response?.data?.detail;
       const detail =
-        error.response?.data?.detail || "Email hoặc mật khẩu không đúng";
+        typeof responseDetail === "string"
+          ? responseDetail
+          : Array.isArray(responseDetail)
+            ? responseDetail
+                .map((item) =>
+                  typeof item?.msg === "string" ? item.msg : "",
+                )
+                .filter(Boolean)
+                .join(". ")
+            : "";
+
+      const loginErrorMessage =
+        detail ||
+        (error.response
+          ? `Máy chủ từ chối đăng nhập (HTTP ${status ?? "không rõ"}).`
+          : "Không thể kết nối máy chủ đăng nhập. Vui lòng kiểm tra kết nối backend và thử lại.");
 
       if (status === 423) {
         const normalizedEmail = email.trim().toLowerCase();
         const storageKey = `loginLockedUntil:${normalizedEmail}`;
 
-        if (String(detail).toLowerCase().includes("khóa tạm thời")) {
+        if (loginErrorMessage.toLowerCase().includes("khóa tạm thời")) {
           const lockUntil = Date.now() + 15 * 60 * 1000;
 
           localStorage.setItem(storageKey, String(lockUntil));
@@ -934,7 +965,7 @@ function App() {
           localStorage.removeItem(storageKey);
           setLoginLockedUntil(null);
           setLockRemaining(0);
-          setMessage(String(detail));
+          setMessage(loginErrorMessage);
         }
 
         setMessageType("error");
@@ -942,7 +973,7 @@ function App() {
         return;
       }
 
-      setMessage(detail);
+      setMessage(loginErrorMessage);
 
       setMessageType("error");
     } finally {
@@ -1059,7 +1090,7 @@ function App() {
       console.error("Lỗi đăng xuất:", error);
 
       if (error.response?.status === 401) {
-        expireSession();
+        expireSession(user?.token);
         return;
       }
 
@@ -1159,6 +1190,7 @@ function App() {
                     onChange={(e) => {
                       const newEmail = e.target.value;
 
+                      clearExpiredSessionNotice();
                       setEmail(newEmail);
 
                       setLoginErrors({
@@ -1187,6 +1219,7 @@ function App() {
                     placeholder="Nhập mật khẩu"
                     value={password}
                     onChange={(e) => {
+                      clearExpiredSessionNotice();
                       setPassword(e.target.value);
 
                       setLoginErrors({

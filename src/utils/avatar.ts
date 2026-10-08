@@ -1,3 +1,5 @@
+import { API_URL } from "../config/api";
+
 const AVATAR_SIZE = 512;
 const THUMBNAIL_SIZE = 128;
 
@@ -23,8 +25,7 @@ export function resolveAvatarUrl(path: string | null | undefined): string | null
   }
 
   try {
-    return new URL(path, import.meta.env.VITE_API_URL || window.location.origin)
-      .toString();
+    return new URL(path, API_URL).toString();
   } catch {
     return path;
   }

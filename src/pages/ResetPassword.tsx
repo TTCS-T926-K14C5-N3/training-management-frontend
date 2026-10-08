@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ToastNotification from "../components/ToastNotification";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+import { API_URL } from "../config/api";
 
 export const ResetPassword: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
