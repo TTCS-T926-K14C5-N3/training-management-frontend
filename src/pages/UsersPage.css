@@ -287,6 +287,95 @@
   border-bottom: 0;
 }
 
+.role-users-select-table tbody tr {
+  cursor: pointer;
+}
+
+.role-users-select-table tbody tr.role-users-row-selected {
+  background: #f0f6ff;
+}
+
+.role-users-select-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.role-users-select-table th,
+.role-users-select-table td {
+  padding-right: 8px;
+  padding-left: 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.role-users-select-table th:nth-child(1),
+.role-users-select-table td:nth-child(1) {
+  width: 6%;
+}
+
+.role-users-select-table th:nth-child(2),
+.role-users-select-table td:nth-child(2) {
+  width: 24%;
+}
+
+.role-users-select-table th:nth-child(3),
+.role-users-select-table td:nth-child(3) {
+  width: 22%;
+}
+
+.role-users-select-table th:nth-child(4),
+.role-users-select-table td:nth-child(4) {
+  width: 14%;
+}
+
+.role-users-select-table th:nth-child(5),
+.role-users-select-table td:nth-child(5) {
+  width: 20%;
+}
+
+.role-users-select-table th:nth-child(6),
+.role-users-select-table td:nth-child(6) {
+  width: 14%;
+}
+
+.role-users-select-table .users-name {
+  min-width: 0;
+  gap: 8px;
+}
+
+.role-users-select-table .users-name > div:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.role-users-select-table .users-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
+
+.role-users-select-table .users-status {
+  white-space: normal;
+}
+
+.role-users-select-table .users-role {
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.role-users-list .users-table-wrapper {
+  overflow-x: hidden;
+}
+
+.role-users-table-message {
+  height: 180px;
+  padding: 30px !important;
+  color: #8a98ab !important;
+  text-align: center;
+}
+
 .users-id {
   width: 55px;
   color: #6c7a8e !important;

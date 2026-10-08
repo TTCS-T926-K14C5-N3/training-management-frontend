@@ -919,21 +919,23 @@ function App() {
 
       if (status === 423) {
         const normalizedEmail = email.trim().toLowerCase();
+        const storageKey = `loginLockedUntil:${normalizedEmail}`;
 
-        const lockUntil = Date.now() + 15 * 60 * 1000;
+        if (String(detail).toLowerCase().includes("khóa tạm thời")) {
+          const lockUntil = Date.now() + 15 * 60 * 1000;
 
-        localStorage.setItem(
-          `loginLockedUntil:${normalizedEmail}`,
-          String(lockUntil),
-        );
-
-        setLoginLockedUntil(lockUntil);
-
-        setLockRemaining(15 * 60);
-
-        setMessage(
-          "Tài khoản đang bị khóa tạm thời. Vui lòng thử lại sau khoảng 15 phút.",
-        );
+          localStorage.setItem(storageKey, String(lockUntil));
+          setLoginLockedUntil(lockUntil);
+          setLockRemaining(15 * 60);
+          setMessage(
+            "Tài khoản đang bị khóa tạm thời. Vui lòng thử lại sau khoảng 15 phút.",
+          );
+        } else {
+          localStorage.removeItem(storageKey);
+          setLoginLockedUntil(null);
+          setLockRemaining(0);
+          setMessage(String(detail));
+        }
 
         setMessageType("error");
 

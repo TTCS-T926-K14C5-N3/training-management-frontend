@@ -4,7 +4,6 @@
   color: #172033;
 }
 
-.academic-page-header,
 .academic-card-heading {
   display: flex;
   align-items: center;
@@ -12,24 +11,76 @@
   gap: 16px;
 }
 
-.academic-page-header {
-  margin-bottom: 2px;
+.academic-page-banner {
+  display: flex;
+  min-height: 132px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #172554 0%, #2563eb 100%);
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.16);
+  color: #fff;
 }
 
-.academic-eyebrow {
-  color: #2563eb;
+.academic-banner-content {
+  min-width: 0;
+}
+
+.academic-banner-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.academic-banner-label span {
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.academic-page-banner h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.academic-page-banner p {
+  margin: 7px 0 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13px;
+}
+
+.academic-banner-stat {
+  display: flex;
+  min-width: 125px;
+  flex-direction: column;
+  align-items: center;
+  padding: 13px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.academic-banner-stat strong {
+  font-size: 23px;
+  font-weight: 750;
+}
+
+.academic-banner-stat span {
+  margin-top: 2px;
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1.4px;
+  opacity: 0.76;
 }
 
-.academic-page-header h1 {
-  margin: 6px 0;
-  color: #172033;
-  font-size: 28px;
-}
-
-.academic-page-header p,
 .academic-card-heading p {
   margin: 0;
   color: #64748b;
@@ -77,8 +128,124 @@
   font-weight: 700;
 }
 
+.academic-student-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academic-field-label {
+  color: #475569;
+}
+
+.academic-multi-select {
+  position: relative;
+  min-width: 0;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.academic-multi-select summary {
+  display: flex;
+  min-height: 41px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.academic-multi-select summary::-webkit-details-marker {
+  display: none;
+}
+
+.academic-multi-select summary::marker {
+  content: "";
+}
+
+.academic-multi-select summary > span {
+  flex: 0 0 auto;
+  color: #475569;
+}
+
+.academic-multi-select[open] summary {
+  border-color: #3b82f6;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.academic-student-picker {
+  display: grid;
+  max-height: 190px;
+  gap: 2px;
+  overflow-y: auto;
+  padding: 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.academic-subject-picker {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  right: 0;
+  left: 0;
+  border-top: 0;
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+}
+
+.academic-student-option {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  color: #334155;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.academic-form-grid .academic-student-option {
+  flex-direction: row;
+}
+
+.academic-student-option:hover {
+  background: #f1f5f9;
+}
+
+.academic-select-all {
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.academic-empty-options {
+  padding: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .academic-form-grid input,
 .academic-form-grid select,
+.academic-form-grid textarea,
 .academic-filters input,
 .academic-filters select {
   width: 100%;
@@ -93,6 +260,29 @@
   font-size: 13px;
 }
 
+.academic-form-grid .academic-student-option input[type="checkbox"] {
+  box-sizing: border-box;
+  width: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: #2563eb;
+}
+
+.academic-student-option input {
+  width: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: #2563eb;
+}
+
 .academic-form-grid select[multiple] {
   min-height: 110px;
 }
@@ -105,10 +295,26 @@
 
 .academic-form-grid input:focus,
 .academic-form-grid select:focus,
+.academic-form-grid textarea:focus,
 .academic-filters input:focus,
 .academic-filters select:focus {
   border-color: #3b82f6;
   outline: 3px solid rgba(59, 130, 246, 0.15);
+}
+
+.academic-form-grid textarea {
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: #172033;
+  font: inherit;
+  font-size: 13px;
+}
+
+.academic-program-description {
+  grid-column: span 2;
 }
 
 .academic-form-actions {
@@ -172,6 +378,13 @@
   margin-left: 7px;
 }
 
+.academic-row-actions .academic-primary-button {
+  min-height: 30px;
+  padding: 6px 9px;
+  background: #dcfce7;
+  color: #166534;
+}
+
 .academic-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -211,6 +424,18 @@
   margin-top: 4px;
   color: #64748b;
   font-size: 11px;
+}
+
+.academic-handover-warning {
+  display: block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 10px;
+  font-weight: 750;
 }
 
 .academic-status {
@@ -274,14 +499,24 @@
 }
 
 @media (max-width: 600px) {
-  .academic-page-header,
+  .academic-page-banner,
   .academic-card-heading {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .academic-page-header h1 {
-    font-size: 23px;
+  .academic-page-banner {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .academic-page-banner h1 {
+    font-size: 22px;
+  }
+
+  .academic-banner-stat {
+    min-width: 100px;
+    padding: 9px 12px;
   }
 
   .academic-card {
@@ -292,6 +527,10 @@
   .academic-filters,
   .subject-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .academic-program-description {
+    grid-column: auto;
   }
 
   .subject-form-grid .academic-form-actions {

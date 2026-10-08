@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
@@ -92,6 +92,7 @@ const formatScore = (score: number | null) =>
   score === null ? "—" : score.toFixed(2).replace(/\.?0+$/, "");
 
 const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
+  const studentPickerRef = useRef<HTMLDetailsElement>(null);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [form, setForm] = useState<GradeForm>(EMPTY_FORM);
@@ -114,6 +115,25 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const selectedClass = classes.find(
     (item) => item.lopHocId === form.lopHocId,
   );
+
+  useEffect(() => {
+    const closeStudentPickerOnOutsideClick = (event: MouseEvent) => {
+      if (
+        event.target instanceof Node &&
+        !studentPickerRef.current?.contains(event.target)
+      ) {
+        studentPickerRef.current?.removeAttribute("open");
+      }
+    };
+
+    document.addEventListener("mousedown", closeStudentPickerOnOutsideClick);
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        closeStudentPickerOnOutsideClick,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -264,36 +284,23 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
 
   return (
     <section className="academic-page">
-      <header className="academic-page-header">
-        <div>
-          <span className="academic-eyebrow">ĐÀO TẠO</span>
-          <h1>
-            {canCreate || canUpdate ? "Quản lý điểm" : "Kết quả học tập"}
-          </h1>
+      <header className="academic-page-banner">
+        <div className="academic-banner-content">
+          <div className="academic-banner-label">
+            <span aria-hidden="true">🎓</span>
+            ĐÀO TẠO
+          </div>
+          <h1>{canCreate || canUpdate ? "Quản lý điểm" : "Kết quả học tập"}</h1>
           <p>
             {canUpdate
               ? "Quản lý điểm theo lớp, môn học và học kỳ."
               : "Kết quả học tập theo lớp, môn học và học kỳ."}
           </p>
         </div>
-        {canCreate && editingGradeId === null && (
-          <button
-            className="academic-primary-button"
-            type="button"
-            onClick={() => {
-              setForm({
-                ...EMPTY_FORM,
-                lopHocId: classes[0]?.lopHocId ?? 0,
-                hocVienId: classes[0]?.hocViens[0]?.nguoiDungId ?? 0,
-                monHocId: classes[0]?.monHocs[0]?.monHocId ?? 0,
-              });
-              setSuccessMessage("");
-              setErrorMessage("");
-            }}
-          >
-            + Nhập điểm
-          </button>
-        )}
+        <div className="academic-banner-stat">
+          <strong>{grades.length}</strong>
+          <span>Bảng điểm</span>
+        </div>
       </header>
 
       {(visibleError || successMessage) && (
@@ -349,30 +356,47 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                 ))}
               </select>
             </label>
-            <label>
-              Học viên
-              <select
-                required
-                value={form.hocVienId || ""}
-                disabled={editingGradeId !== null}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    hocVienId: Number(event.target.value),
-                  }))
-                }
+            <div className="academic-student-field">
+              <span className="academic-field-label">Học viên</span>
+              <details
+                className="academic-multi-select"
+                ref={studentPickerRef}
               >
-                <option value="">Chọn học viên</option>
-                {selectedClass?.hocViens.map((student) => (
-                  <option
-                    key={student.nguoiDungId}
-                    value={student.nguoiDungId}
-                  >
-                    {student.hoTen} — {student.email}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <summary>
+                  {form.hocVienId ? "Đã chọn 1 học viên" : "Chọn học viên"}
+                  <span aria-hidden="true">▾</span>
+                </summary>
+                <div className="academic-student-picker academic-subject-picker">
+                  {!selectedClass || selectedClass.hocViens.length === 0 ? (
+                    <span className="academic-empty-options">
+                      Chưa có học viên trong lớp.
+                    </span>
+                  ) : (
+                    selectedClass.hocViens.map((student) => (
+                      <label
+                        className="academic-student-option"
+                        key={student.nguoiDungId}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.hocVienId === student.nguoiDungId}
+                          disabled={editingGradeId !== null}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              hocVienId: event.target.checked
+                                ? student.nguoiDungId
+                                : 0,
+                            }))
+                          }
+                        />
+                        <span>{student.hoTen}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </details>
+            </div>
             <label>
               Môn học
               <select

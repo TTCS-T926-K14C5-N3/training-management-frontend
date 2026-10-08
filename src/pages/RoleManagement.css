@@ -31,10 +31,9 @@
   margin-bottom: 20px;
 }
 
-.role-filter-heading > div:first-child {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.role-filter-title {
+  display: block;
+  min-width: 0;
 }
 
 .role-filter-icon {
