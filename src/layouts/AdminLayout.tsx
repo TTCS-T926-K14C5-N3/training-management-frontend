@@ -197,7 +197,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               ĐÀO TẠO
           ================================================= */}
 
-          <button type="button" className="admin-menu-item">
+          <button type="button" className="admin-menu-item" onClick={() => alert("Chức năng Đào tạo đang được phát triển!")}>
             <span className="admin-menu-symbol">▣</span>
 
             <span>Đào tạo</span>
@@ -208,7 +208,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           ================================================= */}
 
           {hasPermission("QUAN_LY_LOP") && (
-            <button type="button" className="admin-menu-item">
+            <button type="button" className="admin-menu-item" onClick={() => alert("Chức năng Lớp học đang được phát triển!")}>
               <span className="admin-menu-symbol">▤</span>
 
               <span>Lớp học</span>
@@ -219,7 +219,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               BÁO CÁO
           ================================================= */}
 
-          <button type="button" className="admin-menu-item">
+          <button type="button" className="admin-menu-item" onClick={() => alert("Chức năng Báo cáo đang được phát triển!")}>
             <span className="admin-menu-symbol">◫</span>
 
             <span>Báo cáo</span>
@@ -267,7 +267,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               CÀI ĐẶT
           ================================================= */}
 
-          <button type="button" className="admin-menu-item">
+          <button type="button" className="admin-menu-item" onClick={() => alert("Chức năng Cài đặt đang được phát triển!")}>
             <span className="admin-menu-symbol">⚙</span>
 
             <span>Cài đặt</span>

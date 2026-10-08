@@ -554,19 +554,42 @@ function App() {
 
       setLockRemaining(0);
 
-      const vaiTro: VaiTro[] = Array.isArray(data.vaiTro) ? data.vaiTro : [];
+      const u = data.user || {};
+      const rawRoles = Array.isArray(data.vaiTro)
+        ? data.vaiTro
+        : Array.isArray(u.roles)
+          ? u.roles.map((r: any) => ({
+              vaiTroId: r.VaiTroId ?? r.vaiTroId,
+              tenVaiTro: r.TenVaiTro ?? r.tenVaiTro,
+            }))
+          : [];
+      const vaiTro: VaiTro[] = rawRoles;
 
-      const quyen: Quyen[] = Array.isArray(data.quyen) ? data.quyen : [];
+      const rawQuyen = Array.isArray(data.quyen)
+        ? data.quyen
+        : Array.isArray(u.permissions)
+          ? u.permissions.map((p: any, idx: number) =>
+              typeof p === "string"
+                ? { quyenId: idx + 1, maQuyen: p, tenQuyen: p }
+                : {
+                    quyenId: p.QuyenId ?? p.quyenId ?? idx + 1,
+                    maQuyen: p.MaQuyen ?? p.maQuyen,
+                    tenQuyen: p.TenQuyen ?? p.tenQuyen,
+                  },
+            )
+          : [];
+      const quyen: Quyen[] = rawQuyen;
 
       const loggedInUser: User = {
-        nguoiDungId: data.nguoiDungId,
-        hoTen: data.hoTen,
-        email: data.email,
-        anhDaiDien: getAvatarPath(data),
+        nguoiDungId: data.nguoiDungId ?? u.NguoiDungId ?? u.nguoiDungId,
+        hoTen: data.hoTen ?? u.HoTen ?? u.hoTen ?? "",
+        email: data.email ?? u.Email ?? u.email ?? email.trim(),
+        anhDaiDien: getAvatarPath(data) || getAvatarPath(u),
         vaiTro,
         quyen,
         token: data.access_token,
-        yeuCauDoiMatKhau: data.yeuCauDoiMatKhau === true,
+        yeuCauDoiMatKhau:
+          data.yeuCauDoiMatKhau === true || u.yeuCauDoiMatKhau === true,
         expiresAt: Date.now() + 30 * 60 * 1000,
       };
 
@@ -691,7 +714,7 @@ function App() {
       return;
     }
 
-    navigate("/quan-ly-diem");
+    alert("Chức năng Quản lý điểm đang được phát triển!");
   };
 
   // =========================================================
@@ -705,7 +728,7 @@ function App() {
       return;
     }
 
-    navigate("/quan-ly-lop");
+    alert("Chức năng Quản lý lớp đang được phát triển!");
   };
 
   // =========================================================

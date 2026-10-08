@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import RolePermissionsTab from "../components/RolePermissionsTab";
 
 // =========================================================
 // INTERFACE
@@ -40,6 +41,7 @@ interface Pagination {
 // =========================================================
 
 const RoleManagement: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"USERS" | "PERMISSIONS">("USERS");
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
@@ -629,9 +631,45 @@ const RoleManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* =====================================================
-            FILTER
-        ===================================================== */}
+        {/* TABS */}
+        <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
+          <button
+            onClick={() => setActiveTab("USERS")}
+            style={{
+              padding: "12px 24px",
+              borderRadius: "10px",
+              border: "none",
+              background: activeTab === "USERS" ? "#2563eb" : "#fff",
+              color: activeTab === "USERS" ? "#fff" : "#475569",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: activeTab === "USERS" ? "0 4px 12px rgba(37,99,235,0.2)" : "0 2px 6px rgba(0,0,0,0.05)"
+            }}
+          >
+            Gán vai trò cho người dùng
+          </button>
+          <button
+            onClick={() => setActiveTab("PERMISSIONS")}
+            style={{
+              padding: "12px 24px",
+              borderRadius: "10px",
+              border: "none",
+              background: activeTab === "PERMISSIONS" ? "#2563eb" : "#fff",
+              color: activeTab === "PERMISSIONS" ? "#fff" : "#475569",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: activeTab === "PERMISSIONS" ? "0 4px 12px rgba(37,99,235,0.2)" : "0 2px 6px rgba(0,0,0,0.05)"
+            }}
+          >
+            Cấu hình quyền cho vai trò
+          </button>
+        </div>
+
+        {activeTab === "USERS" ? (
+          <>
+            {/* =====================================================
+                FILTER
+            ===================================================== */}
 
         <div
           style={{
@@ -1819,6 +1857,10 @@ const RoleManagement: React.FC = () => {
             )}
           </div>
         </div>
+        </>
+        ) : (
+          <RolePermissionsTab roles={roles} showSuccess={showSuccess} showError={showError} />
+        )}
       </div>
     </>
   );
