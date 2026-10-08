@@ -53,7 +53,7 @@ interface ImportResponse {
 
 interface UserImportModalProps {
   onClose: () => void;
-  onImported: () => void;
+  onImported: (createdRows: number, failedRows: number) => void | Promise<void>;
 }
 
 const UserImportModal: React.FC<UserImportModalProps> = ({
@@ -209,10 +209,30 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
       );
 
       const result = response.data;
+
       setImportResult(result);
       setSuccess("Đã hoàn tất nhập dữ liệu. Xem báo cáo tổng kết bên dưới.");
 
-      onImported();
+
+      if (result.createdRows === 0) {
+        setError(
+          result.failedRows > 0
+            ? `Không tạo được tài khoản nào. Có ${result.failedRows} dòng bị lỗi.`
+            : "File không có tài khoản nào được tạo.",
+        );
+        return;
+      }
+
+      if (result.failedRows > 0) {
+        setSuccess(
+          `Đã tạo ${result.createdRows} tài khoản. Có ${result.failedRows} dòng tạo tài khoản thất bại.`,
+        );
+      } else {
+        setSuccess(`Import thành công ${result.createdRows} tài khoản.`);
+      }
+
+
+      await onImported(result.createdRows, result.failedRows);
     } catch (err: any) {
       console.error(err);
 

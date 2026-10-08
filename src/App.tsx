@@ -8,11 +8,18 @@ import AppStatusPage from "./components/AppStatusPage";
 
 import RoleManagement from "./pages/RoleManagement";
 import UsersPage from "./pages/UsersPage";
+
 import GradeManagement from "./pages/GradeManagement";
 import ClassManagement from "./pages/ClassManagement";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
+
+import {
+  ClassManagementPage,
+  GradeManagementPage,
+} from "./pages/AcademicManagement";
+
 
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -889,21 +896,49 @@ function App() {
 
       setLockRemaining(0);
 
-      const vaiTro: VaiTro[] = Array.isArray(data.vaiTro) ? data.vaiTro : [];
+      const u = data.user || {};
+      const rawRoles = Array.isArray(data.vaiTro)
+        ? data.vaiTro
+        : Array.isArray(u.roles)
+          ? u.roles.map((r: any) => ({
+              vaiTroId: r.VaiTroId ?? r.vaiTroId,
+              tenVaiTro: r.TenVaiTro ?? r.tenVaiTro,
+            }))
+          : [];
+      const vaiTro: VaiTro[] = rawRoles;
 
-      const quyen: Quyen[] = Array.isArray(data.quyen) ? data.quyen : [];
+      const rawQuyen = Array.isArray(data.quyen)
+        ? data.quyen
+        : Array.isArray(u.permissions)
+          ? u.permissions.map((p: any, idx: number) =>
+              typeof p === "string"
+                ? { quyenId: idx + 1, maQuyen: p, tenQuyen: p }
+                : {
+                    quyenId: p.QuyenId ?? p.quyenId ?? idx + 1,
+                    maQuyen: p.MaQuyen ?? p.maQuyen,
+                    tenQuyen: p.TenQuyen ?? p.tenQuyen,
+                  },
+            )
+          : [];
+      const quyen: Quyen[] = rawQuyen;
 
       const loggedInUser: User = {
-        nguoiDungId: data.nguoiDungId,
-        hoTen: data.hoTen,
-        email: data.email,
-        anhDaiDien: getAvatarPath(data),
+        nguoiDungId: data.nguoiDungId ?? u.NguoiDungId ?? u.nguoiDungId,
+        hoTen: data.hoTen ?? u.HoTen ?? u.hoTen ?? "",
+        email: data.email ?? u.Email ?? u.email ?? email.trim(),
+        anhDaiDien: getAvatarPath(data) || getAvatarPath(u),
         vaiTro,
         quyen,
         token: data.access_token,
+
         yeuCauDoiMatKhau: data.yeuCauDoiMatKhau === true,
         expiresAt:
           getTokenExpiresAt(data.access_token) ?? Date.now() + 30 * 60 * 1000,
+
+        yeuCauDoiMatKhau:
+          data.yeuCauDoiMatKhau === true || u.yeuCauDoiMatKhau === true,
+        expiresAt: Date.now() + 30 * 60 * 1000,
+
       };
 
       localStorage.setItem("user", JSON.stringify(loggedInUser));
@@ -1591,8 +1626,29 @@ function App() {
 
     return renderAdminLayout(
       <ProtectedRoute requiredPermission="USER_VIEW">
+
         <UsersPage />
       </ProtectedRoute>,
+
+        <AdminLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+          onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
+          onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
+        >
+          <UsersPage />
+        </AdminLayout>
+      </ProtectedRoute>
+
     );
   }
 
@@ -1607,6 +1663,7 @@ function App() {
 
     return renderAdminLayout(
       <ProtectedRoute requiredPermission="ROLE_VIEW">
+
         <RoleManagement />
       </ProtectedRoute>,
     );
@@ -1624,6 +1681,25 @@ function App() {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="CLASS_VIEW">
         <ClassManagement permissions={currentPermissions} />
+
+        <AdminLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+          onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
+          onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
+        >
+          <RoleManagement />
+        </AdminLayout>
+
       </ProtectedRoute>
     );
   }
@@ -1641,6 +1717,37 @@ function App() {
 
   if (currentPath !== "/") {
     return renderAcademicLayout(<AppStatusPage status="not-found" />);
+  }
+
+  if (currentPath === "/quan-ly-diem" || currentPath === "/quan-ly-lop") {
+    const isGradePage = currentPath === "/quan-ly-diem";
+    const pagePermission = isGradePage ? "QUAN_LY_DIEM" : "QUAN_LY_LOP";
+
+    if (!hasPermission(user, pagePermission)) {
+      return <RedirectToHome />;
+    }
+
+    return (
+      <ProtectedRoute requiredPermission={pagePermission}>
+        <AdminLayout
+          userName={user.hoTen}
+          roleName={roleName}
+          avatarUrl={user.anhDaiDien}
+          isAdmin={isAdmin}
+          permissions={user.quyen.map((q) => q.maQuyen)}
+          onLogout={handleLogout}
+          onRoleManagement={handleRoleManagement}
+          onHome={handleHome}
+          onUserManagement={handleUserManagement}
+          onGradeManagement={handleGradeManagement}
+          onClassManagement={handleClassManagement}
+          onChangePassword={handleChangePassword}
+          onProfile={handleProfile}
+        >
+          {isGradePage ? <GradeManagementPage /> : <ClassManagementPage />}
+        </AdminLayout>
+      </ProtectedRoute>
+    );
   }
 
   // =========================================================
@@ -1662,8 +1769,10 @@ function App() {
           onUserManagement={handleUserManagement}
           onGradeManagement={handleGradeManagement}
           onClassManagement={handleClassManagement}
+
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
+
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
