@@ -23,13 +23,8 @@ interface AdminLayoutProps {
 
   onGradeManagement: () => void;
   onClassManagement: () => void;
-  onTrainingCatalog: () => void;
-  onAdmissionsLeads: () => void;
-
-  // Điều hướng đến các trang quản lý đào tạo
-  onGradeManagement: () => void;
-  onClassManagement: () => void;
-
+  onTrainingCatalog?: () => void;
+  onAdmissionsLeads?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -51,10 +46,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUserManagement,
   onGradeManagement,
   onClassManagement,
-
-  onTrainingCatalog,
-  onAdmissionsLeads,
-
+  onTrainingCatalog = () => {},
+  onAdmissionsLeads = () => {},
   onChangePassword,
   onProfile,
 }) => {
@@ -224,10 +217,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
 
 
-          {hasPermission("GRADE_VIEW") && (
-
-          {hasPermission("QUAN_LY_DIEM") && (
-
+          {(hasPermission("GRADE_VIEW") || hasPermission("QUAN_LY_DIEM")) && (
             <button
               type="button"
               className={`admin-menu-item ${
@@ -237,14 +227,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <span className="admin-menu-symbol">▥</span>
 
-
-
               <span>Quản lý điểm</span>
             </button>
           )}
 
-
-          {hasPermission("QUAN_LY_LOP") && (
+          {(hasPermission("CLASS_VIEW") || hasPermission("QUAN_LY_LOP")) && (
             <button
               type="button"
               className={`admin-menu-item ${
@@ -294,25 +281,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
             <span>Đào tạo</span>
           </button>
-
-          {/* =================================================
-              LỚP HỌC
-          ================================================= */}
-
-
-          {hasPermission("QUAN_LY_LOP") && (
-            <button
-              type="button"
-              className={`admin-menu-item ${
-                isClassManagementActive ? "admin-menu-active" : ""
-              }`}
-              onClick={onClassManagement}
-            >
-              <span className="admin-menu-symbol">▤</span>
-
-              <span>Lớp học</span>
-            </button>
-          )}
 
 
           {/* =================================================
@@ -417,104 +385,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       ===================================================== */}
 
       <main className="admin-main">
-        {/* =================================================
 
-            HEADER
-        ================================================= */}
-
-        <header className="admin-header">
-          <div>
-            <div className="admin-breadcrumb">
-              Admin
-              <span>/</span>
-              {isUserManagementActive
-                ? "Người dùng"
-                : isRoleManagementActive
-                  ? "Vai trò & quyền"
-                  : isGradeManagementActive
-                    ? "Quản lý điểm"
-                    : isClassManagementActive
-                      ? "Quản lý lớp"
-                  : isChangePasswordActive
-                    ? "Đổi mật khẩu"
-                    : isProfileActive
-                      ? "Hồ sơ cá nhân"
-                      : "Trang chủ"}
-            </div>
-
-            <h1>
-              {isUserManagementActive
-                ? "Quản lý người dùng"
-                : isRoleManagementActive
-                  ? "Quản lý vai trò người dùng"
-                  : isGradeManagementActive
-                    ? "Quản lý điểm"
-                    : isClassManagementActive
-                      ? "Quản lý lớp"
-                  : isChangePasswordActive
-                    ? "Đổi mật khẩu"
-                    : isProfileActive
-                      ? "Hồ sơ cá nhân"
-                      : "Trang chủ"}
-            </h1>
-
-            <p>
-              {isUserManagementActive
-                ? "Quản lý tài khoản người dùng trong hệ thống."
-                : isRoleManagementActive
-                  ? "Quản lý người dùng, tìm kiếm và phân quyền theo vai trò."
-                  : isGradeManagementActive
-                    ? "Theo dõi và cập nhật kết quả học tập."
-                    : isClassManagementActive
-                      ? "Quản lý thông tin và trạng thái lớp học."
-                  : isChangePasswordActive
-                    ? "Cập nhật mật khẩu để bảo vệ tài khoản."
-                    : isProfileActive
-                      ? "Xem và cập nhật thông tin hồ sơ cá nhân."
-                      : "Tổng quan hệ thống quản lý đào tạo"}
-            </p>
-          </div>
-
-          {/* =================================================
-              HEADER RIGHT
-          ================================================= */}
-
-          <div className="admin-header-right">
-            {/* Notification */}
-
-            <button
-              type="button"
-              className="admin-notification"
-              title="Thông báo"
-            >
-              ♢<span></span>
-            </button>
-
-            {/* Profile */}
-
-            <div
-              className="admin-header-profile"
-              onClick={onProfile}
-              style={{ cursor: "pointer" }}
-            >
-              <div className="admin-header-avatar">
-                <AvatarImage
-                  source={avatarUrl}
-                  fallback={avatarLetter}
-                  alt={`Ảnh đại diện của ${userName}`}
-                />
-              </div>
-
-              <div>
-                <strong>{userName}</strong>
-
-                <small>{roleName}</small>
-              </div>
-
-              <span className="admin-arrow">▾</span>
-            </div>
-          </div>
-        </header>
 
         {/* =================================================
           CONTENT

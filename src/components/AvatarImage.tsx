@@ -67,7 +67,17 @@ const AvatarImage: React.FC<AvatarImageProps> = ({
       : null;
 
   return imageUrl ? (
-    <img src={imageUrl} alt={alt} />
+    <img
+      src={imageUrl}
+      alt={alt}
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        borderRadius: "inherit",
+      }}
+    />
   ) : (
     <span aria-label={alt}>{fallback}</span>
   );
