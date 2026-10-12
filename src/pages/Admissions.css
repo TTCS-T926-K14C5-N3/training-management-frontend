@@ -244,3 +244,107 @@
     grid-template-columns: 1fr;
   }
 }
+
+.lead-bulk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+}
+
+.lead-bulk-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #1e3a8a;
+}
+
+.lead-bulk-info button {
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.lead-bulk-info button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.lead-bulk-assign {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.lead-bulk-consultant-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lead-consultant-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 12px;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.lead-consultant-pill:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+}
+
+.lead-consultant-pill.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.lead-consultant-pill input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.lead-bulk-apply-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.lead-bulk-apply-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.lead-bulk-apply-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+

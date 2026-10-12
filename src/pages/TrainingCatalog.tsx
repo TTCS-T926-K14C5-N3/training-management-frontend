@@ -74,6 +74,8 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [cloneSourceSubjectId, setCloneSourceSubjectId] = useState("");
+  const [cloning, setCloning] = useState(false);
 
   const fetchCatalog = useCallback(async () => {
     const [programResponse, subjectResponse] = await Promise.all([
@@ -329,6 +331,32 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
       setError(errorMessage(requestError, "Không thể lưu danh sách buổi học."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCloneSessions = async (targetSubject: ProgramSubject) => {
+    if (!programId || !cloneSourceSubjectId) return;
+    const sourceSubject = programSubjects.find(
+      (s) => s.monHocId === Number(cloneSourceSubjectId),
+    );
+    const sourceSubjectName = sourceSubject ? sourceSubject.tenMonHoc : "môn nguồn";
+
+    setCloning(true);
+    setError("");
+    setNotice("");
+    try {
+      await api.post(
+        `/academic/programs/${programId}/subjects/${targetSubject.monHocId}/sessions/clone`,
+        { sourceSubjectId: Number(cloneSourceSubjectId) },
+      );
+      setNotice(`Đã nhân bản danh sách buổi học từ môn "${sourceSubjectName}".`);
+      await loadProgramSubjects(programId);
+      setCloneSourceSubjectId("");
+    } catch (requestError: unknown) {
+      console.error("Không thể nhân bản buổi học:", requestError);
+      setError(errorMessage(requestError, "Không thể nhân bản danh sách buổi học."));
+    } finally {
+      setCloning(false);
     }
   };
 
@@ -665,6 +693,38 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                 </label>
                 {sessionsFor === item.monHocId && (
                   <div className="academic-session-editor">
+                    {canUpdate && (
+                      <div className="academic-clone-session-bar">
+                        <span className="academic-clone-label">
+                          Nhân bản từ môn khác:
+                        </span>
+                        <select
+                          className="academic-clone-select"
+                          value={cloneSourceSubjectId}
+                          onChange={(e) => setCloneSourceSubjectId(e.target.value)}
+                          disabled={saving || cloning}
+                        >
+                          <option value="">
+                            -- Chọn môn học nguồn để nhân bản --
+                          </option>
+                          {programSubjects
+                            .filter((s) => s.monHocId !== item.monHocId)
+                            .map((s) => (
+                              <option key={s.monHocId} value={s.monHocId}>
+                                {s.tenMonHoc} ({s.sessions.filter((sess) => sess.chuDe?.trim()).length}/{s.soBuoi} buổi)
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="academic-clone-button"
+                          disabled={saving || cloning || !cloneSourceSubjectId}
+                          onClick={() => void handleCloneSessions(item)}
+                        >
+                          {cloning ? "Đang nhân bản..." : "Nhân bản buổi học"}
+                        </button>
+                      </div>
+                    )}
                     {Array.from({ length: item.soBuoi }, (_, sessionIndex) => {
                       const session = item.sessions[sessionIndex] ?? {
                         soThuTu: sessionIndex + 1,
