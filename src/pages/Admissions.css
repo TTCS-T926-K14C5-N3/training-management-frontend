@@ -226,6 +226,26 @@
   font-weight: 700;
 }
 
+.lead-row-actions .lead-convert-btn {
+  border-color: #15803d;
+  background: #15803d;
+  color: #fff;
+}
+
+.lead-row-actions .lead-convert-btn:disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.admissions-student-code {
+  display: block;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .lead-history {
   margin: 8px 0 0;
   padding-left: 20px;
@@ -290,41 +310,14 @@
   font-size: 13px;
 }
 
-.lead-bulk-consultant-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.lead-consultant-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+.lead-bulk-assign select {
+  min-height: 32px;
+  padding: 4px 8px;
   border: 1px solid #cbd5e1;
-  border-radius: 16px;
+  border-radius: 6px;
   background: #fff;
-  font-size: 12px;
   color: #334155;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.15s ease;
-}
-
-.lead-consultant-pill:hover {
-  border-color: #93c5fd;
-  background: #f8fafc;
-}
-
-.lead-consultant-pill.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #fff;
-}
-
-.lead-consultant-pill input {
-  margin: 0;
-  cursor: pointer;
+  font: inherit;
 }
 
 .lead-bulk-apply-btn {
@@ -404,5 +397,3 @@
 .lead-search-btn:hover {
   background: #eff6ff;
 }
-
-

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
@@ -63,17 +63,9 @@ interface ClassForm {
   monHocIds: number[];
 }
 
-interface TrainingProgramForm {
-  maChuongTrinh: string;
-  tenChuongTrinh: string;
-  moTa: string;
-  tongThoiLuong: string;
-  hocPhiChuan: string;
-  trangThai: string;
-}
-
 interface ClassManagementProps {
   permissions: string[];
+  listOnly?: boolean;
 }
 
 const EMPTY_FORM: ClassForm = {
@@ -86,15 +78,6 @@ const EMPTY_FORM: ClassForm = {
   monHocIds: [],
 };
 
-const EMPTY_PROGRAM_FORM: TrainingProgramForm = {
-  maChuongTrinh: "",
-  tenChuongTrinh: "",
-  moTa: "",
-  tongThoiLuong: "",
-  hocPhiChuan: "",
-  trangThai: "Đang áp dụng",
-};
-
 const responseError = (error: unknown, fallback: string): string => {
   if (
     axios.isAxiosError<{ detail?: unknown }>(error) &&
@@ -105,15 +88,15 @@ const responseError = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
-const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
+const ClassManagement: React.FC<ClassManagementProps> = ({
+  permissions,
+  listOnly = false,
+}) => {
   const studentPickerRef = useRef<HTMLDetailsElement>(null);
   const canUpdateClasses = permissions.includes("CLASS_UPDATE");
-  const canCreateClasses = permissions.includes("CLASS_CREATE");
   const canDeleteClasses = permissions.includes("CLASS_DELETE");
   const canCreateSubjects = permissions.includes("CLASS_CREATE");
   const canManageRows = canUpdateClasses || canDeleteClasses;
-  const canManageTrainingPrograms =
-    canUpdateClasses || canCreateClasses || canDeleteClasses;
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [trainingPrograms, setTrainingPrograms] = useState<TrainingProgram[]>([]);
   const [options, setOptions] = useState<ClassOptions>({
@@ -123,9 +106,6 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
   });
   const [form, setForm] = useState<ClassForm>(EMPTY_FORM);
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
-  const [programForm, setProgramForm] =
-    useState<TrainingProgramForm>(EMPTY_PROGRAM_FORM);
-  const [editingProgramId, setEditingProgramId] = useState<number | null>(null);
   const [subjectForm, setSubjectForm] = useState({
     maMonHoc: "",
     tenMonHoc: "",
@@ -138,6 +118,30 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [classSearch, setClassSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const filteredClasses = useMemo(() => {
+    const searchTerm = classSearch.trim().toLocaleLowerCase("vi");
+    return classes.filter((record) => {
+      const matchesSearch =
+        !searchTerm ||
+        [
+          record.maLop,
+          record.tenLop,
+          record.namHoc,
+          record.giangVienTen ?? "",
+          record.maChuongTrinh ?? "",
+          record.tenChuongTrinh ?? "",
+          ...record.monHocs.map((subject) => subject.tenMonHoc),
+        ]
+          .join(" ")
+          .toLocaleLowerCase("vi")
+          .includes(searchTerm);
+      const matchesStatus = !statusFilter || record.trangThai === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [classSearch, classes, statusFilter]);
 
   useEffect(() => {
     const closeStudentPickerOnOutsideClick = (event: MouseEvent) => {
@@ -169,11 +173,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
           await api.get<ClassOptions>("/academic/class-options");
         setOptions(optionsResponse.data);
       }
-      if (canManageTrainingPrograms) {
-        const programResponse =
-          await api.get<TrainingProgram[]>("/academic/programs");
-        setTrainingPrograms(programResponse.data);
-      }
+      const programResponse =
+        await api.get<TrainingProgram[]>("/academic/programs");
+      setTrainingPrograms(programResponse.data);
       setErrorMessage("");
     } catch (error: unknown) {
       console.error("Không thể tải dữ liệu quản lý lớp:", error);
@@ -195,15 +197,12 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
         const optionsResponse = canUpdateClasses
           ? await api.get<ClassOptions>("/academic/class-options")
           : null;
-        const programResponse = canManageTrainingPrograms
-          ? await api.get<TrainingProgram[]>("/academic/programs")
-          : null;
+        const programResponse =
+          await api.get<TrainingProgram[]>("/academic/programs");
         if (active) {
           setClasses(classResponse.data);
           if (optionsResponse) setOptions(optionsResponse.data);
-          if (programResponse) {
-            setTrainingPrograms(programResponse.data);
-          }
+          setTrainingPrograms(programResponse.data);
           setErrorMessage("");
         }
       } catch (error: unknown) {
@@ -224,7 +223,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
     return () => {
       active = false;
     };
-  }, [canManageTrainingPrograms, canUpdateClasses]);
+  }, [canUpdateClasses, listOnly]);
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -329,115 +328,6 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
     }
   };
 
-  const resetProgramForm = () => {
-    setProgramForm(EMPTY_PROGRAM_FORM);
-    setEditingProgramId(null);
-  };
-
-  const saveTrainingProgram = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    try {
-      setSaving(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-      const payload = {
-        maChuongTrinh: programForm.maChuongTrinh.trim(),
-        tenChuongTrinh: programForm.tenChuongTrinh.trim(),
-        moTa: programForm.moTa.trim() || null,
-        tongThoiLuong: Number(programForm.tongThoiLuong),
-        hocPhiChuan: Number(programForm.hocPhiChuan),
-        trangThai: programForm.trangThai,
-      };
-      if (editingProgramId === null) {
-        await api.post("/academic/programs", payload);
-        setSuccessMessage("Đã tạo chương trình đào tạo.");
-      } else {
-        await api.put(`/academic/programs/${editingProgramId}`, payload);
-        setSuccessMessage("Đã cập nhật chương trình đào tạo.");
-      }
-      resetProgramForm();
-      await loadData();
-    } catch (error: unknown) {
-      console.error("Không thể lưu chương trình đào tạo:", error);
-      setErrorMessage(
-        responseError(error, "Không thể lưu chương trình đào tạo."),
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const editTrainingProgram = (program: TrainingProgram) => {
-    setProgramForm({
-      maChuongTrinh: program.maChuongTrinh,
-      tenChuongTrinh: program.tenChuongTrinh,
-      moTa: program.moTa ?? "",
-      tongThoiLuong: String(program.tongThoiLuong),
-      hocPhiChuan: String(program.hocPhiChuan),
-      trangThai: program.trangThai,
-    });
-    setEditingProgramId(program.chuongTrinhId);
-  };
-
-  const toggleTrainingProgramStatus = async (program: TrainingProgram) => {
-    const nextStatus =
-      program.trangThai === "Đang áp dụng" ? "Ngừng áp dụng" : "Đang áp dụng";
-    if (
-      !window.confirm(
-        `${nextStatus} chương trình ${program.maChuongTrinh} — ${program.tenChuongTrinh}?`,
-      )
-    ) {
-      return;
-    }
-    try {
-      setErrorMessage("");
-      setSuccessMessage("");
-      await api.put(`/academic/programs/${program.chuongTrinhId}`, {
-        maChuongTrinh: program.maChuongTrinh,
-        tenChuongTrinh: program.tenChuongTrinh,
-        moTa: program.moTa,
-        tongThoiLuong: program.tongThoiLuong,
-        hocPhiChuan: program.hocPhiChuan,
-        trangThai: nextStatus,
-      });
-      setSuccessMessage(`Đã ${nextStatus.toLowerCase()} chương trình.`);
-      await loadData();
-    } catch (error: unknown) {
-      console.error("Không thể cập nhật trạng thái chương trình:", error);
-      setErrorMessage(
-        responseError(error, "Không thể cập nhật trạng thái chương trình."),
-      );
-    }
-  };
-
-  const deleteTrainingProgram = async (program: TrainingProgram) => {
-    if (program.soLop > 0) {
-      setErrorMessage(
-        "Chương trình đã được gắn với lớp học nên không thể xóa; hãy ngừng áp dụng chương trình.",
-      );
-      return;
-    }
-    if (
-      !window.confirm(
-        `Xóa chương trình ${program.maChuongTrinh} — ${program.tenChuongTrinh}?`,
-      )
-    ) {
-      return;
-    }
-    try {
-      setErrorMessage("");
-      setSuccessMessage("");
-      await api.delete(`/academic/programs/${program.chuongTrinhId}`);
-      setSuccessMessage("Đã xóa chương trình đào tạo.");
-      await loadData();
-    } catch (error: unknown) {
-      console.error("Không thể xóa chương trình đào tạo:", error);
-      setErrorMessage(
-        responseError(error, "Không thể xóa chương trình đào tạo."),
-      );
-    }
-  };
-
   const selectedProgram = trainingPrograms.find(
     (program) => program.chuongTrinhId === form.chuongTrinhId,
   );
@@ -462,9 +352,17 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
             <span aria-hidden="true">🎓</span>
             ĐÀO TẠO
           </div>
-          <h1>{canUpdateClasses ? "Quản lý lớp" : "Xem lớp"}</h1>
+          <h1>
+            {listOnly
+              ? "Danh sách lớp"
+              : canUpdateClasses
+                ? "Quản lý lớp"
+                : "Xem lớp"}
+          </h1>
           <p>
-            {canUpdateClasses
+            {listOnly
+              ? "Tìm kiếm và lọc lớp theo mã, tên, năm học, giảng viên hoặc môn học."
+              : canUpdateClasses
               ? "Tổ chức lớp, phân công giảng viên, môn học và danh sách học viên."
               : "Danh sách lớp được phân công hoặc ghi danh cùng thông tin môn học."}
           </p>
@@ -475,7 +373,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
         </div>
       </header>
 
-      {canUpdateClasses && (
+      {canUpdateClasses && (!listOnly || editingClassId !== null) && (
         <form className="academic-card academic-form" onSubmit={saveClass}>
         <div className="academic-card-heading">
           <div>
@@ -717,13 +615,42 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
         </form>
       )}
 
+      {listOnly && (
       <section className="academic-card">
         <div className="academic-card-heading">
           <div>
             <h2>Danh sách lớp</h2>
-            <p>{classes.length} lớp trong hệ thống</p>
+            <p>
+              {listOnly
+                ? `Hiển thị ${filteredClasses.length} / ${classes.length} lớp`
+                : `${classes.length} lớp trong hệ thống`}
+            </p>
           </div>
         </div>
+        {listOnly && (
+          <div className="academic-filters">
+            <label>
+              Tìm kiếm lớp
+              <input
+                type="search"
+                value={classSearch}
+                onChange={(event) => setClassSearch(event.target.value)}
+                placeholder="Mã/tên lớp, năm học, giảng viên, môn học..."
+              />
+            </label>
+            <label>
+              Trạng thái
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="Đang hoạt động">Đang hoạt động</option>
+                <option value="Ngừng hoạt động">Ngừng hoạt động</option>
+              </select>
+            </label>
+          </div>
+        )}
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
@@ -744,12 +671,16 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
                     Đang tải danh sách lớp...
                   </td>
                 </tr>
-              ) : classes.length === 0 ? (
+              ) : filteredClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageRows ? 7 : 6}>Chưa có lớp học.</td>
+                  <td colSpan={canManageRows && !listOnly ? 7 : 6}>
+                    {classes.length === 0
+                      ? "Chưa có lớp học."
+                      : "Không tìm thấy lớp phù hợp."}
+                  </td>
                 </tr>
               ) : (
-                classes.map((record) => (
+                filteredClasses.map((record) => (
                   <tr key={record.lopHocId}>
                     <td>
                       <strong>{record.maLop}</strong>
@@ -823,8 +754,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
           </table>
         </div>
       </section>
+      )}
 
-      {canCreateSubjects && (
+      {!listOnly && canCreateSubjects && (
         <form className="academic-card academic-form" onSubmit={saveSubject}>
         <div className="academic-card-heading">
           <div>
@@ -933,232 +865,6 @@ const ClassManagement: React.FC<ClassManagementProps> = ({ permissions }) => {
           </div>
         </div>
         </form>
-      )}
-      {canManageTrainingPrograms && (
-        <section className="academic-card">
-          <div className="academic-card-heading">
-            <div>
-              <h2>Danh mục chương trình đào tạo</h2>
-              <p>
-                Chương trình đã gắn với lớp được giữ lại để bảo toàn lịch sử;
-                hãy ngừng áp dụng thay vì xóa.
-              </p>
-            </div>
-            {editingProgramId !== null && (
-              <button
-                className="academic-secondary-button"
-                type="button"
-                onClick={resetProgramForm}
-              >
-                Hủy chỉnh sửa
-              </button>
-            )}
-          </div>
-          {(canCreateClasses || canUpdateClasses) && (
-          <form className="academic-form" onSubmit={saveTrainingProgram}>
-            <div className="academic-form-grid">
-              <label>
-                Mã chương trình
-                <input
-                  required
-                  maxLength={30}
-                  value={programForm.maChuongTrinh}
-                  onChange={(event) =>
-                    setProgramForm((current) => ({
-                      ...current,
-                      maChuongTrinh: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Tên chương trình
-                <input
-                  required
-                  maxLength={150}
-                  value={programForm.tenChuongTrinh}
-                  onChange={(event) =>
-                    setProgramForm((current) => ({
-                      ...current,
-                      tenChuongTrinh: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Tổng thời lượng (giờ)
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={programForm.tongThoiLuong}
-                  onChange={(event) =>
-                    setProgramForm((current) => ({
-                      ...current,
-                      tongThoiLuong: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Học phí chuẩn (₫)
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={programForm.hocPhiChuan}
-                  onChange={(event) =>
-                    setProgramForm((current) => ({
-                      ...current,
-                      hocPhiChuan: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Trạng thái
-                <select
-                  value={programForm.trangThai}
-                  onChange={(event) =>
-                    setProgramForm((current) => ({
-                      ...current,
-                      trangThai: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="Đang áp dụng">Đang áp dụng</option>
-                  <option value="Ngừng áp dụng">Ngừng áp dụng</option>
-                </select>
-              </label>
-              <label className="academic-program-description">
-                Mô tả
-                <textarea
-                  rows={3}
-                  maxLength={1000}
-                  value={programForm.moTa}
-                  onChange={(event) =>
-                    setProgramForm((current) => ({
-                      ...current,
-                      moTa: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <div className="academic-form-actions">
-              {((editingProgramId === null && canCreateClasses) ||
-                (editingProgramId !== null && canUpdateClasses)) && (
-                <button
-                  className="academic-primary-button"
-                  type="submit"
-                  disabled={saving}
-                >
-                  {editingProgramId === null
-                    ? "Thêm chương trình"
-                    : "Lưu chương trình"}
-                </button>
-              )}
-            </div>
-          </form>
-          )}
-
-          <div className="academic-table-wrap" style={{ marginTop: 20 }}>
-            <table className="academic-table">
-              <thead>
-                <tr>
-                  <th>Mã chương trình</th>
-                  <th>Tên chương trình / mô tả</th>
-                  <th>Thời lượng</th>
-                  <th>Học phí chuẩn</th>
-                  <th>Số lớp</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trainingPrograms.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>Chưa có chương trình đào tạo.</td>
-                  </tr>
-                ) : (
-                  trainingPrograms.map((program) => (
-                    <tr key={program.chuongTrinhId}>
-                      <td>{program.maChuongTrinh}</td>
-                      <td>
-                        <strong>{program.tenChuongTrinh}</strong>
-                        {program.moTa && (
-                          <span className="academic-cell-subtitle">
-                            {program.moTa}
-                          </span>
-                        )}
-                      </td>
-                      <td>{program.tongThoiLuong} giờ</td>
-                      <td>
-                        {new Intl.NumberFormat("vi-VN").format(
-                          program.hocPhiChuan,
-                        )}{" "}
-₫
-                      </td>
-                      <td>{program.soLop}</td>
-                      <td>
-                        <span
-                          className={`academic-status ${
-                            program.trangThai === "Đang áp dụng"
-                              ? "active"
-                              : "inactive"
-                          }`}
-                        >
-                          {program.trangThai}
-                        </span>
-                      </td>
-                      <td className="academic-row-actions">
-                        {canUpdateClasses && (
-                          <>
-                            <button
-                              className="academic-text-button"
-                              type="button"
-                              onClick={() => editTrainingProgram(program)}
-                            >
-                              Sửa
-                            </button>
-                            <button
-                              className={
-                                program.trangThai === "Đang áp dụng"
-                                  ? "academic-danger-button"
-                                  : "academic-primary-button"
-                              }
-                              type="button"
-                              onClick={() =>
-                                void toggleTrainingProgramStatus(program)
-                              }
-                            >
-                              {program.trangThai === "Đang áp dụng"
-                                ? "Ngừng áp dụng"
-                                : "Áp dụng lại"}
-                            </button>
-                          </>
-                        )}
-                        {canDeleteClasses && program.soLop === 0 && (
-                          <button
-                            className="academic-danger-button"
-                            type="button"
-                            onClick={() =>
-                              void deleteTrainingProgram(program)
-                            }
-                          >
-                            Xóa
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       )}
     </section>
   );

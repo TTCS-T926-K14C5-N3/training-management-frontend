@@ -11,7 +11,7 @@ interface AdminLayoutProps {
   permissions: string[];
   onLogout: () => void;
 
-  // Điều hướng đến trang quản lý vai trò & quyền
+  // Điều hướng đến trang cấu hình quyền
   onRoleManagement: () => void;
 
   // Điều hướng đến trang chủ
@@ -23,7 +23,9 @@ interface AdminLayoutProps {
 
   onGradeManagement: () => void;
   onClassManagement: () => void;
+  onClassList: () => void;
   onTrainingCatalog?: () => void;
+  onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
@@ -46,7 +48,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUserManagement,
   onGradeManagement,
   onClassManagement,
+  onClassList,
   onTrainingCatalog = () => {},
+  onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
   onChangePassword,
   onProfile,
@@ -80,7 +84,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     /*
      * Admin hệ thống luôn được phép truy cập:
      * - Quản lý người dùng
-     * - Quản lý vai trò & quyền
+     * - Cấu hình quyền hệ thống
      *
      * Việc này giúp tránh trường hợp tài khoản Admin
      * bị thiếu USER_VIEW / ROLE_VIEW trong danh sách
@@ -107,12 +111,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const isUserManagementActive = currentPath === "/quan-ly-nguoi-dung";
 
-  const isRoleManagementActive = currentPath === "/quan-ly-vai-tro";
+  const isRoleManagementActive =
+    currentPath === "/phan-quyen" || currentPath === "/quan-ly-vai-tro";
 
   const isGradeManagementActive = currentPath === "/quan-ly-diem";
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
 
+  const isClassListActive = currentPath === "/danh-sach-lop";
+
+  const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
 
   const isTrainingCatalogActive = currentPath === "/danh-muc-dao-tao";
 
@@ -199,7 +207,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
 
           {/* =================================================
-              VAI TRÒ & QUYỀN
+              QUYỀN
           ================================================= */}
 
           {hasPermission("ROLE_VIEW") && (
@@ -212,7 +220,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <span className="admin-menu-symbol">◇</span>
 
-              <span>Vai trò & quyền</span>
+              <span>Quyền</span>
             </button>
           )}
 
@@ -245,6 +253,32 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
+          {hasPermission("CLASS_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isClassListActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onClassList}
+            >
+              <span className="admin-menu-symbol">▧</span>
+              <span>Danh sách lớp</span>
+            </button>
+          )}
+
+          {hasPermission("CLASS_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isTrainingProgramsActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onTrainingPrograms}
+            >
+              <span className="admin-menu-symbol">▤</span>
+              <span>Chương trình đào tạo</span>
+            </button>
+          )}
+
           {hasPermission("CURRICULUM_VIEW") && (
             <button
               type="button"
@@ -271,27 +305,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
-
-          {/* =================================================
-              ĐÀO TẠO
-          ================================================= */}
-
-          <button type="button" className="admin-menu-item" onClick={() => alert("Chức năng Đào tạo đang được phát triển!")}>
-            <span className="admin-menu-symbol">▣</span>
-
-            <span>Đào tạo</span>
-          </button>
-
-
-          {/* =================================================
-              BÁO CÁO
-          ================================================= */}
-
-          <button type="button" className="admin-menu-item" onClick={() => alert("Chức năng Báo cáo đang được phát triển!")}>
-            <span className="admin-menu-symbol">◫</span>
-
-            <span>Báo cáo</span>
-          </button>
 
           {/* =================================================
               HỆ THỐNG

@@ -220,7 +220,9 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
         }}
       >
         <div>
-          <h3 style={{ margin: 0, color: "#172033" }}>Quyền theo vai trò</h3>
+          <h3 style={{ margin: 0, color: "#172033" }}>
+            Cấu hình quyền theo vai trò
+          </h3>
           <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "13px" }}>
             Quyền không được chọn sẽ bị từ chối tại backend.
           </p>

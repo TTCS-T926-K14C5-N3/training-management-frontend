@@ -6,11 +6,13 @@ import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AppStatusPage from "./components/AppStatusPage";
 
-import RoleManagement from "./pages/RoleManagement";
 import UsersPage from "./pages/UsersPage";
+import UserImportInvalidDataPage from "./pages/UserImportInvalidDataPage";
 
 import GradeManagement from "./pages/GradeManagement";
 import ClassManagement from "./pages/ClassManagement";
+import PermissionsManagement from "./pages/PermissionsManagement";
+import TrainingPrograms from "./pages/TrainingPrograms";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
@@ -1012,7 +1014,7 @@ function App() {
   };
 
   // =========================================================
-  // ĐIỀU HƯỚNG QUẢN LÝ VAI TRÒ
+  // ĐIỀU HƯỚNG CẤU HÌNH QUYỀN
   // =========================================================
 
   const handleRoleManagement = () => {
@@ -1022,7 +1024,7 @@ function App() {
       return;
     }
 
-    navigate("/quan-ly-vai-tro");
+    navigate("/phan-quyen");
   };
 
   // =========================================================
@@ -1063,6 +1065,23 @@ function App() {
     }
 
     navigate("/quan-ly-lop");
+  };
+
+  const handleClassList = () => {
+    if (!hasPermission(user, "CLASS_VIEW")) {
+      navigate("/");
+      return;
+    }
+
+    navigate("/danh-sach-lop");
+  };
+
+  const handleTrainingPrograms = () => {
+    if (!hasPermission(user, "CLASS_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-chuong-trinh");
   };
 
   const handleTrainingCatalog = () => {
@@ -1423,6 +1442,8 @@ function App() {
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onClassList={handleClassList}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onChangePassword={handleChangePassword}
@@ -1444,6 +1465,8 @@ function App() {
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onClassList={handleClassList}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onProfile={handleProfile}
@@ -1480,6 +1503,8 @@ function App() {
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onClassList={handleClassList}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onChangePassword={handleChangePassword}
@@ -1497,6 +1522,8 @@ function App() {
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onClassList={handleClassList}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onProfile={handleProfile}
@@ -1528,6 +1555,8 @@ function App() {
         onUserManagement={handleUserManagement}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onClassList={handleClassList}
+        onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onChangePassword={handleChangePassword}
@@ -1545,6 +1574,8 @@ function App() {
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onClassList={handleClassList}
+        onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onProfile={handleProfile}
@@ -1567,6 +1598,8 @@ function App() {
       onUserManagement={handleUserManagement}
       onGradeManagement={handleGradeManagement}
       onClassManagement={handleClassManagement}
+      onClassList={handleClassList}
+      onTrainingPrograms={handleTrainingPrograms}
       onTrainingCatalog={handleTrainingCatalog}
       onAdmissionsLeads={handleAdmissionsLeads}
       onChangePassword={handleChangePassword}
@@ -1622,11 +1655,23 @@ function App() {
     );
   }
 
+  if (currentPath === "/du-lieu-import-khong-hop-le") {
+    if (!hasPermission(user, "USER_VIEW")) {
+      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+    }
+
+    return renderAdminLayout(
+      <ProtectedRoute requiredPermission="USER_VIEW">
+        <UserImportInvalidDataPage />
+      </ProtectedRoute>,
+    );
+  }
+
   // =========================================================
-  // QUẢN LÝ VAI TRÒ
+  // CẤU HÌNH QUYỀN
   // =========================================================
 
-  if (currentPath === "/quan-ly-vai-tro") {
+  if (currentPath === "/phan-quyen" || currentPath === "/quan-ly-vai-tro") {
     if (!hasPermission(user, "ROLE_VIEW")) {
       return renderAcademicLayout(<AppStatusPage status="forbidden" />);
     }
@@ -1634,7 +1679,7 @@ function App() {
     return renderAdminLayout(
       <ProtectedRoute requiredPermission="ROLE_VIEW">
 
-        <RoleManagement />
+        <PermissionsManagement />
       </ProtectedRoute>,
     );
   }
@@ -1651,6 +1696,22 @@ function App() {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="CLASS_VIEW">
         <ClassManagement permissions={currentPermissions} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/danh-sach-lop") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="CLASS_VIEW">
+        <ClassManagement permissions={currentPermissions} listOnly />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-chuong-trinh") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="CLASS_VIEW">
+        <TrainingPrograms permissions={currentPermissions} />
       </ProtectedRoute>,
     );
   }
@@ -1691,6 +1752,8 @@ function App() {
           onUserManagement={handleUserManagement}
           onGradeManagement={handleGradeManagement}
           onClassManagement={handleClassManagement}
+          onClassList={handleClassList}
+          onTrainingPrograms={handleTrainingPrograms}
 
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
@@ -1861,6 +1924,8 @@ function App() {
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onClassList={handleClassList}
+        onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onProfile={handleProfile}

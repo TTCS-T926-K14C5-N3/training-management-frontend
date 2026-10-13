@@ -24,15 +24,18 @@ interface Lead {
   email: string | null;
   nguon: string;
   trangThai: string;
+  hocVienId: number | null;
+  maHocVien: string | null;
   chuongTrinhId: number | null;
   tenChuongTrinh: string | null;
   ghiChu: string | null;
   nguoiPhuTrach: Consultant[];
   ngayTao: string;
   lichSuBanGiao: Array<{
-    nguoiBanGiao: string;
-    nguoiNhan: string;
+    nguoiBanGiao: string | null;
+    nguoiNhan: string | null;
     thoiGian: string;
+    ngayBoPhanCong: string | null;
   }>;
 }
 
@@ -52,13 +55,71 @@ const EMPTY_FORM = {
 };
 
 const responseError = (error: unknown, fallback: string): string => {
-  if (
-    axios.isAxiosError<{ detail?: unknown }>(error) &&
-    typeof error.response?.data?.detail === "string"
-  ) {
-    return error.response.data.detail;
+  if (!axios.isAxiosError<{ detail?: unknown }>(error)) {
+    return fallback;
   }
-  return fallback;
+
+  const response = error.response;
+  const detail = response?.data?.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const fieldNames: Record<string, string> = {
+      chuongTrinhId: "Chương trình quan tâm",
+      email: "Email",
+      ghiChu: "Ghi chú",
+      hoTen: "Họ và tên",
+      nguon: "Nguồn",
+      soDienThoai: "Số điện thoại",
+      trangThai: "Trạng thái",
+    };
+    const validationMessages = detail.flatMap((issue: unknown) => {
+      if (
+        typeof issue !== "object" ||
+        issue === null ||
+        !("msg" in issue) ||
+        typeof issue.msg !== "string"
+      ) {
+        return [];
+      }
+      const location =
+        "loc" in issue && Array.isArray(issue.loc)
+          ? issue.loc[issue.loc.length - 1]
+          : null;
+      const field =
+        typeof location === "string"
+          ? `${fieldNames[location] ?? location}: `
+          : "";
+      return [`${field}${issue.msg}`];
+    });
+    if (validationMessages.length > 0) {
+      return `Thông tin chưa hợp lệ: ${validationMessages.join("; ")}`;
+    }
+  }
+
+  if (!response) {
+    const requestUrl = [
+      error.config?.baseURL?.replace(/\/+$/, ""),
+      error.config?.url?.replace(/^\/+/, ""),
+    ]
+      .filter(Boolean)
+      .join("/");
+    const endpoint = requestUrl ? ` (${requestUrl})` : "";
+    return `Không nhận được phản hồi từ API${endpoint}: ${
+      error.message || "lỗi kết nối mạng"
+    }.`;
+  }
+  if (response.status === 401) {
+    return "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
+  }
+  if (response.status === 403) {
+    return "Tài khoản không có quyền thực hiện thao tác này.";
+  }
+  if (response.status >= 500) {
+    return `Máy chủ gặp lỗi khi xử lý yêu cầu (HTTP ${response.status}). Vui lòng kiểm tra log backend.`;
+  }
+  return `Yêu cầu thất bại (HTTP ${response.status}). ${fallback}`;
 };
 
 const AdmissionsLeads: React.FC<LeadsProps> = ({
@@ -75,9 +136,9 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [programs, setPrograms] = useState<ProgramOption[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [assignedIds, setAssignedIds] = useState<number[]>([]);
+  const [assignedId, setAssignedId] = useState("");
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
-  const [bulkConsultantIds, setBulkConsultantIds] = useState<number[]>([]);
+  const [bulkConsultantId, setBulkConsultantId] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
@@ -114,18 +175,51 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       }
       if (filters.startDate) params.start_date = filters.startDate;
       if (filters.endDate) params.end_date = filters.endDate;
-      const [leadResponse, consultantResponse, programResponse] =
-        await Promise.all([
+      const [leadResult, consultantResult, programResult] =
+        await Promise.allSettled([
           api.get<Lead[]>("/admissions/leads", { params }),
           canAssign
             ? api.get<Consultant[]>("/admissions/consultants")
             : Promise.resolve({ data: [] as Consultant[] }),
           api.get<ProgramOption[]>("/admissions/program-options"),
         ]);
-      setLeads(leadResponse.data);
-      setConsultants(consultantResponse.data);
-      setPrograms(programResponse.data);
-      setError("");
+      if (leadResult.status === "rejected") {
+        throw leadResult.reason;
+      }
+      setLeads(leadResult.value.data);
+      const visibleLeadIds = new Set(
+        leadResult.value.data.map((lead) => lead.leadId),
+      );
+      setSelectedLeadIds((selected) =>
+        selected.filter((leadId) => visibleLeadIds.has(leadId)),
+      );
+
+      const auxiliaryErrors: string[] = [];
+      if (consultantResult.status === "fulfilled") {
+        setConsultants(consultantResult.value.data);
+      } else {
+        console.error("Không thể tải danh sách tư vấn viên:", consultantResult.reason);
+        setConsultants([]);
+        auxiliaryErrors.push(
+          responseError(
+            consultantResult.reason,
+            "Không thể tải danh sách tư vấn viên.",
+          ),
+        );
+      }
+      if (programResult.status === "fulfilled") {
+        setPrograms(programResult.value.data);
+      } else {
+        console.error("Không thể tải danh sách chương trình:", programResult.reason);
+        setPrograms([]);
+        auxiliaryErrors.push(
+          responseError(
+            programResult.reason,
+            "Không thể tải danh sách chương trình.",
+          ),
+        );
+      }
+      setError(auxiliaryErrors.join(" "));
     } catch (requestError: unknown) {
       console.error("Không thể tải danh sách lead:", requestError);
       setError(responseError(requestError, "Không thể tải danh sách lead."));
@@ -152,7 +246,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
-    setAssignedIds([]);
+    setAssignedId("");
     setDuplicateWarning("");
   };
 
@@ -175,6 +269,8 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     setSaving(true);
     setError("");
     setNotice("");
+    let savedLeadId: number | null = null;
+    let leadSaved = false;
     try {
       const payload = {
         hoTen: form.hoTen,
@@ -190,13 +286,17 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       let leadId = editingId;
       if (editingId) {
         await api.put(`/admissions/leads/${editingId}`, payload);
+        leadSaved = true;
       } else {
         const response = await api.post<Lead>("/admissions/leads", payload);
         leadId = response.data.leadId;
+        savedLeadId = leadId;
+        leadSaved = true;
+        setEditingId(leadId);
       }
       if (leadId && canAssign) {
         await api.put(`/admissions/leads/${leadId}/assignments`, {
-          consultantIds: assignedIds,
+          consultantIds: assignedId ? [Number(assignedId)] : [],
         });
       }
       resetForm();
@@ -204,7 +304,14 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       await loadData();
     } catch (requestError: unknown) {
       console.error("Không thể lưu lead:", requestError);
-      setError(responseError(requestError, "Không thể lưu lead."));
+      const detail = responseError(requestError, "Không thể lưu lead.");
+      setError(
+        leadSaved
+          ? savedLeadId !== null
+            ? `Lead #${savedLeadId} đã được tạo nhưng phân công chưa hoàn tất. Bấm lưu lại để thử phân công lần nữa. ${detail}`
+            : `Thông tin lead đã lưu nhưng phân công chưa hoàn tất. Bấm lưu lại để thử lại. ${detail}`
+          : detail,
+      );
     } finally {
       setSaving(false);
     }
@@ -223,7 +330,11 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       trangThai: lead.trangThai,
       ghiChu: lead.ghiChu || "",
     });
-    setAssignedIds(lead.nguoiPhuTrach.map((user) => user.nguoiDungId));
+    setAssignedId(
+      lead.nguoiPhuTrach[0]
+        ? String(lead.nguoiPhuTrach[0].nguoiDungId)
+        : "",
+    );
     setDuplicateWarning("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -241,19 +352,53 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     }
   };
 
-  const toggleAssignment = (userId: number) => {
-    setAssignedIds((current) =>
-      current.includes(userId)
-        ? current.filter((id) => id !== userId)
-        : [...current, userId],
-    );
+  const convertLead = async (lead: Lead) => {
+    if (!lead.email) {
+      setError("Cần bổ sung email cho lead trước khi tạo tài khoản học viên.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Chuyển ${lead.hoTen} thành học viên và gửi email kích hoạt đến ${lead.email}?`,
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await api.post<{
+        alreadyConverted: boolean;
+        maHocVien: string;
+        message: string;
+      }>(`/admissions/leads/${lead.leadId}/convert-to-student`);
+      setNotice(response.data.message);
+      setSelectedLeadIds((current) =>
+        current.filter((leadId) => leadId !== lead.leadId),
+      );
+      await loadData();
+    } catch (requestError: unknown) {
+      console.error("Không thể chuyển lead thành học viên:", requestError);
+      setError(
+        responseError(
+          requestError,
+          "Không thể chuyển lead thành hồ sơ học viên.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleSelectAll = () => {
-    if (selectedLeadIds.length === leads.length) {
+    const selectableLeadIds = leads
+      .filter((lead) => lead.trangThai !== "Đã nhập học")
+      .map((lead) => lead.leadId);
+    if (selectedLeadIds.length === selectableLeadIds.length) {
       setSelectedLeadIds([]);
     } else {
-      setSelectedLeadIds(leads.map((l) => l.leadId));
+      setSelectedLeadIds(selectableLeadIds);
     }
   };
 
@@ -265,29 +410,30 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     );
   };
 
-  const toggleBulkConsultant = (id: number) => {
-    setBulkConsultantIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  };
-
   const handleBulkAssign = async () => {
-    if (selectedLeadIds.length === 0 || bulkConsultantIds.length === 0) return;
+    if (selectedLeadIds.length === 0 || bulkConsultantId === "") return;
+    const consultantIds =
+      bulkConsultantId === "unassigned" ? [] : [Number(bulkConsultantId)];
     setSaving(true);
     setError("");
     setNotice("");
     try {
       await api.put("/admissions/leads/bulk-assignments", {
         leadIds: selectedLeadIds,
-        consultantIds: bulkConsultantIds,
+        consultantIds,
       });
       setNotice(
-        `Đã phân công ${selectedLeadIds.length} lead cho ${bulkConsultantIds.length} tư vấn viên.`,
+        consultantIds.length === 0
+          ? `Đã gỡ phân công ${selectedLeadIds.length} lead.`
+          : `Đã giao ${selectedLeadIds.length} lead cho ${
+              consultants.find(
+                (consultant) =>
+                  consultant.nguoiDungId === consultantIds[0],
+              )?.hoTen ?? "tư vấn viên"
+            }.`,
       );
       setSelectedLeadIds([]);
-      setBulkConsultantIds([]);
+      setBulkConsultantId("");
       await loadData();
     } catch (requestError: unknown) {
       console.error("Không thể phân công hàng loạt:", requestError);
@@ -405,10 +551,12 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                 }
               >
                 <option value="Mới">Mới</option>
-                <option value="Đang tư vấn">Đang tư vấn</option>
+                <option value="Đang liên hệ">Đang liên hệ</option>
                 <option value="Tiềm năng">Tiềm năng</option>
                 <option value="Không tiềm năng">Không tiềm năng</option>
-                <option value="Đã đăng ký">Đã đăng ký</option>
+                {editingId && form.trangThai === "Đã chuyển đổi" && (
+                  <option value="Đã chuyển đổi">Đã chuyển đổi</option>
+                )}
               </select>
             </label>
             <label className="academic-wide-field">
@@ -423,20 +571,23 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </label>
             {canAssign && (
               <fieldset className="lead-assignments academic-wide-field">
-                <legend>Phân công tư vấn viên</legend>
-                {consultants.map((consultant) => (
-                  <label key={consultant.nguoiDungId}>
-                    <input
-                      type="checkbox"
-                      checked={assignedIds.includes(consultant.nguoiDungId)}
-                      onChange={() => toggleAssignment(consultant.nguoiDungId)}
-                    />
-                    {consultant.hoTen}
-                  </label>
-                ))}
-                {consultants.length === 0 && (
-                  <span className="academic-muted">Không có tư vấn viên khả dụng.</span>
-                )}
+                <label>
+                  Người phụ trách
+                  <select
+                    value={assignedId}
+                    onChange={(event) => setAssignedId(event.target.value)}
+                  >
+                    <option value="">Chưa phân công</option>
+                    {consultants.map((consultant) => (
+                      <option
+                        key={consultant.nguoiDungId}
+                        value={consultant.nguoiDungId}
+                      >
+                        {consultant.hoTen}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </fieldset>
             )}
             <div className="academic-form-actions">
@@ -508,10 +659,11 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             >
               <option value="">Tất cả</option>
               <option value="Mới">Mới</option>
-              <option value="Đang tư vấn">Đang tư vấn</option>
+              <option value="Đang liên hệ">Đang liên hệ</option>
               <option value="Tiềm năng">Tiềm năng</option>
               <option value="Không tiềm năng">Không tiềm năng</option>
-              <option value="Đã đăng ký">Đã đăng ký</option>
+              <option value="Đã chuyển đổi">Đã chuyển đổi</option>
+              <option value="Đã nhập học">Đã nhập học</option>
             </select>
           </label>
           <label>
@@ -580,29 +732,29 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
               </button>
             </div>
             <div className="lead-bulk-assign">
-              <span>Phân công cho tư vấn viên:</span>
-              <div className="lead-bulk-consultant-pills">
-                {consultants.map((c) => {
-                  const isChecked = bulkConsultantIds.includes(c.nguoiDungId);
-                  return (
-                    <label
-                      key={c.nguoiDungId}
-                      className={`lead-consultant-pill ${isChecked ? "active" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleBulkConsultant(c.nguoiDungId)}
-                      />
-                      {c.hoTen}
-                    </label>
-                  );
-                })}
-              </div>
+              <label htmlFor="bulk-consultant">Giao lead cho:</label>
+              <select
+                id="bulk-consultant"
+                value={bulkConsultantId}
+                onChange={(event) =>
+                  setBulkConsultantId(event.target.value)
+                }
+              >
+                <option value="">Chọn tư vấn viên hoặc thao tác</option>
+                {consultants.map((consultant) => (
+                  <option
+                    key={consultant.nguoiDungId}
+                    value={consultant.nguoiDungId}
+                  >
+                    {consultant.hoTen}
+                  </option>
+                ))}
+                <option value="unassigned">Gỡ phân công</option>
+              </select>
               <button
                 type="button"
                 className="lead-bulk-apply-btn"
-                disabled={saving || bulkConsultantIds.length === 0}
+                disabled={saving || bulkConsultantId === ""}
                 onClick={() => void handleBulkAssign()}
               >
                 {saving
@@ -620,10 +772,15 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   <th style={{ width: "40px", textAlign: "center" }}>
                     <input
                       type="checkbox"
-                      checked={
-                        leads.length > 0 &&
-                        selectedLeadIds.length === leads.length
-                      }
+                      checked={leads.some(
+                        (lead) => lead.trangThai !== "Đã nhập học",
+                      ) &&
+                        selectedLeadIds.length ===
+                          leads.filter((lead) => lead.trangThai !== "Đã nhập học")
+                            .length}
+                      disabled={leads.every((lead) =>
+                          lead.trangThai === "Đã nhập học",
+                      )}
                       onChange={toggleSelectAll}
                       aria-label="Chọn tất cả lead"
                     />
@@ -647,6 +804,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                           <input
                             type="checkbox"
                             checked={selectedLeadIds.includes(lead.leadId)}
+                            disabled={lead.trangThai === "Đã nhập học"}
                             onChange={() => toggleSelectLead(lead.leadId)}
                             aria-label={`Chọn lead ${lead.hoTen}`}
                           />
@@ -654,6 +812,11 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                       )}
                       <td>
                         <strong>{lead.hoTen}</strong>
+                        {lead.maHocVien && (
+                          <small className="admissions-student-code">
+                            Mã học viên: {lead.maHocVien}
+                          </small>
+                        )}
                         <small className="academic-muted">{lead.soDienThoai}</small>
                         {lead.email && (
                           <small className="academic-muted">{lead.email}</small>
@@ -672,11 +835,28 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                       <td>{new Date(lead.ngayTao).toLocaleDateString("vi-VN")}</td>
                       <td>
                         <div className="lead-row-actions">
-                          {canUpdate && (
-                            <button type="button" onClick={() => editLead(lead)}>
-                              Sửa
-                            </button>
-                          )}
+                          {canUpdate &&
+                            lead.trangThai !== "Đã nhập học" && (
+                              <button type="button" onClick={() => editLead(lead)}>
+                                Sửa
+                              </button>
+                            )}
+                          {canUpdate &&
+                            lead.trangThai !== "Đã nhập học" && (
+                              <button
+                                type="button"
+                                className="lead-convert-btn"
+                                disabled={saving || !lead.email}
+                                title={
+                                  lead.email
+                                    ? "Tạo hồ sơ học viên và gửi email kích hoạt"
+                                    : "Cần bổ sung email trước khi chuyển thành học viên"
+                                }
+                                onClick={() => void convertLead(lead)}
+                              >
+                                Nhập học
+                              </button>
+                            )}
                           <button
                             type="button"
                             onClick={() =>
@@ -687,14 +867,15 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                           >
                             Lịch sử
                           </button>
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => void deleteLead(lead)}
-                            >
-                              Xóa
-                            </button>
-                          )}
+                          {canDelete &&
+                            lead.trangThai !== "Đã nhập học" && (
+                              <button
+                                type="button"
+                                onClick={() => void deleteLead(lead)}
+                              >
+                                Xóa
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -706,9 +887,18 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                             <ul className="lead-history">
                               {lead.lichSuBanGiao.map((entry, index) => (
                                 <li key={`${lead.leadId}-${index}`}>
-                                  {entry.nguoiBanGiao} bàn giao cho {entry.nguoiNhan}
+                                  {entry.nguoiBanGiao ?? "Quản lý"} giao cho{" "}
+                                  {entry.nguoiNhan ?? "tư vấn viên"}
                                   {" — "}
                                   {new Date(entry.thoiGian).toLocaleString("vi-VN")}
+                                  {entry.ngayBoPhanCong && (
+                                    <>
+                                      {" — Đã gỡ phân công: "}
+                                      {new Date(entry.ngayBoPhanCong).toLocaleString(
+                                        "vi-VN",
+                                      )}
+                                    </>
+                                  )}
                                 </li>
                               ))}
                             </ul>
