@@ -79,6 +79,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
   const [bulkConsultantIds, setBulkConsultantIds] = useState<number[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
     search: "",
     trangThai: "",
@@ -92,6 +93,15 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState("");
+
+  const handleSearchSubmit = () => {
+    const term = searchInput.trim();
+    if (term === filters.search) {
+      void loadData();
+    } else {
+      setFilters((current) => ({ ...current, search: term }));
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -453,13 +463,40 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
         <div className="academic-filters lead-filters">
           <label>
             Tìm kiếm
-            <input
-              placeholder="Tên hoặc số điện thoại"
-              value={filters.search}
-              onChange={(event) =>
-                setFilters({ ...filters, search: event.target.value })
-              }
-            />
+            <div className="lead-search-box">
+              <input
+                placeholder="Nhập tên/SĐT rồi bấm Enter..."
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleSearchSubmit();
+                  }
+                }}
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  className="lead-search-clear"
+                  title="Xóa tìm kiếm"
+                  onClick={() => {
+                    setSearchInput("");
+                    setFilters((current) => ({ ...current, search: "" }));
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+              <button
+                type="button"
+                className="lead-search-btn"
+                title="Tìm kiếm"
+                onClick={handleSearchSubmit}
+              >
+                🔍
+              </button>
+            </div>
           </label>
           <label>
             Trạng thái

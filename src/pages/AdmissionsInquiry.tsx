@@ -70,6 +70,14 @@ const AdmissionsInquiry = () => {
         typeof requestError.response?.data?.detail === "string"
       ) {
         setError(requestError.response.data.detail);
+      } else if (
+        axios.isAxiosError<{ detail?: Array<{ msg?: string }> }>(requestError) &&
+        Array.isArray(requestError.response?.data?.detail)
+      ) {
+        const msgs = requestError.response.data.detail
+          .map((d) => d.msg)
+          .filter(Boolean);
+        setError(msgs.join(", ") || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
       } else {
         setError("Gửi yêu cầu chưa thành công. Vui lòng thử lại.");
       }
@@ -145,15 +153,16 @@ const AdmissionsInquiry = () => {
                 />
               </label>
               <label>
-                Chương trình quan tâm
+                Chương trình quan tâm *
                 <select
+                  required
                   value={form.chuongTrinhId}
                   onChange={(event) =>
                     setForm({ ...form, chuongTrinhId: event.target.value })
                   }
                   disabled={loadingPrograms}
                 >
-                  <option value="">Chưa xác định</option>
+                  <option value="">-- Chọn chương trình quan tâm * --</option>
                   {programs.map((program) => (
                     <option
                       key={program.chuongTrinhId}
