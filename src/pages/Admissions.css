@@ -253,6 +253,71 @@
   font-size: 12px;
 }
 
+.lead-row-overdue > td {
+  background: #fff7ed;
+}
+
+.lead-overdue-badge,
+.lead-interaction-overdue {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.lead-activity-panel {
+  display: grid;
+  gap: 18px;
+  padding: 12px 4px;
+}
+
+.lead-activity-panel h3 {
+  margin: 0 0 8px;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.lead-interaction-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.lead-interaction-form label {
+  display: grid;
+  gap: 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lead-interaction-form input,
+.lead-interaction-form select {
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font: inherit;
+}
+
+.lead-interaction-form button {
+  align-self: end;
+  justify-self: start;
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .lead-interaction-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 700px) {
   .lead-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));

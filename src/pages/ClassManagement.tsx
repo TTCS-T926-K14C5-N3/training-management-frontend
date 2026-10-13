@@ -9,6 +9,7 @@ interface UserOption {
   nguoiDungId: number;
   hoTen: string;
   email: string;
+  vaiTroIds?: number[];
 }
 
 interface SubjectOption {
@@ -16,6 +17,11 @@ interface SubjectOption {
   maMonHoc: string;
   tenMonHoc: string;
   soTinChi: number | null;
+  giangViens?: Array<{
+    giangVienId: number;
+    hoTen: string;
+    vaiTro: string;
+  }>;
 }
 
 interface ClassRecord {
@@ -31,9 +37,28 @@ interface ClassRecord {
   canBanGiao: boolean;
   trangThai: string;
   hocVienIds: number[];
-  hocViens: UserOption[];
+  hocViens: Array<
+    UserOption & { ngayGhiDanh: string; nguoiGhiDanh: string | null }
+  >;
   monHocIds: number[];
   monHocs: SubjectOption[];
+  ngayKhaiGiang: string;
+  siSoHienTai: number;
+  siSoToiDa: number;
+  canhBaoSiSo: boolean;
+  hinhThuc: string;
+  phongHocId: number | null;
+  maPhong: string | null;
+  tenPhong: string | null;
+  sucChuaPhong: number | null;
+  canhBaoSucChuaPhong: boolean;
+  linkTrucTuyen: string | null;
+  tienDo: number;
+  phanCongGiangVien: Array<{
+    monHocId: number;
+    giangVienId: number;
+    vaiTro: "Chính" | "Trợ giảng";
+  }>;
 }
 
 interface TrainingProgram {
@@ -51,6 +76,12 @@ interface ClassOptions {
   giangViens: UserOption[];
   hocViens: UserOption[];
   monHocs: SubjectOption[];
+  phongHocs: Array<{
+    phongHocId: number;
+    maPhong: string;
+    tenPhong: string;
+    sucChua: number;
+  }>;
 }
 
 interface ClassForm {
@@ -61,6 +92,42 @@ interface ClassForm {
   giangVienId: number | "";
   hocVienIds: number[];
   monHocIds: number[];
+  ngayKhaiGiang: string;
+  siSoToiDa: number;
+  hinhThuc: string;
+  phongHocId: number | "";
+  linkTrucTuyen: string;
+  tienDo: number;
+  trangThai: string;
+  phanCongGiangVien: Array<{
+    monHocId: number;
+    giangVienId: number;
+    vaiTro: "Chính" | "Trợ giảng";
+  }>;
+}
+
+interface StudentProfile {
+  hocVien: {
+    nguoiDungId: number;
+    hoTen: string;
+    email: string;
+    soDienThoai: string | null;
+    ngaySinh: string | null;
+    diaChi: string | null;
+    trangThai: string;
+  };
+  lopHocs: ClassRecord[];
+  diems: Array<{
+    maLop: string;
+    tenLop: string;
+    maMonHoc: string;
+    tenMonHoc: string;
+    hocKy: number;
+    namHoc: string;
+    diemQuaTrinh: number | null;
+    diemGiuaKy: number | null;
+    diemCuoiKy: number | null;
+  }>;
 }
 
 interface ClassManagementProps {
@@ -76,6 +143,14 @@ const EMPTY_FORM: ClassForm = {
   giangVienId: "",
   hocVienIds: [],
   monHocIds: [],
+  ngayKhaiGiang: new Date().toISOString().slice(0, 10),
+  siSoToiDa: 30,
+  hinhThuc: "Trực tiếp",
+  phongHocId: "",
+  linkTrucTuyen: "",
+  tienDo: 0,
+  trangThai: "Chuẩn bị",
+  phanCongGiangVien: [],
 };
 
 const responseError = (error: unknown, fallback: string): string => {
@@ -103,6 +178,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     giangViens: [],
     hocViens: [],
     monHocs: [],
+    phongHocs: [],
   });
   const [form, setForm] = useState<ClassForm>(EMPTY_FORM);
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
@@ -120,6 +196,33 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const [successMessage, setSuccessMessage] = useState("");
   const [classSearch, setClassSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [programFilter, setProgramFilter] = useState("");
+  const [instructorFilter, setInstructorFilter] = useState("");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [roomForm, setRoomForm] = useState({ maPhong: "", tenPhong: "", sucChua: 30 });
+  const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
+
+  const instructorOptions = useMemo(() => {
+    const teachers = new Map<number, string>();
+    classes.forEach((record) => {
+      if (record.giangVienId && record.giangVienTen) {
+        teachers.set(record.giangVienId, record.giangVienTen);
+      }
+      record.monHocs.forEach((subject) =>
+        subject.giangViens?.forEach((teacher) =>
+          teachers.set(teacher.giangVienId, teacher.hoTen),
+        ),
+      );
+    });
+    options.giangViens.forEach((teacher) =>
+      teachers.set(teacher.nguoiDungId, teacher.hoTen),
+    );
+    return Array.from(teachers.entries()).sort((left, right) =>
+      left[1].localeCompare(right[1], "vi"),
+    );
+  }, [classes, options.giangViens]);
 
   const filteredClasses = useMemo(() => {
     const searchTerm = classSearch.trim().toLocaleLowerCase("vi");
@@ -131,6 +234,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           record.tenLop,
           record.namHoc,
           record.giangVienTen ?? "",
+          record.maPhong ?? "",
+          record.tenPhong ?? "",
           record.maChuongTrinh ?? "",
           record.tenChuongTrinh ?? "",
           ...record.monHocs.map((subject) => subject.tenMonHoc),
@@ -139,9 +244,35 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           .toLocaleLowerCase("vi")
           .includes(searchTerm);
       const matchesStatus = !statusFilter || record.trangThai === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesProgram =
+        !programFilter || String(record.chuongTrinhId ?? "") === programFilter;
+      const teacherIds = new Set(
+        record.phanCongGiangVien.map((item) => item.giangVienId),
+      );
+      const matchesInstructor =
+        !instructorFilter ||
+        String(record.giangVienId ?? "") === instructorFilter ||
+        teacherIds.has(Number(instructorFilter));
+      const matchesStartDate =
+        (!dateFromFilter || record.ngayKhaiGiang >= dateFromFilter) &&
+        (!dateToFilter || record.ngayKhaiGiang <= dateToFilter);
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesProgram &&
+        matchesInstructor &&
+        matchesStartDate
+      );
     });
-  }, [classSearch, classes, statusFilter]);
+  }, [
+    classSearch,
+    classes,
+    dateFromFilter,
+    dateToFilter,
+    instructorFilter,
+    programFilter,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     const closeStudentPickerOnOutsideClick = (event: MouseEvent) => {
@@ -225,6 +356,56 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     };
   }, [canUpdateClasses, listOnly]);
 
+  const loadStudentProfile = async (studentId: number) => {
+    try {
+      const response = await api.get<StudentProfile>(
+        `/academic/students/${studentId}`,
+      );
+      setStudentProfile(response.data);
+      setErrorMessage("");
+    } catch (error: unknown) {
+      console.error("Không thể tải hồ sơ học viên:", error);
+      setErrorMessage(responseError(error, "Không thể tải hồ sơ học viên."));
+    }
+  };
+
+  const saveRoom = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      if (editingRoomId === null) {
+        await api.post("/academic/rooms", roomForm);
+      } else {
+        await api.put(`/academic/rooms/${editingRoomId}`, roomForm);
+      }
+      setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+      setEditingRoomId(null);
+      setSuccessMessage(
+        editingRoomId === null ? "Đã tạo phòng học." : "Đã cập nhật phòng học.",
+      );
+      await loadData();
+    } catch (error: unknown) {
+      console.error("Không thể lưu phòng học:", error);
+      setErrorMessage(responseError(error, "Không thể lưu phòng học."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const archiveRoom = async (roomId: number, roomCode: string) => {
+    if (!window.confirm(`Ngừng sử dụng phòng ${roomCode}?`)) return;
+    try {
+      await api.delete(`/academic/rooms/${roomId}`);
+      setSuccessMessage("Đã ngừng hoạt động phòng học.");
+      await loadData();
+    } catch (error: unknown) {
+      console.error("Không thể ngừng phòng học:", error);
+      setErrorMessage(responseError(error, "Không thể ngừng phòng học."));
+    }
+  };
+
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingClassId(null);
@@ -244,7 +425,10 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         chuongTrinhId:
           form.chuongTrinhId === "" ? null : form.chuongTrinhId,
         giangVienId: form.giangVienId === "" ? null : form.giangVienId,
+        phongHocId: form.phongHocId === "" ? null : form.phongHocId,
+        linkTrucTuyen: form.linkTrucTuyen || null,
       };
+
       if (editingClassId === null) {
         await api.post("/academic/classes", payload);
       } else {
@@ -270,6 +454,14 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
       giangVienId: record.giangVienId ?? "",
       hocVienIds: record.hocVienIds,
       monHocIds: record.monHocIds,
+      ngayKhaiGiang: record.ngayKhaiGiang,
+      siSoToiDa: record.siSoToiDa,
+      hinhThuc: record.hinhThuc as ClassForm["hinhThuc"],
+      phongHocId: record.phongHocId ?? "",
+      linkTrucTuyen: record.linkTrucTuyen ?? "",
+      tienDo: record.tienDo,
+      trangThai: record.trangThai,
+      phanCongGiangVien: record.phanCongGiangVien,
     });
     setEditingClassId(record.lopHocId);
     setErrorMessage("");
@@ -481,7 +673,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
             />
           </label>
           <label>
-            Giảng viên phụ trách
+            Giảng viên chính mặc định
             <select
               value={form.giangVienId}
               onChange={(event) =>
@@ -501,6 +693,135 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               ))}
             </select>
           </label>
+          <label>
+            Ngày khai giảng dự kiến
+            <input
+              required
+              type="date"
+              value={form.ngayKhaiGiang}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  ngayKhaiGiang: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label>
+            Sĩ số tối đa
+            <input
+              required
+              type="number"
+              min={1}
+              max={500}
+              value={form.siSoToiDa}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  siSoToiDa: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label>
+            Trạng thái lớp
+            <select
+              value={form.trangThai}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  trangThai: event.target.value,
+                }))
+              }
+            >
+              {[
+                "Chuẩn bị",
+                "Đang học",
+                "Kết thúc",
+                "Hủy",
+                ...(form.trangThai === "Đang hoạt động"
+                  ? ["Đang hoạt động"]
+                  : []),
+              ].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Tiến độ buổi học (%)
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={form.tienDo}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  tienDo: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label>
+            Hình thức học
+            <select
+              value={form.hinhThuc}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  hinhThuc: event.target.value,
+                }))
+              }
+            >
+              <option value="Trực tiếp">Trực tiếp</option>
+              <option value="Trực tuyến">Trực tuyến</option>
+              <option value="Kết hợp">Kết hợp</option>
+            </select>
+          </label>
+          {form.hinhThuc !== "Trực tuyến" && (
+            <label>
+              Phòng học
+              <select
+                value={form.phongHocId}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    phongHocId: event.target.value
+                      ? Number(event.target.value)
+                      : "",
+                  }))
+                }
+              >
+                <option value="">Chưa xếp phòng</option>
+                {options.phongHocs.map((room) => (
+                  <option key={room.phongHocId} value={room.phongHocId}>
+                    {room.maPhong} — {room.tenPhong} (sức chứa {room.sucChua})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {form.hinhThuc !== "Trực tiếp" && (
+            <label>
+              Liên kết học trực tuyến
+              <input
+                type="url"
+                required={form.hinhThuc === "Trực tuyến"}
+                maxLength={500}
+                value={form.linkTrucTuyen}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    linkTrucTuyen: event.target.value,
+                  }))
+                }
+                placeholder="https://..."
+              />
+            </label>
+          )}
           <div className="academic-student-field">
             <span className="academic-field-label">Học viên</span>
             <details
@@ -569,35 +890,144 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               </div>
             </details>
           </div>
-          <label>
-            Môn học
-            <select
-              value={
-                form.monHocIds.length === 1 ? form.monHocIds[0] : ""
-              }
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  monHocIds: event.target.value
-                    ? [Number(event.target.value)]
-                    : [],
-                }))
-              }
-            >
-              <option value="">Chọn môn học</option>
-              {options.monHocs.map((subject) => (
-                <option key={subject.monHocId} value={subject.monHocId}>
-                  {subject.maMonHoc} — {subject.tenMonHoc}
-                </option>
-              ))}
-            </select>
-            {form.monHocIds.length > 1 && (
-              <small>
-                Lớp hiện có nhiều môn. Chọn một môn để thay thế danh sách hiện
-                tại khi lưu.
-              </small>
+          <fieldset className="academic-wide-field class-subject-assignments">
+            <legend>Môn học và phân công giảng viên theo môn</legend>
+            {options.monHocs.length === 0 ? (
+              <p className="academic-muted">Chưa có môn học đang hoạt động.</p>
+            ) : (
+              options.monHocs.map((subject) => {
+                const selected = form.monHocIds.includes(subject.monHocId);
+                const primary = form.phanCongGiangVien.find(
+                  (assignment) =>
+                    assignment.monHocId === subject.monHocId &&
+                    assignment.vaiTro === "Chính",
+                );
+                const assistants = form.phanCongGiangVien.filter(
+                  (assignment) =>
+                    assignment.monHocId === subject.monHocId &&
+                    assignment.vaiTro === "Trợ giảng",
+                );
+                return (
+                  <div className="class-subject-assignment" key={subject.monHocId}>
+                    <label className="academic-student-option">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            monHocIds: event.target.checked
+                              ? [...current.monHocIds, subject.monHocId]
+                              : current.monHocIds.filter(
+                                  (id) => id !== subject.monHocId,
+                                ),
+                            phanCongGiangVien: event.target.checked
+                              ? current.phanCongGiangVien
+                              : current.phanCongGiangVien.filter(
+                                  (assignment) =>
+                                    assignment.monHocId !== subject.monHocId,
+                                ),
+                          }))
+                        }
+                      />
+                      <span>
+                        {subject.maMonHoc} — {subject.tenMonHoc}
+                      </span>
+                    </label>
+                    {selected && (
+                      <div className="class-subject-teachers">
+                        <label>
+                          Giảng viên chính
+                          <select
+                            required={!primary && !form.giangVienId}
+                            value={primary?.giangVienId ?? form.giangVienId}
+                            onChange={(event) => {
+                              const teacherId = Number(event.target.value);
+                              setForm((current) => ({
+                                ...current,
+                                phanCongGiangVien: [
+                                  ...current.phanCongGiangVien.filter(
+                                    (assignment) =>
+                                      assignment.monHocId !== subject.monHocId ||
+                                      assignment.vaiTro !== "Chính",
+                                  ),
+                                  ...(teacherId
+                                    ? [{
+                                        monHocId: subject.monHocId,
+                                        giangVienId: teacherId,
+                                        vaiTro: "Chính" as const,
+                                      }]
+                                    : []),
+                                ],
+                              }));
+                            }}
+                          >
+                            <option value="">Chọn giảng viên chính</option>
+                            {options.giangViens
+                              .filter((teacher) =>
+                                teacher.vaiTroIds?.includes(3),
+                              )
+                              .map((teacher) => (
+                                <option
+                                  key={teacher.nguoiDungId}
+                                  value={teacher.nguoiDungId}
+                                >
+                                  {teacher.hoTen}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        <div>
+                          <span className="academic-field-label">Trợ giảng</span>
+                          {options.giangViens
+                            .filter((teacher) =>
+                              teacher.vaiTroIds?.includes(4),
+                            )
+                            .map((teacher) => (
+                              <label
+                                className="academic-student-option"
+                                key={teacher.nguoiDungId}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={assistants.some(
+                                    (assignment) =>
+                                      assignment.giangVienId ===
+                                      teacher.nguoiDungId,
+                                  )}
+                                  onChange={(event) =>
+                                    setForm((current) => ({
+                                      ...current,
+                                      phanCongGiangVien: event.target.checked
+                                        ? [
+                                            ...current.phanCongGiangVien,
+                                            {
+                                              monHocId: subject.monHocId,
+                                              giangVienId: teacher.nguoiDungId,
+                                              vaiTro: "Trợ giảng",
+                                            },
+                                          ]
+                                        : current.phanCongGiangVien.filter(
+                                            (assignment) =>
+                                              assignment.monHocId !==
+                                                subject.monHocId ||
+                                              assignment.giangVienId !==
+                                                teacher.nguoiDungId,
+                                          ),
+                                    }))
+                                  }
+                                />
+                                <span>{teacher.hoTen}</span>
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
-          </label>
+          </fieldset>
         </div>
         <div className="academic-form-actions">
           <button
@@ -615,7 +1045,171 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         </form>
       )}
 
-      {listOnly && (
+      {!listOnly && canCreateSubjects && (
+        <section className="academic-card">
+          <div className="academic-card-heading">
+            <div>
+              <h2>Phòng học</h2>
+              <p>Khai báo sức chứa để cảnh báo khi xếp lớp vượt sức chứa phòng.</p>
+            </div>
+          </div>
+          <form className="room-management-form" onSubmit={saveRoom}>
+            <label>
+              Mã phòng
+              <input
+                required
+                maxLength={30}
+                value={roomForm.maPhong}
+                onChange={(event) =>
+                  setRoomForm({ ...roomForm, maPhong: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Tên phòng
+              <input
+                required
+                maxLength={100}
+                value={roomForm.tenPhong}
+                onChange={(event) =>
+                  setRoomForm({ ...roomForm, tenPhong: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Sức chứa
+              <input
+                required
+                type="number"
+                min={1}
+                max={1000}
+                value={roomForm.sucChua}
+                onChange={(event) =>
+                  setRoomForm({
+                    ...roomForm,
+                    sucChua: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+            <button type="submit" disabled={saving}>
+              {editingRoomId === null ? "Thêm phòng" : "Lưu phòng"}
+            </button>
+            {editingRoomId !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingRoomId(null);
+                  setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+                }}
+              >
+                Hủy
+              </button>
+            )}
+          </form>
+          {options.phongHocs.map((room) => (
+            <div className="room-management-row" key={room.phongHocId}>
+              <span>
+                <strong>{room.maPhong}</strong> — {room.tenPhong} · sức chứa{" "}
+                {room.sucChua}
+              </span>
+              {canUpdateClasses && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingRoomId(room.phongHocId);
+                    setRoomForm({
+                      maPhong: room.maPhong,
+                      tenPhong: room.tenPhong,
+                      sucChua: room.sucChua,
+                    });
+                  }}
+                >
+                  Sửa
+                </button>
+              )}
+              {canDeleteClasses && (
+                <button
+                  className="academic-danger-button"
+                  type="button"
+                  onClick={() => void archiveRoom(room.phongHocId, room.maPhong)}
+                >
+                  Ngừng phòng
+                </button>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {studentProfile && (
+        <section className="academic-card student-academic-profile">
+          <div className="academic-card-heading">
+            <div>
+              <h2>Hồ sơ học viên — {studentProfile.hocVien.hoTen}</h2>
+              <p>
+                {studentProfile.hocVien.email} ·{" "}
+                {studentProfile.hocVien.soDienThoai || "Chưa có số điện thoại"} ·{" "}
+                {studentProfile.hocVien.trangThai}
+              </p>
+            </div>
+            <button
+              className="academic-secondary-button"
+              type="button"
+              onClick={() => setStudentProfile(null)}
+            >
+              Đóng hồ sơ
+            </button>
+          </div>
+          <h3>Quá trình lớp học</h3>
+          {studentProfile.lopHocs.map((record) => {
+            const student = record.hocViens.find(
+              (item) =>
+                item.nguoiDungId === studentProfile.hocVien.nguoiDungId,
+            );
+            return (
+              <p key={record.lopHocId}>
+                {record.maLop} — {record.tenLop} · {record.trangThai} · ghi danh{" "}
+                {student?.ngayGhiDanh
+                  ? new Date(student.ngayGhiDanh).toLocaleDateString("vi-VN")
+                  : ""}
+              </p>
+            );
+          })}
+          <h3>Điểm</h3>
+          {studentProfile.diems.length ? (
+            <div className="academic-table-wrap">
+              <table className="academic-table">
+                <thead>
+                  <tr>
+                    <th>Lớp</th>
+                    <th>Môn</th>
+                    <th>Học kỳ</th>
+                    <th>Quá trình</th>
+                    <th>Giữa kỳ</th>
+                    <th>Cuối kỳ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentProfile.diems.map((grade, index) => (
+                    <tr key={`${grade.maLop}-${grade.maMonHoc}-${index}`}>
+                      <td>{grade.maLop}</td>
+                      <td>{grade.tenMonHoc}</td>
+                      <td>{grade.hocKy} · {grade.namHoc}</td>
+                      <td>{grade.diemQuaTrinh ?? "—"}</td>
+                      <td>{grade.diemGiuaKy ?? "—"}</td>
+                      <td>{grade.diemCuoiKy ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="academic-muted">Chưa có điểm được ghi nhận.</p>
+          )}
+        </section>
+      )}
+
       <section className="academic-card">
         <div className="academic-card-heading">
           <div>
@@ -627,8 +1221,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
             </p>
           </div>
         </div>
-        {listOnly && (
-          <div className="academic-filters">
+        <div className="academic-filters class-filters">
             <label>
               Tìm kiếm lớp
               <input
@@ -645,12 +1238,62 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 onChange={(event) => setStatusFilter(event.target.value)}
               >
                 <option value="">Tất cả trạng thái</option>
+                <option value="Chuẩn bị">Chuẩn bị</option>
+                <option value="Đang học">Đang học</option>
+                <option value="Kết thúc">Kết thúc</option>
+                <option value="Hủy">Hủy</option>
                 <option value="Đang hoạt động">Đang hoạt động</option>
                 <option value="Ngừng hoạt động">Ngừng hoạt động</option>
               </select>
             </label>
+            <label>
+              Chương trình
+              <select
+                value={programFilter}
+                onChange={(event) => setProgramFilter(event.target.value)}
+              >
+                <option value="">Tất cả chương trình</option>
+                {trainingPrograms.map((program) => (
+                  <option
+                    key={program.chuongTrinhId}
+                    value={program.chuongTrinhId}
+                  >
+                    {program.maChuongTrinh} — {program.tenChuongTrinh}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Giảng viên
+              <select
+                value={instructorFilter}
+                onChange={(event) => setInstructorFilter(event.target.value)}
+              >
+                <option value="">Tất cả giảng viên</option>
+                {instructorOptions.map(([teacherId, teacherName]) => (
+                  <option key={teacherId} value={teacherId}>
+                    {teacherName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Khai giảng từ
+              <input
+                type="date"
+                value={dateFromFilter}
+                onChange={(event) => setDateFromFilter(event.target.value)}
+              />
+            </label>
+            <label>
+              Khai giảng đến
+              <input
+                type="date"
+                value={dateToFilter}
+                onChange={(event) => setDateToFilter(event.target.value)}
+              />
+            </label>
           </div>
-        )}
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
@@ -658,8 +1301,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 <th>Mã / tên lớp</th>
                 <th>Năm học</th>
                 <th>Giảng viên</th>
-                <th>Học viên</th>
+                <th>Sĩ số / hồ sơ</th>
                 <th>Môn học</th>
+                <th>Tiến độ / phòng</th>
                 <th>Trạng thái</th>
                 {canManageRows && <th>Thao tác</th>}
               </tr>
@@ -667,13 +1311,13 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={canManageRows ? 7 : 6}>
+                  <td colSpan={canManageRows ? 8 : 7}>
                     Đang tải danh sách lớp...
                   </td>
                 </tr>
               ) : filteredClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageRows && !listOnly ? 7 : 6}>
+                  <td colSpan={canManageRows ? 8 : 7}>
                     {classes.length === 0
                       ? "Chưa có lớp học."
                       : "Không tìm thấy lớp phù hợp."}
@@ -695,14 +1339,72 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     </td>
                     <td>{record.namHoc}</td>
                     <td>
-                      {record.giangVienTen ?? "Chưa phân công"}
+                      {record.monHocs.some(
+                        (subject) => (subject.giangViens?.length ?? 0) > 0,
+                      )
+                        ? record.monHocs
+                            .map((subject) => {
+                              const teachers = subject.giangViens ?? [];
+                              return teachers
+                                .map(
+                                  (teacher) =>
+                                    `${subject.maMonHoc}: ${teacher.hoTen} (${teacher.vaiTro})`,
+                                )
+                                .join(", ");
+                            })
+                            .filter(Boolean)
+                            .join("; ")
+                        : record.giangVienTen ?? "Chưa phân công"}
                       {record.canBanGiao && (
                         <span className="academic-handover-warning">
                           Cần bàn giao
                         </span>
                       )}
                     </td>
-                    <td>{record.hocViens.length}</td>
+                    <td>
+                      <strong>
+                        {record.siSoHienTai}/{record.siSoToiDa}
+                      </strong>
+                      {record.canhBaoSiSo && (
+                        <small className="class-capacity-warning">
+                          Vượt sĩ số lớp
+                        </small>
+                      )}
+                      {record.canhBaoSucChuaPhong && (
+                        <small className="class-capacity-warning">
+                          Vượt sức chứa phòng
+                        </small>
+                      )}
+                      <details className="class-student-roster">
+                        <summary>Hồ sơ học viên</summary>
+                        {record.hocViens.length ? (
+                          record.hocViens.map((student) => (
+                            <div key={student.nguoiDungId}>
+                              <button
+                                className="class-student-profile-link"
+                                type="button"
+                                onClick={() =>
+                                  void loadStudentProfile(student.nguoiDungId)
+                                }
+                              >
+                                {student.hoTen}
+                              </button>
+                              <small>
+                                Ghi danh{" "}
+                                {new Date(student.ngayGhiDanh).toLocaleDateString(
+                                  "vi-VN",
+                                )}
+                                {student.nguoiGhiDanh
+                                  ? ` · ${student.nguoiGhiDanh}`
+                                  : ""}
+                              </small>
+                            </div>
+                          ))
+                        ) : (
+                          <small>Chưa có học viên.</small>
+                        )}
+                      </details>
+                    </td>
                     <td>
                       {record.monHocs.length
                         ? record.monHocs
@@ -711,9 +1413,19 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                         : "Chưa gán môn"}
                     </td>
                     <td>
+                      <progress max={100} value={record.tienDo} />
+                      <small>{record.tienDo}% · {record.ngayKhaiGiang}</small>
+                      <small>
+                        {record.hinhThuc}
+                        {record.maPhong ? ` · ${record.maPhong}` : ""}
+                      </small>
+                    </td>
+                    <td>
                       <span
                         className={`academic-status ${
-                          record.trangThai === "Đang hoạt động"
+                          ["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
+                            record.trangThai,
+                          )
                             ? "active"
                             : "inactive"
                         }`}
@@ -723,7 +1435,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     </td>
                     {canManageRows && (
                       <td className="academic-row-actions">
-                        {record.trangThai === "Đang hoạt động" && (
+                        {["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
+                          record.trangThai,
+                        ) && (
                           <>
                             {canUpdateClasses && (
                               <button
@@ -754,7 +1468,6 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </table>
         </div>
       </section>
-      )}
 
       {!listOnly && canCreateSubjects && (
         <form className="academic-card academic-form" onSubmit={saveSubject}>
