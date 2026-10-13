@@ -74,6 +74,8 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [cloneSourceSubjectId, setCloneSourceSubjectId] = useState("");
+  const [cloning, setCloning] = useState(false);
 
   const fetchCatalog = useCallback(async () => {
     const [programResponse, subjectResponse] = await Promise.all([
@@ -92,11 +94,6 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
       const [programData, subjectData] = await fetchCatalog();
       setPrograms(programData);
       setSubjects(subjectData);
-      if (programData.length > 0) {
-        setProgramId((current) =>
-          current || String(programData[0].chuongTrinhId),
-        );
-      }
       setError("");
     } catch (requestError: unknown) {
       console.error("Không thể tải danh mục đào tạo:", requestError);
@@ -129,11 +126,6 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
         if (!active) return;
         setPrograms(programData);
         setSubjects(subjectData);
-        if (programData.length > 0) {
-          setProgramId((current) =>
-            current || String(programData[0].chuongTrinhId),
-          );
-        }
         setError("");
       })
       .catch((requestError: unknown) => {
@@ -153,7 +145,10 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   }, [fetchCatalog]);
 
   useEffect(() => {
-    if (!programId) return;
+    if (!programId) {
+      setProgramSubjects([]);
+      return;
+    }
     let active = true;
     api
       .get<ProgramSubject[]>(`/academic/programs/${programId}/subjects`)
@@ -270,6 +265,10 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     setSaving(true);
     setError("");
     try {
+      const currentProgram = programs.find(
+        (p) => String(p.chuongTrinhId) === String(programId),
+      );
+      const programName = currentProgram ? currentProgram.tenChuongTrinh : "";
       await api.put(`/academic/programs/${programId}/subjects`, {
         subjects: programSubjects.map((item, index) => ({
           monHocId: item.monHocId,
@@ -277,8 +276,16 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
           monTienQuyetId: item.monTienQuyetId,
         })),
       });
-      setNotice("Lưu lộ trình chương trình thành công.");
-      await loadProgramSubjects(programId);
+      setNotice(
+        programName
+          ? `Đã lưu lộ trình cho chương trình "${programName}". Biểu mẫu đã được làm mới để bạn xây dựng lộ trình khác.`
+          : "Đã lưu lộ trình chương trình thành công. Biểu mẫu đã được làm mới để bạn xây dựng lộ trình khác.",
+      );
+      // Reset để xây dựng lộ trình khác mà không làm mất lộ trình vừa lưu trên server
+      setProgramId("");
+      setProgramSubjects([]);
+      setSessionsFor(null);
+      setCloneSourceSubjectId("");
     } catch (requestError: unknown) {
       console.error("Không thể lưu lộ trình chương trình:", requestError);
       setError(errorMessage(requestError, "Không thể lưu lộ trình chương trình."));
@@ -329,6 +336,32 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
       setError(errorMessage(requestError, "Không thể lưu danh sách buổi học."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCloneSessions = async (targetSubject: ProgramSubject) => {
+    if (!programId || !cloneSourceSubjectId) return;
+    const sourceSubject = programSubjects.find(
+      (s) => s.monHocId === Number(cloneSourceSubjectId),
+    );
+    const sourceSubjectName = sourceSubject ? sourceSubject.tenMonHoc : "môn nguồn";
+
+    setCloning(true);
+    setError("");
+    setNotice("");
+    try {
+      await api.post(
+        `/academic/programs/${programId}/subjects/${targetSubject.monHocId}/sessions/clone`,
+        { sourceSubjectId: Number(cloneSourceSubjectId) },
+      );
+      setNotice(`Đã nhân bản danh sách buổi học từ môn "${sourceSubjectName}".`);
+      await loadProgramSubjects(programId);
+      setCloneSourceSubjectId("");
+    } catch (requestError: unknown) {
+      console.error("Không thể nhân bản buổi học:", requestError);
+      setError(errorMessage(requestError, "Không thể nhân bản danh sách buổi học."));
+    } finally {
+      setCloning(false);
     }
   };
 
@@ -518,8 +551,13 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
             Chương trình
             <select
               value={programId}
-              onChange={(event) => setProgramId(event.target.value)}
+              onChange={(event) => {
+                setProgramId(event.target.value);
+                setSessionsFor(null);
+                setCloneSourceSubjectId("");
+              }}
             >
+              <option value="">-- Chọn chương trình đào tạo --</option>
               {programs.map((program) => (
                 <option
                   key={program.chuongTrinhId}
@@ -534,31 +572,42 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
         <div className="academic-program-subject-grid">
           <div>
             <h3>Môn có thể thêm</h3>
-            {subjects.map((subject) => {
-              const selected = programSubjects.some(
-                (item) => item.monHocId === subject.monHocId,
-              );
-              return (
-                <label className="academic-subject-choice" key={subject.monHocId}>
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    disabled={
-                      !canUpdate ||
-                      (subject.trangThai !== "Đang hoạt động" && !selected)
-                    }
-                    onChange={() => toggleSubject(subject)}
-                  />
-                  <span>
-                    <strong>{subject.maMonHoc}</strong> {subject.tenMonHoc}
-                  </span>
-                </label>
-              );
-            })}
+            {!programId ? (
+              <p className="academic-muted">
+                Vui lòng chọn một chương trình đào tạo ở trên để bắt đầu thêm môn học.
+              </p>
+            ) : (
+              subjects.map((subject) => {
+                const selected = programSubjects.some(
+                  (item) => item.monHocId === subject.monHocId,
+                );
+                return (
+                  <label className="academic-subject-choice" key={subject.monHocId}>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      disabled={
+                        !canUpdate ||
+                        (subject.trangThai !== "Đang hoạt động" && !selected)
+                      }
+                      onChange={() => toggleSubject(subject)}
+                    />
+                    <span>
+                      <strong>{subject.maMonHoc}</strong> {subject.tenMonHoc}
+                    </span>
+                  </label>
+                );
+              })
+            )}
           </div>
           <div>
             <h3>Lộ trình học</h3>
-            {programSubjects.map((item, index) => (
+            {!programId ? (
+              <p className="academic-muted">
+                Vui lòng chọn chương trình đào tạo để xem hoặc thiết lập lộ trình.
+              </p>
+            ) : (
+              programSubjects.map((item, index) => (
               <article
                 className={`academic-program-subject ${
                   draggingSubjectId === item.monHocId ? "is-dragging" : ""
@@ -665,6 +714,38 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                 </label>
                 {sessionsFor === item.monHocId && (
                   <div className="academic-session-editor">
+                    {canUpdate && (
+                      <div className="academic-clone-session-bar">
+                        <span className="academic-clone-label">
+                          Nhân bản từ môn khác:
+                        </span>
+                        <select
+                          className="academic-clone-select"
+                          value={cloneSourceSubjectId}
+                          onChange={(e) => setCloneSourceSubjectId(e.target.value)}
+                          disabled={saving || cloning}
+                        >
+                          <option value="">
+                            -- Chọn môn học nguồn để nhân bản --
+                          </option>
+                          {programSubjects
+                            .filter((s) => s.monHocId !== item.monHocId)
+                            .map((s) => (
+                              <option key={s.monHocId} value={s.monHocId}>
+                                {s.tenMonHoc} ({s.sessions.filter((sess) => sess.chuDe?.trim()).length}/{s.soBuoi} buổi)
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="academic-clone-button"
+                          disabled={saving || cloning || !cloneSourceSubjectId}
+                          onClick={() => void handleCloneSessions(item)}
+                        >
+                          {cloning ? "Đang nhân bản..." : "Nhân bản buổi học"}
+                        </button>
+                      </div>
+                    )}
                     {Array.from({ length: item.soBuoi }, (_, sessionIndex) => {
                       const session = item.sessions[sessionIndex] ?? {
                         soThuTu: sessionIndex + 1,
@@ -717,17 +798,35 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                   </div>
                 )}
               </article>
-            ))}
-            {programSubjects.length === 0 && (
+            )))}
+            {programId && programSubjects.length === 0 && (
               <p className="academic-muted">Chưa có môn nào trong chương trình.</p>
             )}
           </div>
         </div>
         {canUpdate && (
           <div className="academic-form-actions">
-            <button type="button" disabled={saving || !programId} onClick={() => void saveProgramSubjects()}>
+            <button
+              type="button"
+              disabled={saving || !programId}
+              onClick={() => void saveProgramSubjects()}
+            >
               {saving ? "Đang lưu..." : "Lưu lộ trình chương trình"}
             </button>
+            {programId && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setProgramId("");
+                  setProgramSubjects([]);
+                  setSessionsFor(null);
+                  setCloneSourceSubjectId("");
+                }}
+              >
+                Hủy / Chọn chương trình khác
+              </button>
+            )}
           </div>
         )}
       </section>

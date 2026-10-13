@@ -124,6 +124,59 @@
   border-top: 1px solid #e2e8f0;
 }
 
+.academic-clone-session-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f1f5f9;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.academic-clone-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.academic-clone-select {
+  flex: 1;
+  min-width: 200px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #1e293b;
+  font-size: 12px;
+}
+
+.academic-clone-button {
+  min-height: 34px;
+  padding: 6px 14px;
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border: 1px solid #0284c7 !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.academic-clone-button:hover:not(:disabled) {
+  background: #0369a1 !important;
+  border-color: #0369a1 !important;
+}
+
+.academic-clone-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .academic-session-row {
   display: grid;
   grid-template-columns: 70px minmax(120px, 1fr) minmax(180px, 1.5fr);

@@ -76,7 +76,10 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [assignedIds, setAssignedIds] = useState<number[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
+  const [bulkConsultantIds, setBulkConsultantIds] = useState<number[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
     search: "",
     trangThai: "",
@@ -90,6 +93,15 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState("");
+
+  const handleSearchSubmit = () => {
+    const term = searchInput.trim();
+    if (term === filters.search) {
+      void loadData();
+    } else {
+      setFilters((current) => ({ ...current, search: term }));
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -235,6 +247,54 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
         ? current.filter((id) => id !== userId)
         : [...current, userId],
     );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.length === leads.length) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(leads.map((l) => l.leadId));
+    }
+  };
+
+  const toggleSelectLead = (id: number) => {
+    setSelectedLeadIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
+  };
+
+  const toggleBulkConsultant = (id: number) => {
+    setBulkConsultantIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
+  };
+
+  const handleBulkAssign = async () => {
+    if (selectedLeadIds.length === 0 || bulkConsultantIds.length === 0) return;
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await api.put("/admissions/leads/bulk-assignments", {
+        leadIds: selectedLeadIds,
+        consultantIds: bulkConsultantIds,
+      });
+      setNotice(
+        `Đã phân công ${selectedLeadIds.length} lead cho ${bulkConsultantIds.length} tư vấn viên.`,
+      );
+      setSelectedLeadIds([]);
+      setBulkConsultantIds([]);
+      await loadData();
+    } catch (requestError: unknown) {
+      console.error("Không thể phân công hàng loạt:", requestError);
+      setError(responseError(requestError, "Không thể phân công hàng loạt."));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -403,13 +463,40 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
         <div className="academic-filters lead-filters">
           <label>
             Tìm kiếm
-            <input
-              placeholder="Tên hoặc số điện thoại"
-              value={filters.search}
-              onChange={(event) =>
-                setFilters({ ...filters, search: event.target.value })
-              }
-            />
+            <div className="lead-search-box">
+              <input
+                placeholder="Nhập tên/SĐT rồi bấm Enter..."
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleSearchSubmit();
+                  }
+                }}
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  className="lead-search-clear"
+                  title="Xóa tìm kiếm"
+                  onClick={() => {
+                    setSearchInput("");
+                    setFilters((current) => ({ ...current, search: "" }));
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+              <button
+                type="button"
+                className="lead-search-btn"
+                title="Tìm kiếm"
+                onClick={handleSearchSubmit}
+              >
+                🔍
+              </button>
+            </div>
           </label>
           <label>
             Trạng thái
@@ -481,10 +568,67 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             />
           </label>
         </div>
+        {canAssign && selectedLeadIds.length > 0 && (
+          <div className="lead-bulk-toolbar" role="region" aria-label="Phân công hàng loạt">
+            <div className="lead-bulk-info">
+              <strong>Đã chọn {selectedLeadIds.length} lead</strong>
+              <button
+                type="button"
+                onClick={() => setSelectedLeadIds([])}
+              >
+                Bỏ chọn tất cả
+              </button>
+            </div>
+            <div className="lead-bulk-assign">
+              <span>Phân công cho tư vấn viên:</span>
+              <div className="lead-bulk-consultant-pills">
+                {consultants.map((c) => {
+                  const isChecked = bulkConsultantIds.includes(c.nguoiDungId);
+                  return (
+                    <label
+                      key={c.nguoiDungId}
+                      className={`lead-consultant-pill ${isChecked ? "active" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleBulkConsultant(c.nguoiDungId)}
+                      />
+                      {c.hoTen}
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                className="lead-bulk-apply-btn"
+                disabled={saving || bulkConsultantIds.length === 0}
+                onClick={() => void handleBulkAssign()}
+              >
+                {saving
+                  ? "Đang lưu..."
+                  : `Áp dụng phân công (${selectedLeadIds.length} lead)`}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
               <tr>
+                {canAssign && (
+                  <th style={{ width: "40px", textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={
+                        leads.length > 0 &&
+                        selectedLeadIds.length === leads.length
+                      }
+                      onChange={toggleSelectAll}
+                      aria-label="Chọn tất cả lead"
+                    />
+                  </th>
+                )}
                 <th>Khách hàng</th>
                 <th>Chương trình</th>
                 <th>Nguồn / trạng thái</th>
@@ -498,6 +642,16 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                 leads.map((lead) => (
                   <Fragment key={lead.leadId}>
                     <tr>
+                      {canAssign && (
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLeadIds.includes(lead.leadId)}
+                            onChange={() => toggleSelectLead(lead.leadId)}
+                            aria-label={`Chọn lead ${lead.hoTen}`}
+                          />
+                        </td>
+                      )}
                       <td>
                         <strong>{lead.hoTen}</strong>
                         <small className="academic-muted">{lead.soDienThoai}</small>
@@ -546,7 +700,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                     </tr>
                     {expandedId === lead.leadId && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={canAssign ? 7 : 6}>
                           <strong>Lịch sử bàn giao</strong>
                           {lead.lichSuBanGiao.length > 0 ? (
                             <ul className="lead-history">
@@ -568,12 +722,12 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                 ))}
               {!loading && leads.length === 0 && (
                 <tr>
-                  <td colSpan={6}>Không có lead phù hợp.</td>
+                  <td colSpan={canAssign ? 7 : 6}>Không có lead phù hợp.</td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={6}>Đang tải danh sách...</td>
+                  <td colSpan={canAssign ? 7 : 6}>Đang tải danh sách...</td>
                 </tr>
               )}
             </tbody>
