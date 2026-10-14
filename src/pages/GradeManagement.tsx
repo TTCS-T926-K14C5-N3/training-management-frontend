@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
 import "./AcademicManagement.css";
 
 interface StudentOption {
@@ -97,6 +99,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [form, setForm] = useState<GradeForm>(EMPTY_FORM);
   const [editingGradeId, setEditingGradeId] = useState<number | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [classFilter, setClassFilter] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [termFilter, setTermFilter] = useState("");
@@ -194,6 +197,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
     setEditingGradeId(null);
     setErrorMessage("");
     setSuccessMessage("");
+    setIsFormOpen(false);
   };
 
   const saveGrade = async (event: FormEvent<HTMLFormElement>) => {
@@ -220,13 +224,14 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
       setErrorMessage("");
       if (editingGradeId !== null) {
         await api.put(`/academic/grades/${editingGradeId}`, payload);
-        setSuccessMessage("Đã cập nhật bảng điểm.");
+        setSuccessMessage("Cập nhật bảng điểm thành công.");
       } else {
         await api.post("/academic/grades", payload);
-        setSuccessMessage("Đã thêm bảng điểm.");
+        setSuccessMessage("Lưu bảng điểm thành công.");
       }
       setForm(EMPTY_FORM);
       setEditingGradeId(null);
+      setIsFormOpen(false);
       setLoading(true);
       setReloadToken((current) => current + 1);
     } catch (error: unknown) {
@@ -251,6 +256,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
     setEditingGradeId(grade.diemId);
     setErrorMessage("");
     setSuccessMessage("");
+    setIsFormOpen(true);
   };
 
   const removeGrade = async (grade: GradeRecord) => {
@@ -280,10 +286,26 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const uniqueSubjects = Array.from(
     new Map(availableSubjects.map((item) => [item.monHocId, item])).values(),
   );
-  const visibleError = errorMessage || optionsError || gradesError;
+  const visibleError =
+    optionsError || gradesError || (isFormOpen ? "" : errorMessage);
+
+  const openCreateForm = () => {
+    setForm(EMPTY_FORM);
+    setEditingGradeId(null);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsFormOpen(true);
+  };
 
   return (
     <section className="academic-page">
+      {successMessage && (
+        <ToastNotification
+          type="success"
+          text={successMessage}
+          onClose={() => setSuccessMessage("")}
+        />
+      )}
       <header className="academic-page-banner">
         <div className="academic-banner-content">
           <div className="academic-banner-label">
@@ -303,33 +325,56 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
         </div>
       </header>
 
-      {(visibleError || successMessage) && (
+      {visibleError && (
         <div
-          className={`academic-alert ${visibleError ? "error" : "success"}`}
-          role={visibleError ? "alert" : "status"}
+          className="academic-alert academic-alert-error"
+          role="alert"
         >
-          {visibleError || successMessage}
+          {visibleError}
         </div>
       )}
 
-      {(canCreate || editingGradeId !== null) && (
-        <form className="academic-card academic-form" onSubmit={saveGrade}>
-          <div className="academic-card-heading">
-            <div>
-              <h2>{editingGradeId === null ? "Nhập điểm" : "Cập nhật điểm"}</h2>
-              <p>Điểm được nhập theo thang 0–10, tối đa hai chữ số thập phân.</p>
-            </div>
-            {editingGradeId !== null && (
-              <button
-                className="academic-secondary-button"
-                type="button"
-                onClick={resetForm}
-              >
-                Hủy chỉnh sửa
-              </button>
-            )}
-          </div>
-          <div className="academic-form-grid">
+      {isFormOpen &&
+        createPortal(
+          <div
+            className="academic-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) resetForm();
+            }}
+          >
+            <form
+              className="academic-modal grade-entry-modal"
+              onSubmit={saveGrade}
+            >
+              <div className="academic-modal-heading">
+                <div>
+                  <h3>
+                    {editingGradeId === null ? "Nhập điểm" : "Cập nhật điểm"}
+                  </h3>
+                  <p>
+                    Điểm được nhập theo thang 0–10, tối đa hai chữ số thập
+                    phân.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="academic-modal-close"
+                  onClick={resetForm}
+                  disabled={saving}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+              {errorMessage && (
+                <div
+                  className="academic-alert academic-alert-error"
+                  role="alert"
+                >
+                  {errorMessage}
+                </div>
+              )}
+              <div className="academic-form-grid">
             <label>
               Lớp
               <select
@@ -478,6 +523,14 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
           </div>
           <div className="academic-form-actions">
             <button
+              className="academic-secondary-button"
+              type="button"
+              onClick={resetForm}
+              disabled={saving}
+            >
+              Hủy
+            </button>
+            <button
               className="academic-primary-button"
               type="submit"
               disabled={
@@ -489,8 +542,10 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
               {saving ? "Đang lưu..." : "Lưu bảng điểm"}
             </button>
           </div>
-        </form>
-      )}
+            </form>
+          </div>,
+          document.body,
+        )}
 
       <section className="academic-card">
         <div className="academic-card-heading">
@@ -498,6 +553,15 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
             <h2>Bảng điểm</h2>
             <p>{grades.length} kết quả phù hợp</p>
           </div>
+          {canCreate && (
+            <button
+              className="academic-primary-button"
+              type="button"
+              onClick={openCreateForm}
+            >
+              + Nhập điểm
+            </button>
+          )}
         </div>
         <div className="academic-filters">
           <label>

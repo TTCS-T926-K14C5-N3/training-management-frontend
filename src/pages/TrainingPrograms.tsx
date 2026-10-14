@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
 import ProgramComposition from "../components/ProgramComposition";
 import "./AcademicManagement.css";
+import "./TrainingPrograms.css";
 
 interface TrainingProgram {
   chuongTrinhId: number;
@@ -56,6 +58,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -111,6 +114,14 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
+    setIsFormOpen(false);
+  };
+
+  const openCreateForm = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setError("");
+    setIsFormOpen(true);
   };
 
   const saveProgram = async (event: FormEvent<HTMLFormElement>) => {
@@ -129,7 +140,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
       };
       if (editingId === null) {
         await api.post("/academic/programs", payload);
-        setNotice("Đã tạo chương trình đào tạo.");
+        setNotice("Thêm chương trình thành công.");
       } else {
         await api.put(`/academic/programs/${editingId}`, payload);
         setNotice("Đã cập nhật chương trình đào tạo.");
@@ -156,7 +167,8 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
       trangThai: program.trangThai,
     });
     setEditingId(program.chuongTrinhId);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setError("");
+    setIsFormOpen(true);
   };
 
   const toggleProgramStatus = async (program: TrainingProgram) => {
@@ -259,6 +271,15 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
               hãy ngừng áp dụng thay vì xóa.
             </p>
           </div>
+          {canCreate && (
+            <button
+              className="academic-primary-button"
+              type="button"
+              onClick={openCreateForm}
+            >
+              + Thêm chương trình
+            </button>
+          )}
           {editingId !== null && (
             <button
               className="academic-secondary-button"
@@ -270,14 +291,51 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
           )}
         </div>
 
-        {(canCreate || canUpdate) && (
-          <form className="academic-form" onSubmit={saveProgram}>
-            <div className="academic-form-grid">
+        {isFormOpen &&
+          createPortal(
+            <div
+              className="training-program-modal-overlay"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget && !saving) {
+                  resetForm();
+                }
+              }}
+            >
+              <form
+                className="training-program-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="training-program-modal-title"
+                onSubmit={saveProgram}
+              >
+                <div className="training-program-modal-header">
+                  <div>
+                    <h3 id="training-program-modal-title">
+                      {editingId === null
+                        ? "Thêm chương trình"
+                        : "Cập nhật chương trình"}
+                    </h3>
+                    <p>
+                      Nhập thông tin chương trình đào tạo và học phí chuẩn.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="training-program-modal-close"
+                    aria-label="Đóng biểu mẫu chương trình"
+                    disabled={saving}
+                    onClick={resetForm}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="academic-form-grid">
               <label>
                 Mã chương trình
                 <input
                   required
                   maxLength={30}
+                  disabled={saving}
                   value={form.maChuongTrinh}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -292,6 +350,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
                 <input
                   required
                   maxLength={150}
+                  disabled={saving}
                   value={form.tenChuongTrinh}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -308,6 +367,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
                   type="number"
                   min="1"
                   step="1"
+                  disabled={saving}
                   value={form.tongThoiLuong}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -324,6 +384,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
                   type="number"
                   min="0"
                   step="0.01"
+                  disabled={saving}
                   value={form.hocPhiChuan}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -336,6 +397,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
               <label>
                 Trạng thái
                 <select
+                  disabled={saving}
                   value={form.trangThai}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -353,6 +415,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
                 <textarea
                   rows={3}
                   maxLength={1000}
+                  disabled={saving}
                   value={form.moTa}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -362,25 +425,35 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
                   }
                 />
               </label>
-            </div>
-            {((editingId === null && canCreate) ||
-              (editingId !== null && canUpdate)) && (
-              <div className="academic-form-actions">
-                <button
-                  className="academic-primary-button"
-                  type="submit"
-                  disabled={saving}
-                >
-                  {saving
-                    ? "Đang lưu..."
-                    : editingId === null
-                      ? "Thêm chương trình"
-                      : "Lưu chương trình"}
-                </button>
-              </div>
-            )}
-          </form>
-        )}
+                </div>
+                <div className="training-program-modal-actions">
+                  <button
+                    className="academic-secondary-button"
+                    type="button"
+                    onClick={resetForm}
+                    disabled={saving}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    className="academic-primary-button"
+                    type="submit"
+                    disabled={
+                      saving ||
+                      (editingId === null ? !canCreate : !canUpdate)
+                    }
+                  >
+                    {saving
+                      ? "Đang lưu..."
+                      : editingId === null
+                        ? "Thêm chương trình"
+                        : "Lưu chương trình"}
+                  </button>
+                </div>
+              </form>
+            </div>,
+            document.body,
+          )}
 
         <div className="academic-table-wrap" style={{ marginTop: 20 }}>
           <table className="academic-table">

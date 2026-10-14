@@ -392,30 +392,40 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
               học.
             </p>
           ) : (
-            subjects.map((subject) => {
-              const selected = programSubjects.some(
-                (item) => item.monHocId === subject.monHocId,
-              );
-              return (
-                <label
-                  className="academic-subject-choice"
-                  key={subject.monHocId}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    disabled={
-                      !canUpdate ||
-                      (subject.trangThai !== "Đang hoạt động" && !selected)
-                    }
-                    onChange={() => toggleSubject(subject)}
-                  />
-                  <span>
-                    <strong>{subject.maMonHoc}</strong> {subject.tenMonHoc}
-                  </span>
-                </label>
-              );
-            })
+            subjects
+              .filter(
+                (subject) =>
+                  subject.trangThai === "Đang hoạt động" ||
+                  programSubjects.some(
+                    (item) => item.monHocId === subject.monHocId,
+                  ),
+              )
+              .map((subject) => {
+                const selected = programSubjects.some(
+                  (item) => item.monHocId === subject.monHocId,
+                );
+                return (
+                  <label
+                    className="academic-subject-choice"
+                    key={subject.monHocId}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      disabled={
+                        !canUpdate ||
+                        (subject.trangThai !== "Đang hoạt động" && !selected)
+                      }
+                      onChange={() => toggleSubject(subject)}
+                    />
+                    <span>
+                      <strong>{subject.maMonHoc}</strong> {subject.tenMonHoc}
+                      {subject.trangThai !== "Đang hoạt động" &&
+                        " (Đã ngừng hoạt động)"}
+                    </span>
+                  </label>
+                );
+              })
           )}
         </div>
         <div>

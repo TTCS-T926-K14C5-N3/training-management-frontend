@@ -23,7 +23,6 @@ interface AdminLayoutProps {
 
   onGradeManagement: () => void;
   onClassManagement: () => void;
-  onClassList: () => void;
   onTrainingCatalog?: () => void;
   onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
@@ -48,7 +47,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUserManagement,
   onGradeManagement,
   onClassManagement,
-  onClassList,
   onTrainingCatalog = () => {},
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
@@ -117,8 +115,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isGradeManagementActive = currentPath === "/quan-ly-diem";
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
-
-  const isClassListActive = currentPath === "/danh-sach-lop";
 
   const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
 
@@ -210,7 +206,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               QUYỀN
           ================================================= */}
 
-          {hasPermission("ROLE_VIEW") && (
+          {hasPermission("ROLE_VIEW") && hasPermission("ROLE_UPDATE") && (
             <button
               type="button"
               className={`admin-menu-item ${
@@ -235,11 +231,17 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <span className="admin-menu-symbol">▥</span>
 
-              <span>Quản lý điểm</span>
+              <span>
+                {hasPermission("QUAN_LY_DIEM") ||
+                hasPermission("GRADE_CREATE") ||
+                hasPermission("GRADE_UPDATE")
+                  ? "Quản lý điểm"
+                  : "Xem điểm"}
+              </span>
             </button>
           )}
 
-          {(hasPermission("CLASS_VIEW") || hasPermission("QUAN_LY_LOP")) && (
+          {hasPermission("CLASS_VIEW") && hasPermission("QUAN_LY_LOP") && (
             <button
               type="button"
               className={`admin-menu-item ${
@@ -250,19 +252,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span className="admin-menu-symbol">▤</span>
 
               <span>Quản lý lớp</span>
-            </button>
-          )}
-
-          {hasPermission("CLASS_VIEW") && (
-            <button
-              type="button"
-              className={`admin-menu-item ${
-                isClassListActive ? "admin-menu-active" : ""
-              }`}
-              onClick={onClassList}
-            >
-              <span className="admin-menu-symbol">▧</span>
-              <span>Danh sách lớp</span>
             </button>
           )}
 

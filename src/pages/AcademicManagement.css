@@ -627,9 +627,67 @@
   color: #c2410c;
   font-size: 10px;
   font-weight: 750;
+}
 
 .academic-table td strong {
   color: #1d2b43;
+}
+
+.class-list-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0;
+  background: transparent;
+}
+
+.class-list-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.class-list-table th,
+.class-list-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.class-list-table th:nth-child(1) {
+  width: 14%;
+}
+
+.class-list-table th:nth-child(2) {
+  width: 8%;
+}
+
+.class-list-table th:nth-child(3) {
+  width: 17%;
+}
+
+.class-list-table th:nth-child(4) {
+  width: 12%;
+}
+
+.class-list-table th:nth-child(5) {
+  width: 15%;
+}
+
+.class-list-table th:nth-child(6) {
+  width: 14%;
+}
+
+.class-list-table th:nth-child(7) {
+  width: 9%;
+}
+
+.class-list-table progress {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.class-list-table .academic-status,
+.class-list-table .academic-row-actions {
+  white-space: nowrap;
 }
 
 .academic-state {
@@ -703,6 +761,14 @@
 }
 
 @media (max-width: 600px) {
+  .grade-entry-modal .academic-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .class-entry-modal .academic-form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .academic-page-banner,
   .academic-card-heading {
     align-items: flex-start;
@@ -739,7 +805,11 @@
 
   .subject-form-grid .academic-form-actions {
     justify-content: flex-start;
+  }
+}
 
+.academic-status {
+  display: inline-flex;
   align-items: center;
   padding: 5px 9px;
   border-radius: 999px;
@@ -776,7 +846,7 @@
 
 .academic-modal-backdrop {
   position: fixed;
-  z-index: 1000;
+  z-index: 2000;
   inset: 0;
   display: flex;
   align-items: center;
@@ -840,7 +910,60 @@
   margin-top: 4px;
 }
 
+.grade-entry-modal {
+  width: min(100%, 820px);
+}
+
+.grade-entry-modal .academic-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.class-entry-modal {
+  width: min(100%, 1080px);
+}
+
+.class-entry-backdrop {
+  padding-left: 270px;
+}
+
+.class-entry-modal .academic-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.class-entry-modal .class-subject-assignments {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.subject-entry-modal {
+  width: min(100%, 760px);
+}
+
+.subject-entry-modal .academic-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.subject-entry-wide-field {
+  grid-column: 1 / -1;
+}
+
+.room-entry-modal {
+  width: min(100%, 620px);
+}
+
 @media (max-width: 760px) {
+  .grade-entry-modal .academic-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .class-entry-modal .academic-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subject-entry-modal .academic-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .academic-page {
     padding: 24px 16px 32px;
   }
@@ -867,7 +990,28 @@
 
   .academic-form-grid {
     grid-template-columns: 1fr;
+  }
 
+  .subject-entry-modal .academic-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1200px) {
+  .class-entry-backdrop {
+    padding-left: 245px;
+  }
+}
+
+@media (max-width: 900px) {
+  .class-entry-backdrop {
+    padding-left: 230px;
+  }
+}
+
+@media (max-width: 700px) {
+  .class-entry-backdrop {
+    padding-left: 20px;
   }
 }
 

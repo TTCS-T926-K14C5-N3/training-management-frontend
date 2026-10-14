@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
@@ -43,10 +44,11 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const canCreate = permissions.includes("CURRICULUM_CREATE");
   const canUpdate = permissions.includes("CURRICULUM_UPDATE");
   const canDelete = permissions.includes("CURRICULUM_DELETE");
-  const canManage = canCreate || canUpdate || canDelete;
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [form, setForm] = useState(EMPTY_SUBJECT);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingStatus, setEditingStatus] = useState("Đang hoạt động");
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -97,6 +99,28 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const resetSubjectForm = () => {
     setForm(EMPTY_SUBJECT);
     setEditingId(null);
+    setEditingStatus("Đang hoạt động");
+    setIsFormOpen(false);
+  };
+
+  const openCreateForm = () => {
+    resetSubjectForm();
+    setError("");
+    setIsFormOpen(true);
+  };
+
+  const openEditForm = (subject: Subject) => {
+    setEditingId(subject.monHocId);
+    setEditingStatus(subject.trangThai);
+    setForm({
+      maMonHoc: subject.maMonHoc,
+      tenMonHoc: subject.tenMonHoc,
+      soBuoi: String(subject.soBuoi),
+      trongSo: String(subject.trongSo),
+      moTaChuanDauRa: subject.moTaChuanDauRa || "",
+    });
+    setError("");
+    setIsFormOpen(true);
   };
 
   const handleSaveSubject = async (event: FormEvent<HTMLFormElement>) => {
@@ -109,7 +133,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
       soBuoi: Number(form.soBuoi),
       trongSo: Number(form.trongSo),
       moTaChuanDauRa: form.moTaChuanDauRa || null,
-      trangThai: "Đang hoạt động",
+      trangThai: editingStatus,
     };
     try {
       if (editingId) {
@@ -117,8 +141,11 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
       } else {
         await api.post("/academic/subjects", payload);
       }
+      const wasEditing = editingId !== null;
       resetSubjectForm();
-      setNotice(editingId ? "Đã cập nhật môn học." : "Đã thêm môn học.");
+      setNotice(
+        wasEditing ? "Đã cập nhật môn học." : "Thêm môn học thành công.",
+      );
       await loadCatalog();
     } catch (requestError: unknown) {
       console.error("Không thể lưu môn học:", requestError);
@@ -128,16 +155,55 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     }
   };
 
-  const handleArchiveSubject = async (subject: Subject) => {
-    if (!window.confirm(`Ngừng hoạt động môn học ${subject.tenMonHoc}?`)) return;
+  const handleToggleSubjectStatus = async (subject: Subject) => {
+    const isActive = subject.trangThai === "Đang hoạt động";
+    const actionLabel = isActive ? "Ngừng" : "Áp dụng lại";
+    if (!window.confirm(`${actionLabel} môn học ${subject.tenMonHoc}?`)) {
+      return;
+    }
+    setError("");
+    try {
+      await api.post(
+        `/academic/subjects/${subject.monHocId}/${
+          isActive ? "archive" : "activate"
+        }`,
+      );
+      setNotice(
+        isActive
+          ? `Môn học ${subject.tenMonHoc} đã ngừng hoạt động và không thể thêm mới vào chương trình.`
+          : `Đã áp dụng lại môn học ${subject.tenMonHoc}; môn học có thể được thêm vào chương trình.`,
+      );
+      await loadCatalog();
+    } catch (requestError: unknown) {
+      console.error(
+        `Không thể ${actionLabel.toLowerCase()} môn học:`,
+        requestError,
+      );
+      setError(
+        errorMessage(
+          requestError,
+          `Không thể ${actionLabel.toLowerCase()} môn học.`,
+        ),
+      );
+    }
+  };
+
+  const handleDeleteSubject = async (subject: Subject) => {
+    if (
+      !window.confirm(
+        `Xóa môn học ${subject.tenMonHoc} khỏi danh sách? Thao tác này không thể hoàn tác.`,
+      )
+    ) {
+      return;
+    }
     setError("");
     try {
       await api.delete(`/academic/subjects/${subject.monHocId}`);
-      setNotice("Đã ngừng hoạt động môn học.");
+      setNotice(`Đã xóa môn học ${subject.tenMonHoc}.`);
       await loadCatalog();
     } catch (requestError: unknown) {
-      console.error("Không thể ngừng hoạt động môn học:", requestError);
-      setError(errorMessage(requestError, "Không thể ngừng hoạt động môn học."));
+      console.error("Không thể xóa môn học:", requestError);
+      setError(errorMessage(requestError, "Không thể xóa môn học."));
     }
   };
 
@@ -173,82 +239,146 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
       <section className="academic-card">
         <div className="academic-card-heading">
           <div>
-            <h2>{editingId ? "Cập nhật môn học" : "Khai báo môn học"}</h2>
+            <h2>Danh sách môn học</h2>
             <p>Thông tin được dùng lại trong nhiều chương trình đào tạo.</p>
           </div>
+          {canCreate && (
+            <button
+              type="button"
+              className="academic-primary-button"
+              onClick={openCreateForm}
+            >
+              + Thêm môn học
+            </button>
+          )}
         </div>
-        {canManage && (
-          <form className="academic-form-grid" onSubmit={handleSaveSubject}>
-            <label>
-              Mã môn học *
-              <input
-                required
-                maxLength={30}
-                value={form.maMonHoc}
-                onChange={(event) =>
-                  setForm({ ...form, maMonHoc: event.target.value })
+        {isFormOpen &&
+          createPortal(
+            <div
+              className="academic-subject-modal-overlay"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget && !saving) {
+                  resetSubjectForm();
                 }
-              />
-            </label>
-            <label>
-              Tên môn học *
-              <input
-                required
-                maxLength={150}
-                value={form.tenMonHoc}
-                onChange={(event) =>
-                  setForm({ ...form, tenMonHoc: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Số buổi *
-              <input
-                required
-                type="number"
-                min="1"
-                value={form.soBuoi}
-                onChange={(event) =>
-                  setForm({ ...form, soBuoi: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Trọng số *
-              <input
-                required
-                type="number"
-                min="0.01"
-                max="1"
-                step="0.01"
-                value={form.trongSo}
-                onChange={(event) =>
-                  setForm({ ...form, trongSo: event.target.value })
-                }
-              />
-            </label>
-            <label className="academic-wide-field">
-              Mô tả chuẩn đầu ra
-              <textarea
-                maxLength={2000}
-                value={form.moTaChuanDauRa}
-                onChange={(event) =>
-                  setForm({ ...form, moTaChuanDauRa: event.target.value })
-                }
-              />
-            </label>
-            <div className="academic-form-actions">
-              <button type="submit" disabled={saving || (!editingId && !canCreate)}>
-                {saving ? "Đang lưu..." : editingId ? "Lưu thay đổi" : "Thêm môn học"}
-              </button>
-              {editingId && (
-                <button type="button" onClick={resetSubjectForm}>
-                  Hủy sửa
+              }}
+            >
+              <form
+                className="subject-modal-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="academic-subject-modal-title"
+                onSubmit={handleSaveSubject}
+              >
+              <div className="subject-modal-header">
+                <div>
+                  <h3 id="academic-subject-modal-title">
+                    {editingId ? "Cập nhật môn học" : "Thêm môn học"}
+                  </h3>
+                  <p>Thông tin được dùng lại trong nhiều chương trình đào tạo.</p>
+                </div>
+                <button
+                  type="button"
+                  className="subject-modal-close"
+                  aria-label="Đóng biểu mẫu môn học"
+                  disabled={saving}
+                  onClick={resetSubjectForm}
+                >
+                  ×
                 </button>
-              )}
-            </div>
-          </form>
-        )}
+              </div>
+              <div className="subject-modal-grid">
+                <label>
+                  Mã môn học *
+                  <input
+                    required
+                    maxLength={30}
+                    disabled={saving}
+                    value={form.maMonHoc}
+                    onChange={(event) =>
+                      setForm({ ...form, maMonHoc: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Tên môn học *
+                  <input
+                    required
+                    maxLength={150}
+                    disabled={saving}
+                    value={form.tenMonHoc}
+                    onChange={(event) =>
+                      setForm({ ...form, tenMonHoc: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Số buổi *
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    disabled={saving}
+                    value={form.soBuoi}
+                    onChange={(event) =>
+                      setForm({ ...form, soBuoi: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Trọng số *
+                  <input
+                    required
+                    type="number"
+                    min="0.01"
+                    max="1"
+                    step="0.01"
+                    disabled={saving}
+                    value={form.trongSo}
+                    onChange={(event) =>
+                      setForm({ ...form, trongSo: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="subject-modal-wide-field">
+                  Mô tả chuẩn đầu ra
+                  <textarea
+                    maxLength={1000}
+                    disabled={saving}
+                    value={form.moTaChuanDauRa}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        moTaChuanDauRa: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="subject-modal-actions">
+                <button
+                  type="button"
+                  className="academic-secondary-button"
+                  disabled={saving}
+                  onClick={resetSubjectForm}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="academic-primary-button"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Đang lưu..."
+                    : editingId
+                      ? "Lưu thay đổi"
+                      : "Thêm môn học"}
+                </button>
+              </div>
+              </form>
+            </div>,
+            document.body,
+          )}
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
@@ -282,35 +412,32 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                         {canUpdate && (
                           <button
                             type="button"
-                            onClick={() => {
-                              setEditingId(subject.monHocId);
-                              setForm({
-                                maMonHoc: subject.maMonHoc,
-                                tenMonHoc: subject.tenMonHoc,
-                                soBuoi: String(subject.soBuoi),
-                                trongSo: String(subject.trongSo),
-                                moTaChuanDauRa: subject.moTaChuanDauRa || "",
-                              });
-                            }}
+                            onClick={() => openEditForm(subject)}
                           >
                             Sửa
                           </button>
                         )}
-                        {canDelete &&
-                          subject.trangThai === "Đang hoạt động" && (
-                            <button
-                              type="button"
-                              onClick={() => void handleArchiveSubject(subject)}
-                              disabled={subject.daApDung}
-                              title={
-                                subject.daApDung
-                                  ? "Môn học đang được áp dụng trong chương trình đào tạo hoặc lớp học nên không thể ngừng hoạt động."
-                                  : undefined
-                              }
-                            >
-                              Ngừng
-                            </button>
-                          )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleToggleSubjectStatus(subject)
+                            }
+                          >
+                            {subject.trangThai === "Đang hoạt động"
+                              ? "Ngừng"
+                              : "Áp dụng lại"}
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className="academic-subject-delete"
+                            onClick={() => void handleDeleteSubject(subject)}
+                          >
+                            Xóa
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
@@ -182,6 +183,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   });
   const [form, setForm] = useState<ClassForm>(EMPTY_FORM);
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
+  const [isClassFormOpen, setIsClassFormOpen] = useState(false);
+  const [isSubjectFormOpen, setIsSubjectFormOpen] = useState(false);
   const [subjectForm, setSubjectForm] = useState({
     maMonHoc: "",
     tenMonHoc: "",
@@ -202,7 +205,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const [dateToFilter, setDateToFilter] = useState("");
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [roomForm, setRoomForm] = useState({ maPhong: "", tenPhong: "", sucChua: 30 });
-  const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
+  const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
 
   const instructorOptions = useMemo(() => {
     const teachers = new Map<number, string>();
@@ -276,12 +279,22 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
 
   useEffect(() => {
     const closeStudentPickerOnOutsideClick = (event: MouseEvent) => {
-      if (
-        event.target instanceof Node &&
-        !studentPickerRef.current?.contains(event.target)
-      ) {
+      if (!(event.target instanceof Node)) return;
+      const target = event.target;
+
+      if (!studentPickerRef.current?.contains(target)) {
         studentPickerRef.current?.removeAttribute("open");
       }
+
+      document
+        .querySelectorAll<HTMLDetailsElement>(
+          ".class-assistant-picker[open]",
+        )
+        .forEach((picker) => {
+          if (!picker.contains(target)) {
+            picker.removeAttribute("open");
+          }
+        });
     };
 
     document.addEventListener("mousedown", closeStudentPickerOnOutsideClick);
@@ -375,16 +388,10 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     setErrorMessage("");
     setSuccessMessage("");
     try {
-      if (editingRoomId === null) {
-        await api.post("/academic/rooms", roomForm);
-      } else {
-        await api.put(`/academic/rooms/${editingRoomId}`, roomForm);
-      }
+      await api.post("/academic/rooms", roomForm);
+      setIsRoomFormOpen(false);
       setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
-      setEditingRoomId(null);
-      setSuccessMessage(
-        editingRoomId === null ? "Đã tạo phòng học." : "Đã cập nhật phòng học.",
-      );
+      setSuccessMessage("Thêm phòng thành công.");
       await loadData();
     } catch (error: unknown) {
       console.error("Không thể lưu phòng học:", error);
@@ -394,23 +401,34 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     }
   };
 
-  const archiveRoom = async (roomId: number, roomCode: string) => {
-    if (!window.confirm(`Ngừng sử dụng phòng ${roomCode}?`)) return;
-    try {
-      await api.delete(`/academic/rooms/${roomId}`);
-      setSuccessMessage("Đã ngừng hoạt động phòng học.");
-      await loadData();
-    } catch (error: unknown) {
-      console.error("Không thể ngừng phòng học:", error);
-      setErrorMessage(responseError(error, "Không thể ngừng phòng học."));
-    }
+  const openCreateRoomForm = () => {
+    setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsRoomFormOpen(true);
+  };
+
+  const closeRoomForm = () => {
+    if (saving) return;
+    setIsRoomFormOpen(false);
+    setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+    setErrorMessage("");
   };
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingClassId(null);
+    setIsClassFormOpen(false);
     setSuccessMessage("");
     setErrorMessage("");
+  };
+
+  const openCreateClassForm = () => {
+    setForm(EMPTY_FORM);
+    setEditingClassId(null);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsClassFormOpen(true);
   };
 
   const saveClass = async (event: FormEvent<HTMLFormElement>) => {
@@ -435,7 +453,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         await api.put(`/academic/classes/${editingClassId}`, payload);
       }
       resetForm();
-      setSuccessMessage(isEditing ? "Đã cập nhật lớp học." : "Đã tạo lớp học.");
+      setSuccessMessage(
+        isEditing ? "Cập nhật lớp thành công." : "Tạo lớp thành công.",
+      );
       await loadData();
     } catch (error: unknown) {
       console.error("Không thể lưu lớp học:", error);
@@ -466,6 +486,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     setEditingClassId(record.lopHocId);
     setErrorMessage("");
     setSuccessMessage("");
+    setIsClassFormOpen(true);
   };
 
   const archiveClass = async (record: ClassRecord) => {
@@ -502,6 +523,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         trongSo: Number(subjectForm.trongSo),
         moTaChuanDauRa: subjectForm.moTaChuanDauRa || null,
       });
+      setIsSubjectFormOpen(false);
       setSubjectForm({
         maMonHoc: "",
         tenMonHoc: "",
@@ -510,7 +532,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         trongSo: "1",
         moTaChuanDauRa: "",
       });
-      setSuccessMessage("Đã thêm môn học.");
+      setSuccessMessage("Thêm môn học thành công.");
       await loadData();
     } catch (error: unknown) {
       console.error("Không thể thêm môn học:", error);
@@ -518,6 +540,26 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const openSubjectForm = () => {
+    setSubjectForm({
+      maMonHoc: "",
+      tenMonHoc: "",
+      soTinChi: "",
+      soBuoi: "1",
+      trongSo: "1",
+      moTaChuanDauRa: "",
+    });
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsSubjectFormOpen(true);
+  };
+
+  const closeSubjectForm = () => {
+    if (saving) return;
+    setIsSubjectFormOpen(false);
+    setErrorMessage("");
   };
 
   const selectedProgram = trainingPrograms.find(
@@ -565,22 +607,35 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         </div>
       </header>
 
-      {canUpdateClasses && (!listOnly || editingClassId !== null) && (
-        <form className="academic-card academic-form" onSubmit={saveClass}>
+      {canUpdateClasses &&
+        isClassFormOpen &&
+        createPortal(
+          <div
+            className="academic-modal-backdrop class-entry-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !saving) {
+                resetForm();
+              }
+            }}
+          >
+            <form
+              className="academic-modal class-entry-modal"
+              onSubmit={saveClass}
+            >
         <div className="academic-card-heading">
           <div>
             <h2>{editingClassId === null ? "Thông tin lớp" : "Cập nhật lớp"}</h2>
             <p>Học viên và môn học chỉ được chọn từ danh mục đang hoạt động.</p>
           </div>
-          {editingClassId !== null && (
-            <button
-              className="academic-secondary-button"
-              type="button"
-              onClick={resetForm}
-            >
-              Hủy chỉnh sửa
-            </button>
-          )}
+          <button
+            type="button"
+            className="academic-modal-close"
+            onClick={resetForm}
+            disabled={saving}
+            aria-label="Đóng"
+          >
+            ×
+          </button>
         </div>
         <div className="academic-form-grid">
           <label>
@@ -977,49 +1032,60 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                               ))}
                           </select>
                         </label>
-                        <div>
+                        <div className="academic-student-field">
                           <span className="academic-field-label">Trợ giảng</span>
-                          {options.giangViens
-                            .filter((teacher) =>
-                              teacher.vaiTroIds?.includes(4),
-                            )
-                            .map((teacher) => (
-                              <label
-                                className="academic-student-option"
-                                key={teacher.nguoiDungId}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={assistants.some(
-                                    (assignment) =>
-                                      assignment.giangVienId ===
-                                      teacher.nguoiDungId,
-                                  )}
-                                  onChange={(event) =>
-                                    setForm((current) => ({
-                                      ...current,
-                                      phanCongGiangVien: event.target.checked
-                                        ? [
-                                            ...current.phanCongGiangVien,
-                                            {
-                                              monHocId: subject.monHocId,
-                                              giangVienId: teacher.nguoiDungId,
-                                              vaiTro: "Trợ giảng",
-                                            },
-                                          ]
-                                        : current.phanCongGiangVien.filter(
-                                            (assignment) =>
-                                              assignment.monHocId !==
-                                                subject.monHocId ||
-                                              assignment.giangVienId !==
-                                                teacher.nguoiDungId,
-                                          ),
-                                    }))
-                                  }
-                                />
-                                <span>{teacher.hoTen}</span>
-                              </label>
-                            ))}
+                          <details className="academic-multi-select class-assistant-picker">
+                            <summary>
+                              {assistants.length
+                                ? `Đã chọn ${assistants.length} trợ giảng`
+                                : "Chọn trợ giảng"}
+                              <span aria-hidden="true">▾</span>
+                            </summary>
+                            <div className="academic-student-picker academic-subject-picker">
+                              {options.giangViens
+                                .filter((teacher) =>
+                                  teacher.vaiTroIds?.includes(4),
+                                )
+                                .map((teacher) => (
+                                  <label
+                                    className="academic-student-option"
+                                    key={teacher.nguoiDungId}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={assistants.some(
+                                        (assignment) =>
+                                          assignment.giangVienId ===
+                                          teacher.nguoiDungId,
+                                      )}
+                                      onChange={(event) =>
+                                        setForm((current) => ({
+                                          ...current,
+                                          phanCongGiangVien: event.target.checked
+                                            ? [
+                                                ...current.phanCongGiangVien,
+                                                {
+                                                  monHocId: subject.monHocId,
+                                                  giangVienId:
+                                                    teacher.nguoiDungId,
+                                                  vaiTro: "Trợ giảng",
+                                                },
+                                              ]
+                                            : current.phanCongGiangVien.filter(
+                                                (assignment) =>
+                                                  assignment.monHocId !==
+                                                    subject.monHocId ||
+                                                  assignment.giangVienId !==
+                                                    teacher.nguoiDungId,
+                                              ),
+                                        }))
+                                      }
+                                    />
+                                    <span>{teacher.hoTen}</span>
+                                  </label>
+                                ))}
+                            </div>
+                          </details>
                         </div>
                       </div>
                     )}
@@ -1030,6 +1096,14 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </fieldset>
         </div>
         <div className="academic-form-actions">
+          <button
+            className="academic-secondary-button"
+            type="button"
+            onClick={resetForm}
+            disabled={saving}
+          >
+            Hủy
+          </button>
           <button
             className="academic-primary-button"
             type="submit"
@@ -1042,105 +1116,115 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 : "Lưu thay đổi"}
           </button>
         </div>
-        </form>
-      )}
+            </form>
+          </div>,
+          document.body,
+        )}
 
-      {!listOnly && canCreateSubjects && (
-        <section className="academic-card">
-          <div className="academic-card-heading">
-            <div>
-              <h2>Phòng học</h2>
-              <p>Khai báo sức chứa để cảnh báo khi xếp lớp vượt sức chứa phòng.</p>
-            </div>
-          </div>
-          <form className="room-management-form" onSubmit={saveRoom}>
-            <label>
-              Mã phòng
-              <input
-                required
-                maxLength={30}
-                value={roomForm.maPhong}
-                onChange={(event) =>
-                  setRoomForm({ ...roomForm, maPhong: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Tên phòng
-              <input
-                required
-                maxLength={100}
-                value={roomForm.tenPhong}
-                onChange={(event) =>
-                  setRoomForm({ ...roomForm, tenPhong: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Sức chứa
-              <input
-                required
-                type="number"
-                min={1}
-                max={1000}
-                value={roomForm.sucChua}
-                onChange={(event) =>
-                  setRoomForm({
-                    ...roomForm,
-                    sucChua: Number(event.target.value),
-                  })
-                }
-              />
-            </label>
-            <button type="submit" disabled={saving}>
-              {editingRoomId === null ? "Thêm phòng" : "Lưu phòng"}
-            </button>
-            {editingRoomId !== null && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingRoomId(null);
-                  setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
-                }}
-              >
-                Hủy
-              </button>
-            )}
-          </form>
-          {options.phongHocs.map((room) => (
-            <div className="room-management-row" key={room.phongHocId}>
-              <span>
-                <strong>{room.maPhong}</strong> — {room.tenPhong} · sức chứa{" "}
-                {room.sucChua}
-              </span>
-              {canUpdateClasses && (
+      {!listOnly &&
+        isRoomFormOpen &&
+        canCreateSubjects &&
+        createPortal(
+          <div
+            className="academic-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) closeRoomForm();
+            }}
+          >
+            <form
+              className="academic-modal room-entry-modal"
+              onSubmit={saveRoom}
+            >
+              <div className="academic-modal-heading">
+                <div>
+                  <h3>Thêm phòng học</h3>
+                  <p>Khai báo sức chứa để cảnh báo khi xếp lớp vượt sức chứa phòng.</p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditingRoomId(room.phongHocId);
-                    setRoomForm({
-                      maPhong: room.maPhong,
-                      tenPhong: room.tenPhong,
-                      sucChua: room.sucChua,
-                    });
-                  }}
+                  className="academic-modal-close"
+                  onClick={closeRoomForm}
+                  disabled={saving}
+                  aria-label="Đóng"
                 >
-                  Sửa
+                  ×
                 </button>
+              </div>
+              {errorMessage && (
+                <div
+                  className="academic-alert academic-alert-error"
+                  role="alert"
+                >
+                  {errorMessage}
+                </div>
               )}
-              {canDeleteClasses && (
+              <div className="academic-form-grid">
+                <label>
+                  Mã phòng
+                  <input
+                    required
+                    maxLength={30}
+                    value={roomForm.maPhong}
+                    onChange={(event) =>
+                      setRoomForm((current) => ({
+                        ...current,
+                        maPhong: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Tên phòng
+                  <input
+                    required
+                    maxLength={100}
+                    value={roomForm.tenPhong}
+                    onChange={(event) =>
+                      setRoomForm((current) => ({
+                        ...current,
+                        tenPhong: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Sức chứa
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={roomForm.sucChua}
+                    onChange={(event) =>
+                      setRoomForm((current) => ({
+                        ...current,
+                        sucChua: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="academic-form-actions">
                 <button
-                  className="academic-danger-button"
+                  className="academic-secondary-button"
                   type="button"
-                  onClick={() => void archiveRoom(room.phongHocId, room.maPhong)}
+                  onClick={closeRoomForm}
+                  disabled={saving}
                 >
-                  Ngừng phòng
+                  Hủy
                 </button>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
+                <button
+                  className="academic-primary-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving ? "Đang lưu..." : "Thêm phòng"}
+                </button>
+              </div>
+            </form>
+          </div>,
+          document.body,
+        )}
 
       {studentProfile && (
         <section className="academic-card student-academic-profile">
@@ -1220,6 +1304,37 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 : `${classes.length} lớp trong hệ thống`}
             </p>
           </div>
+          {!listOnly && (canUpdateClasses || canCreateSubjects) && (
+            <div className="academic-actions">
+              {canUpdateClasses && (
+                <button
+                  className="academic-primary-button"
+                  type="button"
+                  onClick={openCreateClassForm}
+                >
+                  + Tạo lớp
+                </button>
+              )}
+              {canCreateSubjects && (
+                <button
+                  className="academic-secondary-button"
+                  type="button"
+                  onClick={openSubjectForm}
+                >
+                  + Thêm môn học
+                </button>
+              )}
+              {canCreateSubjects && (
+                <button
+                  className="academic-secondary-button"
+                  type="button"
+                  onClick={openCreateRoomForm}
+                >
+                  + Thêm phòng học
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="academic-filters class-filters">
             <label>
@@ -1294,8 +1409,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               />
             </label>
           </div>
-        <div className="academic-table-wrap">
-          <table className="academic-table">
+        <div className="academic-table-wrap class-list-table-wrap">
+          <table className="academic-table class-list-table">
             <thead>
               <tr>
                 <th>Mã / tên lớp</th>
@@ -1469,116 +1584,155 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         </div>
       </section>
 
-      {!listOnly && canCreateSubjects && (
-        <form className="academic-card academic-form" onSubmit={saveSubject}>
-        <div className="academic-card-heading">
-          <div>
-            <h2>Thêm môn học</h2>
-            <p>Môn học mới sẽ xuất hiện trong danh sách để gán vào lớp.</p>
-          </div>
-        </div>
-        <div className="academic-form-grid subject-form-grid">
-          <label>
-            Mã môn
-            <input
-              required
-              maxLength={30}
-              value={subjectForm.maMonHoc}
-              onChange={(event) =>
-                setSubjectForm((current) => ({
-                  ...current,
-                  maMonHoc: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Tên môn học
-            <input
-              required
-              maxLength={150}
-              value={subjectForm.tenMonHoc}
-              onChange={(event) =>
-                setSubjectForm((current) => ({
-                  ...current,
-                  tenMonHoc: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Số tín chỉ
-            <input
-              type="number"
-              min="1"
-              max="30"
-              value={subjectForm.soTinChi}
-              onChange={(event) =>
-                setSubjectForm((current) => ({
-                  ...current,
-                  soTinChi: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Số buổi học
-            <input
-              required
-              type="number"
-              min="1"
-              max="100"
-              value={subjectForm.soBuoi}
-              onChange={(event) =>
-                setSubjectForm((current) => ({
-                  ...current,
-                  soBuoi: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Trọng số (0-1)
-            <input
-              required
-              type="number"
-              min="0.01"
-              max="1"
-              step="0.01"
-              value={subjectForm.trongSo}
-              onChange={(event) =>
-                setSubjectForm((current) => ({
-                  ...current,
-                  trongSo: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="academic-wide-field">
-            Mô tả chuẩn đầu ra
-            <textarea
-              maxLength={2000}
-              value={subjectForm.moTaChuanDauRa}
-              onChange={(event) =>
-                setSubjectForm((current) => ({
-                  ...current,
-                  moTaChuanDauRa: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <div className="academic-form-actions">
-            <button
-              className="academic-primary-button"
-              type="submit"
-              disabled={saving}
+      {!listOnly &&
+        canCreateSubjects &&
+        isSubjectFormOpen &&
+        createPortal(
+          <div
+            className="academic-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) closeSubjectForm();
+            }}
+          >
+            <form
+              className="academic-modal subject-entry-modal"
+              onSubmit={saveSubject}
             >
-              Thêm môn học
-            </button>
-          </div>
-        </div>
-        </form>
-      )}
+              <div className="academic-modal-heading">
+                <div>
+                  <h3>Thêm môn học</h3>
+                  <p>Môn học mới sẽ xuất hiện trong danh sách để gán vào lớp.</p>
+                </div>
+                <button
+                  type="button"
+                  className="academic-modal-close"
+                  onClick={closeSubjectForm}
+                  disabled={saving}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+              {errorMessage && (
+                <div
+                  className="academic-alert academic-alert-error"
+                  role="alert"
+                >
+                  {errorMessage}
+                </div>
+              )}
+              <div className="academic-form-grid">
+                <label>
+                  Mã môn
+                  <input
+                    required
+                    maxLength={30}
+                    value={subjectForm.maMonHoc}
+                    onChange={(event) =>
+                      setSubjectForm((current) => ({
+                        ...current,
+                        maMonHoc: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Tên môn học
+                  <input
+                    required
+                    maxLength={150}
+                    value={subjectForm.tenMonHoc}
+                    onChange={(event) =>
+                      setSubjectForm((current) => ({
+                        ...current,
+                        tenMonHoc: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Số tín chỉ
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={subjectForm.soTinChi}
+                    onChange={(event) =>
+                      setSubjectForm((current) => ({
+                        ...current,
+                        soTinChi: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Số buổi học
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={subjectForm.soBuoi}
+                    onChange={(event) =>
+                      setSubjectForm((current) => ({
+                        ...current,
+                        soBuoi: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Trọng số (0-1)
+                  <input
+                    required
+                    type="number"
+                    min="0.01"
+                    max="1"
+                    step="0.01"
+                    value={subjectForm.trongSo}
+                    onChange={(event) =>
+                      setSubjectForm((current) => ({
+                        ...current,
+                        trongSo: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="subject-entry-wide-field">
+                  Mô tả chuẩn đầu ra
+                  <textarea
+                    maxLength={2000}
+                    value={subjectForm.moTaChuanDauRa}
+                    onChange={(event) =>
+                      setSubjectForm((current) => ({
+                        ...current,
+                        moTaChuanDauRa: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="academic-form-actions">
+                <button
+                  className="academic-secondary-button"
+                  type="button"
+                  onClick={closeSubjectForm}
+                  disabled={saving}
+                >
+                  Hủy
+                </button>
+                <button
+                  className="academic-primary-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving ? "Đang thêm..." : "Thêm môn học"}
+                </button>
+              </div>
+            </form>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 };
