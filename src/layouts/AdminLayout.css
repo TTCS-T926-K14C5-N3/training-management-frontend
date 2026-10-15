@@ -704,7 +704,7 @@ body {
 .admin-dashboard-grid {
   display: grid;
 
-  grid-template-columns: 1.55fr 1fr;
+  grid-template-columns: 1fr;
 
   gap: 20px;
 }
@@ -862,6 +862,84 @@ body {
   color: #c0c8d3;
 
   font-size: 9px;
+}
+
+.admin-user-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-user-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.admin-user-item:last-child {
+  border-bottom: none;
+}
+
+.admin-user-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-user-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-user-info strong,
+.admin-user-info span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-info strong {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.admin-user-info span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.admin-user-status {
+  flex: 0 0 auto;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.admin-user-status.is-active {
+  color: #059669;
+}
+
+.admin-user-status.is-locked {
+  color: #dc2626;
+}
+
+.admin-users-message {
+  margin: 0;
+  padding: 16px 0;
+  color: #64748b;
+  font-size: 11px;
 }
 
 /* =========================================================

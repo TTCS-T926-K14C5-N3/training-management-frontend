@@ -214,6 +214,8 @@ const restoreExpiredSessionDraft = (path: string) => {
 function hasPermission(user: User | null, maQuyen: string): boolean {
   if (!user) return false;
 
+  if (isAdminUser(user)) return true;
+
   return user.quyen.some((quyen) => quyen.maQuyen === maQuyen);
 }
 
@@ -531,6 +533,57 @@ function App() {
       return null;
     }
   });
+
+  const [dashboardUserCount, setDashboardUserCount] = useState<number | null>(
+    null,
+  );
+  const [dashboardUsersLoading, setDashboardUsersLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user || !isAdminUser(user) || currentPath !== "/") {
+      return;
+    }
+
+    let isCurrentRequest = true;
+
+    const loadDashboardUsers = async () => {
+      setDashboardUsersLoading(true);
+
+      try {
+        const response = await api.get("/users/", {
+          params: { page: 1, limit: 5 },
+        });
+        const data = response.data;
+        const users = Array.isArray(data?.data) ? data.data : [];
+
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        setDashboardUserCount(
+          typeof data?.pagination?.total === "number"
+            ? data.pagination.total
+            : users.length,
+        );
+      } catch (error: any) {
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        console.error("Không thể tải tổng số người dùng:", error);
+      } finally {
+        if (isCurrentRequest) {
+          setDashboardUsersLoading(false);
+        }
+      }
+    };
+
+    void loadDashboardUsers();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [user?.nguoiDungId, user?.token, currentPath]);
 
   // =========================================================
   // LOGIN STATE
@@ -1583,6 +1636,7 @@ function App() {
   // =========================================================
 
   const isAdmin = isAdminUser(user);
+
   const renderAcademicLayout = (children: React.ReactNode) =>
     isAdmin ? (
       <AdminLayout
@@ -1857,9 +1911,15 @@ function App() {
               <div>
                 <span>Người dùng</span>
 
-                <strong>--</strong>
+                <strong>
+                  {dashboardUserCount === null
+                    ? dashboardUsersLoading
+                      ? "..."
+                      : "--"
+                    : dashboardUserCount.toLocaleString("vi-VN")}
+                </strong>
 
-                <small>Dữ liệu hệ thống</small>
+                <small>Người dùng trong hệ thống</small>
               </div>
             </div>
 
@@ -1901,12 +1961,7 @@ function App() {
           </div>
 
           <div className="admin-dashboard-grid">
-            <div
-              className="admin-panel"
-              style={{
-                gridColumn: "1 / -1",
-              }}
-            >
+            <div className="admin-panel">
               <div className="admin-panel-header">
                 <div>
                   <h3>Hoạt động gần đây</h3>
@@ -1953,6 +2008,7 @@ function App() {
                 </div>
               </div>
             </div>
+
           </div>
         </AdminLayout>
       </ProtectedRoute>

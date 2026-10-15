@@ -42,6 +42,7 @@ function ProtectedRoute({
   // =========================================================
 
   const permissions = Array.isArray(session.quyen) ? session.quyen : [];
+
   // =========================================================
   // KIỂM TRA QUYỀN
   // =========================================================
@@ -59,7 +60,11 @@ function ProtectedRoute({
       ),
     );
 
-  if (!hasRequiredPermission || !hasAnyRequiredPermission) {
+  if (requiredPermission && !hasRequiredPermission) {
+    return <AppStatusPage status="forbidden" />;
+  }
+
+  if (requiredAnyPermission && !hasAnyRequiredPermission) {
     return <AppStatusPage status="forbidden" />;
   }
 
