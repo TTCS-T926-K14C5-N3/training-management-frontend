@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
 import "./AcademicManagement.css";
 import "./TrainingCatalog.css";
 import "./Admissions.css";
@@ -24,15 +25,36 @@ interface Lead {
   email: string | null;
   nguon: string;
   trangThai: string;
+  hocVienId: number | null;
+  maHocVien: string | null;
   chuongTrinhId: number | null;
   tenChuongTrinh: string | null;
   ghiChu: string | null;
+  lyDoTuChoi: string | null;
+  henGoiLaiQuaHan: boolean;
   nguoiPhuTrach: Consultant[];
   ngayTao: string;
   lichSuBanGiao: Array<{
-    nguoiBanGiao: string;
-    nguoiNhan: string;
+    nguoiBanGiao: string | null;
+    nguoiNhan: string | null;
     thoiGian: string;
+    ngayBoPhanCong: string | null;
+  }>;
+  lichSuTrangThai: Array<{
+    trangThaiCu: string | null;
+    trangThaiMoi: string;
+    lyDo: string | null;
+    nguoiThucHien: string | null;
+    thoiDiem: string;
+  }>;
+  tuongTacs: Array<{
+    tuongTacId: number;
+    loai: string;
+    noiDung: string;
+    thoiDiem: string;
+    henGoiLaiLuc: string | null;
+    henGoiLaiQuaHan: boolean;
+    nguoiThucHien: string | null;
   }>;
 }
 
@@ -49,16 +71,102 @@ const EMPTY_FORM = {
   chuongTrinhId: "",
   trangThai: "Mới",
   ghiChu: "",
+  lyDoTuChoi: "",
+};
+
+const LOCAL_DATE_TIME = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+};
+
+const LEAD_STATUS_COLUMNS = [
+  "Mới",
+  "Đã liên hệ",
+  "Đang tư vấn",
+  "Hẹn học thử",
+  "Chốt",
+  "Từ chối",
+] as const;
+
+const LEAD_STATUS_PROGRESS = LEAD_STATUS_COLUMNS.slice(0, 5);
+
+const LEAD_STATUS_TRANSITIONS: Record<string, string[]> = {
+  "Mới": [...LEAD_STATUS_PROGRESS.slice(1), "Từ chối"],
+  "Đã liên hệ": [...LEAD_STATUS_PROGRESS.slice(2), "Từ chối"],
+  "Đang tư vấn": [...LEAD_STATUS_PROGRESS.slice(3), "Từ chối"],
+  "Hẹn học thử": ["Chốt", "Từ chối"],
+  "Đang liên hệ": ["Đang tư vấn", "Hẹn học thử", "Chốt", "Từ chối"],
+  "Tiềm năng": ["Hẹn học thử", "Chốt", "Từ chối"],
 };
 
 const responseError = (error: unknown, fallback: string): string => {
-  if (
-    axios.isAxiosError<{ detail?: unknown }>(error) &&
-    typeof error.response?.data?.detail === "string"
-  ) {
-    return error.response.data.detail;
+  if (!axios.isAxiosError<{ detail?: unknown }>(error)) {
+    return fallback;
   }
-  return fallback;
+
+  const response = error.response;
+  const detail = response?.data?.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const fieldNames: Record<string, string> = {
+      chuongTrinhId: "Chương trình quan tâm",
+      email: "Email",
+      ghiChu: "Ghi chú",
+      hoTen: "Họ và tên",
+      nguon: "Nguồn",
+      soDienThoai: "Số điện thoại",
+      trangThai: "Trạng thái",
+    };
+    const validationMessages = detail.flatMap((issue: unknown) => {
+      if (
+        typeof issue !== "object" ||
+        issue === null ||
+        !("msg" in issue) ||
+        typeof issue.msg !== "string"
+      ) {
+        return [];
+      }
+      const location =
+        "loc" in issue && Array.isArray(issue.loc)
+          ? issue.loc[issue.loc.length - 1]
+          : null;
+      const field =
+        typeof location === "string"
+          ? `${fieldNames[location] ?? location}: `
+          : "";
+      return [`${field}${issue.msg}`];
+    });
+    if (validationMessages.length > 0) {
+      return `Thông tin chưa hợp lệ: ${validationMessages.join("; ")}`;
+    }
+  }
+
+  if (!response) {
+    const requestUrl = [
+      error.config?.baseURL?.replace(/\/+$/, ""),
+      error.config?.url?.replace(/^\/+/, ""),
+    ]
+      .filter(Boolean)
+      .join("/");
+    const endpoint = requestUrl ? ` (${requestUrl})` : "";
+    return `Không nhận được phản hồi từ API${endpoint}: ${
+      error.message || "lỗi kết nối mạng"
+    }.`;
+  }
+  if (response.status === 401) {
+    return "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
+  }
+  if (response.status === 403) {
+    return "Tài khoản không có quyền thực hiện thao tác này.";
+  }
+  if (response.status >= 500) {
+    return `Máy chủ gặp lỗi khi xử lý yêu cầu (HTTP ${response.status}). Vui lòng kiểm tra log backend.`;
+  }
+  return `Yêu cầu thất bại (HTTP ${response.status}). ${fallback}`;
 };
 
 const AdmissionsLeads: React.FC<LeadsProps> = ({
@@ -73,12 +181,13 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [leads, setLeads] = useState<Lead[]>([]);
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [programs, setPrograms] = useState<ProgramOption[]>([]);
+  const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [assignedIds, setAssignedIds] = useState<number[]>([]);
+  const [assignedId, setAssignedId] = useState("");
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
-  const [bulkConsultantIds, setBulkConsultantIds] = useState<number[]>([]);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [bulkConsultantId, setBulkConsultantId] = useState("");
+  const [historyLeadId, setHistoryLeadId] = useState<number | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
     search: "",
@@ -93,6 +202,19 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState("");
+  const [interactionForm, setInteractionForm] = useState({
+    loai: "Gọi",
+    noiDung: "",
+    thoiDiem: LOCAL_DATE_TIME(),
+    henGoiLaiLuc: "",
+  });
+  const [statusForm, setStatusForm] = useState({
+    trangThai: "",
+    lyDoTuChoi: "",
+  });
+  const [viewMode, setViewMode] = useState<"table" | "board">("table");
+  const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
 
   const handleSearchSubmit = () => {
     const term = searchInput.trim();
@@ -114,18 +236,51 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       }
       if (filters.startDate) params.start_date = filters.startDate;
       if (filters.endDate) params.end_date = filters.endDate;
-      const [leadResponse, consultantResponse, programResponse] =
-        await Promise.all([
+      const [leadResult, consultantResult, programResult] =
+        await Promise.allSettled([
           api.get<Lead[]>("/admissions/leads", { params }),
           canAssign
             ? api.get<Consultant[]>("/admissions/consultants")
             : Promise.resolve({ data: [] as Consultant[] }),
           api.get<ProgramOption[]>("/admissions/program-options"),
         ]);
-      setLeads(leadResponse.data);
-      setConsultants(consultantResponse.data);
-      setPrograms(programResponse.data);
-      setError("");
+      if (leadResult.status === "rejected") {
+        throw leadResult.reason;
+      }
+      setLeads(leadResult.value.data);
+      const visibleLeadIds = new Set(
+        leadResult.value.data.map((lead) => lead.leadId),
+      );
+      setSelectedLeadIds((selected) =>
+        selected.filter((leadId) => visibleLeadIds.has(leadId)),
+      );
+
+      const auxiliaryErrors: string[] = [];
+      if (consultantResult.status === "fulfilled") {
+        setConsultants(consultantResult.value.data);
+      } else {
+        console.error("Không thể tải danh sách tư vấn viên:", consultantResult.reason);
+        setConsultants([]);
+        auxiliaryErrors.push(
+          responseError(
+            consultantResult.reason,
+            "Không thể tải danh sách tư vấn viên.",
+          ),
+        );
+      }
+      if (programResult.status === "fulfilled") {
+        setPrograms(programResult.value.data);
+      } else {
+        console.error("Không thể tải danh sách chương trình:", programResult.reason);
+        setPrograms([]);
+        auxiliaryErrors.push(
+          responseError(
+            programResult.reason,
+            "Không thể tải danh sách chương trình.",
+          ),
+        );
+      }
+      setError(auxiliaryErrors.join(" "));
     } catch (requestError: unknown) {
       console.error("Không thể tải danh sách lead:", requestError);
       setError(responseError(requestError, "Không thể tải danh sách lead."));
@@ -152,8 +307,18 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
-    setAssignedIds([]);
+    setAssignedId("");
     setDuplicateWarning("");
+    setIsLeadFormOpen(false);
+  };
+
+  const openCreateLead = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setAssignedId("");
+    setDuplicateWarning("");
+    setError("");
+    setIsLeadFormOpen(true);
   };
 
   const checkDuplicate = (phone: string) => {
@@ -175,6 +340,8 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     setSaving(true);
     setError("");
     setNotice("");
+    let savedLeadId: number | null = null;
+    let leadSaved = false;
     try {
       const payload = {
         hoTen: form.hoTen,
@@ -186,17 +353,22 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
           : null,
         trangThai: form.trangThai,
         ghiChu: form.ghiChu || null,
+        lyDoTuChoi: form.lyDoTuChoi || null,
       };
       let leadId = editingId;
       if (editingId) {
         await api.put(`/admissions/leads/${editingId}`, payload);
+        leadSaved = true;
       } else {
         const response = await api.post<Lead>("/admissions/leads", payload);
         leadId = response.data.leadId;
+        savedLeadId = leadId;
+        leadSaved = true;
+        setEditingId(leadId);
       }
       if (leadId && canAssign) {
         await api.put(`/admissions/leads/${leadId}/assignments`, {
-          consultantIds: assignedIds,
+          consultantIds: assignedId ? [Number(assignedId)] : [],
         });
       }
       resetForm();
@@ -204,7 +376,14 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       await loadData();
     } catch (requestError: unknown) {
       console.error("Không thể lưu lead:", requestError);
-      setError(responseError(requestError, "Không thể lưu lead."));
+      const detail = responseError(requestError, "Không thể lưu lead.");
+      setError(
+        leadSaved
+          ? savedLeadId !== null
+            ? `Lead #${savedLeadId} đã được tạo nhưng phân công chưa hoàn tất. Bấm lưu lại để thử phân công lần nữa. ${detail}`
+            : `Thông tin lead đã lưu nhưng phân công chưa hoàn tất. Bấm lưu lại để thử lại. ${detail}`
+          : detail,
+      );
     } finally {
       setSaving(false);
     }
@@ -222,10 +401,16 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
         : "",
       trangThai: lead.trangThai,
       ghiChu: lead.ghiChu || "",
+      lyDoTuChoi: lead.lyDoTuChoi || "",
     });
-    setAssignedIds(lead.nguoiPhuTrach.map((user) => user.nguoiDungId));
+    setAssignedId(
+      lead.nguoiPhuTrach[0]
+        ? String(lead.nguoiPhuTrach[0].nguoiDungId)
+        : "",
+    );
     setDuplicateWarning("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setError("");
+    setIsLeadFormOpen(true);
   };
 
   const deleteLead = async (lead: Lead) => {
@@ -241,19 +426,165 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     }
   };
 
-  const toggleAssignment = (userId: number) => {
-    setAssignedIds((current) =>
-      current.includes(userId)
-        ? current.filter((id) => id !== userId)
-        : [...current, userId],
+  const convertLead = async (lead: Lead) => {
+    if (!lead.email) {
+      setError("Cần bổ sung email cho lead trước khi tạo tài khoản học viên.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Chuyển ${lead.hoTen} thành học viên và gửi email kích hoạt đến ${lead.email}?`,
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await api.post<{
+        alreadyConverted: boolean;
+        maHocVien: string;
+        message: string;
+      }>(`/admissions/leads/${lead.leadId}/convert-to-student`);
+      setNotice(response.data.message);
+      setSelectedLeadIds((current) =>
+        current.filter((leadId) => leadId !== lead.leadId),
+      );
+      await loadData();
+    } catch (requestError: unknown) {
+      console.error("Không thể chuyển lead thành học viên:", requestError);
+      setError(
+        responseError(
+          requestError,
+          "Không thể chuyển lead thành hồ sơ học viên.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveInteraction = async (
+    event: FormEvent<HTMLFormElement>,
+    lead: Lead,
+  ) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await api.post(`/admissions/leads/${lead.leadId}/interactions`, {
+        loai: interactionForm.loai,
+        noiDung: interactionForm.noiDung,
+        thoiDiem: new Date(interactionForm.thoiDiem).toISOString(),
+        henGoiLaiLuc: interactionForm.henGoiLaiLuc
+          ? new Date(interactionForm.henGoiLaiLuc).toISOString()
+          : null,
+      });
+      setInteractionForm({
+        loai: "Gọi",
+        noiDung: "",
+        thoiDiem: LOCAL_DATE_TIME(),
+        henGoiLaiLuc: "",
+      });
+      setHistoryLeadId(null);
+      setNotice("Đã ghi nhật ký tương tác.");
+      await loadData();
+    } catch (requestError: unknown) {
+      console.error("Không thể ghi nhật ký tương tác:", requestError);
+      setError(responseError(requestError, "Không thể ghi nhật ký tương tác."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openLeadHistory = (lead: Lead) => {
+    setHistoryLeadId(lead.leadId);
+    setViewMode("table");
+    setStatusForm({
+      trangThai: LEAD_STATUS_TRANSITIONS[lead.trangThai]?.[0] ?? "",
+      lyDoTuChoi: "",
+    });
+    setInteractionForm({
+      loai: "Gọi",
+      noiDung: "",
+      thoiDiem: LOCAL_DATE_TIME(),
+      henGoiLaiLuc: "",
+    });
+    setError("");
+  };
+
+  const saveLeadStatus = async (
+    event: FormEvent<HTMLFormElement>,
+    lead: Lead,
+  ) => {
+    event.preventDefault();
+    if (!statusForm.trangThai) return;
+    await updateLeadStatus(
+      lead,
+      statusForm.trangThai,
+      statusForm.trangThai === "Từ chối" ? statusForm.lyDoTuChoi : null,
     );
   };
 
+  const updateLeadStatus = async (
+    lead: Lead,
+    targetStatus: string,
+    reason: string | null,
+  ) => {
+    setSaving(true);
+    setError("");
+    try {
+      await api.put(`/admissions/leads/${lead.leadId}/status`, {
+        trangThai: targetStatus,
+        lyDoTuChoi: reason,
+      });
+      setHistoryLeadId(null);
+      setNotice(
+        `Đã cập nhật trạng thái mới cho học viên ${lead.hoTen}: ${targetStatus}.`,
+      );
+      await loadData();
+    } catch (requestError: unknown) {
+      console.error("Không thể cập nhật trạng thái lead:", requestError);
+      setError(
+        responseError(requestError, "Không thể cập nhật trạng thái lead."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canDropLeadIntoStatus = (lead: Lead, targetStatus: string) =>
+    canUpdate &&
+    targetStatus !== "Khác" &&
+    (LEAD_STATUS_TRANSITIONS[lead.trangThai] ?? []).includes(targetStatus);
+
+  const handleLeadDrop = async (lead: Lead, targetStatus: string) => {
+    if (!canDropLeadIntoStatus(lead, targetStatus)) return;
+    let reason: string | null = null;
+    if (targetStatus === "Từ chối") {
+      const enteredReason = window.prompt(
+        `Nhập lý do từ chối ${lead.hoTen}:`,
+        lead.lyDoTuChoi ?? "",
+      );
+      if (enteredReason === null) return;
+      reason = enteredReason.trim();
+      if (!reason) {
+        setError("Vui lòng nhập lý do từ chối trước khi cập nhật trạng thái.");
+        return;
+      }
+    }
+    await updateLeadStatus(lead, targetStatus, reason);
+  };
+
   const toggleSelectAll = () => {
-    if (selectedLeadIds.length === leads.length) {
+    const selectableLeadIds = leads
+      .filter((lead) => !["Đã nhập học", "Từ chối"].includes(lead.trangThai))
+      .map((lead) => lead.leadId);
+    if (selectedLeadIds.length === selectableLeadIds.length) {
       setSelectedLeadIds([]);
     } else {
-      setSelectedLeadIds(leads.map((l) => l.leadId));
+      setSelectedLeadIds(selectableLeadIds);
     }
   };
 
@@ -265,29 +596,30 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     );
   };
 
-  const toggleBulkConsultant = (id: number) => {
-    setBulkConsultantIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  };
-
   const handleBulkAssign = async () => {
-    if (selectedLeadIds.length === 0 || bulkConsultantIds.length === 0) return;
+    if (selectedLeadIds.length === 0 || bulkConsultantId === "") return;
+    const consultantIds =
+      bulkConsultantId === "unassigned" ? [] : [Number(bulkConsultantId)];
     setSaving(true);
     setError("");
     setNotice("");
     try {
       await api.put("/admissions/leads/bulk-assignments", {
         leadIds: selectedLeadIds,
-        consultantIds: bulkConsultantIds,
+        consultantIds,
       });
       setNotice(
-        `Đã phân công ${selectedLeadIds.length} lead cho ${bulkConsultantIds.length} tư vấn viên.`,
+        consultantIds.length === 0
+          ? `Đã gỡ phân công ${selectedLeadIds.length} lead.`
+          : `Đã giao ${selectedLeadIds.length} lead cho ${
+              consultants.find(
+                (consultant) =>
+                  consultant.nguoiDungId === consultantIds[0],
+              )?.hoTen ?? "tư vấn viên"
+            }.`,
       );
       setSelectedLeadIds([]);
-      setBulkConsultantIds([]);
+      setBulkConsultantId("");
       await loadData();
     } catch (requestError: unknown) {
       console.error("Không thể phân công hàng loạt:", requestError);
@@ -296,6 +628,11 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       setSaving(false);
     }
   };
+
+  const historyLead = leads.find((lead) => lead.leadId === historyLeadId) ?? null;
+  const availableStatusTransitions = historyLead
+    ? LEAD_STATUS_TRANSITIONS[historyLead.trangThai] ?? []
+    : [];
 
   return (
     <div className="academic-page">
@@ -312,19 +649,46 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       </header>
 
       {(error || notice) && (
-        <div className={error ? "academic-error" : "academic-success"} role="status">
-          {error || notice}
-        </div>
+        <ToastNotification
+          type={error ? "error" : "success"}
+          text={error || notice}
+          durationMs={3000}
+          onClose={() => {
+            setError("");
+            setNotice("");
+          }}
+        />
       )}
 
-      {(canCreate || editingId !== null) && (
-        <section className="academic-card">
-          <div className="academic-card-heading">
+      {isLeadFormOpen && (
+        <div
+          className="lead-form-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) resetForm();
+          }}
+        >
+        <section
+          className="lead-form-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lead-form-modal-title"
+        >
+          <header className="lead-form-modal-header">
             <div>
-              <h2>{editingId ? "Cập nhật lead" : "Thêm lead"}</h2>
+              <h2 id="lead-form-modal-title">
+                {editingId ? "Cập nhật lead" : "Thêm lead"}
+              </h2>
               <p>Lead trùng số điện thoại được cảnh báo nhưng vẫn có thể lưu.</p>
             </div>
-          </div>
+            <button
+              type="button"
+              aria-label="Đóng biểu mẫu lead"
+              disabled={saving}
+              onClick={resetForm}
+            >
+              ×
+            </button>
+          </header>
           <form className="academic-form-grid" onSubmit={saveLead}>
             <label>
               Họ và tên *
@@ -399,18 +763,53 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             <label>
               Trạng thái
               <select
+                disabled={!editingId}
                 value={form.trangThai}
                 onChange={(event) =>
                   setForm({ ...form, trangThai: event.target.value })
                 }
               >
                 <option value="Mới">Mới</option>
+                <option value="Đã liên hệ">Đã liên hệ</option>
                 <option value="Đang tư vấn">Đang tư vấn</option>
-                <option value="Tiềm năng">Tiềm năng</option>
-                <option value="Không tiềm năng">Không tiềm năng</option>
-                <option value="Đã đăng ký">Đã đăng ký</option>
+                <option value="Hẹn học thử">Hẹn học thử</option>
+                <option value="Chốt">Chốt</option>
+                <option value="Từ chối">Từ chối</option>
+                {editingId &&
+                  ![
+                    "Mới",
+                    "Đã liên hệ",
+                    "Đang tư vấn",
+                    "Hẹn học thử",
+                    "Chốt",
+                    "Từ chối",
+                  ].includes(form.trangThai) && (
+                    <option value={form.trangThai}>{form.trangThai}</option>
+                  )}
               </select>
             </label>
+            {form.trangThai === "Từ chối" && (
+              <label>
+                Lý do từ chối *
+                <input
+                  required
+                  list="lead-decline-reasons"
+                  maxLength={500}
+                  value={form.lyDoTuChoi}
+                  onChange={(event) =>
+                    setForm({ ...form, lyDoTuChoi: event.target.value })
+                  }
+                  placeholder="Chọn hoặc nhập lý do"
+                />
+                <datalist id="lead-decline-reasons">
+                  <option value="Không còn nhu cầu" />
+                  <option value="Không phù hợp chương trình" />
+                  <option value="Không liên hệ được" />
+                  <option value="Chọn đơn vị đào tạo khác" />
+                  <option value="Không phù hợp ngân sách" />
+                </datalist>
+              </label>
+            )}
             <label className="academic-wide-field">
               Ghi chú
               <textarea
@@ -423,34 +822,36 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </label>
             {canAssign && (
               <fieldset className="lead-assignments academic-wide-field">
-                <legend>Phân công tư vấn viên</legend>
-                {consultants.map((consultant) => (
-                  <label key={consultant.nguoiDungId}>
-                    <input
-                      type="checkbox"
-                      checked={assignedIds.includes(consultant.nguoiDungId)}
-                      onChange={() => toggleAssignment(consultant.nguoiDungId)}
-                    />
-                    {consultant.hoTen}
-                  </label>
-                ))}
-                {consultants.length === 0 && (
-                  <span className="academic-muted">Không có tư vấn viên khả dụng.</span>
-                )}
+                <label>
+                  Người phụ trách
+                  <select
+                    value={assignedId}
+                    onChange={(event) => setAssignedId(event.target.value)}
+                  >
+                    <option value="">Chưa phân công</option>
+                    {consultants.map((consultant) => (
+                      <option
+                        key={consultant.nguoiDungId}
+                        value={consultant.nguoiDungId}
+                      >
+                        {consultant.hoTen}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </fieldset>
             )}
             <div className="academic-form-actions">
               <button type="submit" disabled={saving}>
                 {saving ? "Đang lưu..." : editingId ? "Lưu thay đổi" : "Thêm lead"}
               </button>
-              {editingId && (
-                <button type="button" onClick={resetForm}>
-                  Hủy
-                </button>
-              )}
+              <button type="button" disabled={saving} onClick={resetForm}>
+                Hủy
+              </button>
             </div>
           </form>
         </section>
+        </div>
       )}
 
       <section className="academic-card">
@@ -458,6 +859,33 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
           <div>
             <h2>Danh sách lead</h2>
             <p>Tìm kiếm theo tên/số điện thoại và lọc theo điều kiện.</p>
+          </div>
+          <div className="lead-list-header-actions">
+            {canCreate && (
+              <button
+                type="button"
+                className="lead-add-button"
+                onClick={openCreateLead}
+              >
+                + Thêm lead
+              </button>
+            )}
+            <div className="lead-view-switch" role="group" aria-label="Kiểu hiển thị lead">
+              <button
+                type="button"
+                aria-pressed={viewMode === "board"}
+                onClick={() => setViewMode("board")}
+              >
+                Bảng trạng thái
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === "table"}
+                onClick={() => setViewMode("table")}
+              >
+                Danh sách
+              </button>
+            </div>
           </div>
         </div>
         <div className="academic-filters lead-filters">
@@ -508,10 +936,16 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             >
               <option value="">Tất cả</option>
               <option value="Mới">Mới</option>
+              <option value="Đã liên hệ">Đã liên hệ</option>
               <option value="Đang tư vấn">Đang tư vấn</option>
-              <option value="Tiềm năng">Tiềm năng</option>
-              <option value="Không tiềm năng">Không tiềm năng</option>
-              <option value="Đã đăng ký">Đã đăng ký</option>
+              <option value="Hẹn học thử">Hẹn học thử</option>
+              <option value="Chốt">Chốt</option>
+              <option value="Từ chối">Từ chối</option>
+              <option value="Đang liên hệ">Đang liên hệ (cũ)</option>
+              <option value="Tiềm năng">Tiềm năng (cũ)</option>
+              <option value="Không tiềm năng">Không tiềm năng (cũ)</option>
+              <option value="Đã chuyển đổi">Đã chuyển đổi</option>
+              <option value="Đã nhập học">Đã nhập học</option>
             </select>
           </label>
           <label>
@@ -580,29 +1014,29 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
               </button>
             </div>
             <div className="lead-bulk-assign">
-              <span>Phân công cho tư vấn viên:</span>
-              <div className="lead-bulk-consultant-pills">
-                {consultants.map((c) => {
-                  const isChecked = bulkConsultantIds.includes(c.nguoiDungId);
-                  return (
-                    <label
-                      key={c.nguoiDungId}
-                      className={`lead-consultant-pill ${isChecked ? "active" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleBulkConsultant(c.nguoiDungId)}
-                      />
-                      {c.hoTen}
-                    </label>
-                  );
-                })}
-              </div>
+              <label htmlFor="bulk-consultant">Giao lead cho:</label>
+              <select
+                id="bulk-consultant"
+                value={bulkConsultantId}
+                onChange={(event) =>
+                  setBulkConsultantId(event.target.value)
+                }
+              >
+                <option value="">Chọn tư vấn viên hoặc thao tác</option>
+                {consultants.map((consultant) => (
+                  <option
+                    key={consultant.nguoiDungId}
+                    value={consultant.nguoiDungId}
+                  >
+                    {consultant.hoTen}
+                  </option>
+                ))}
+                <option value="unassigned">Gỡ phân công</option>
+              </select>
               <button
                 type="button"
                 className="lead-bulk-apply-btn"
-                disabled={saving || bulkConsultantIds.length === 0}
+                disabled={saving || bulkConsultantId === ""}
                 onClick={() => void handleBulkAssign()}
               >
                 {saving
@@ -612,6 +1046,110 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </div>
           </div>
         )}
+        {viewMode === "board" && (
+          <div className="lead-status-board">
+            {[
+              ...LEAD_STATUS_COLUMNS,
+              "Khác",
+            ].map((column) => {
+              const columnLeads = leads.filter((lead) =>
+                column === "Khác"
+                  ? !LEAD_STATUS_COLUMNS.includes(
+                      lead.trangThai as (typeof LEAD_STATUS_COLUMNS)[number],
+                    )
+                  : lead.trangThai === column,
+              );
+              const draggedLead =
+                draggedLeadId === null
+                  ? null
+                  : leads.find((lead) => lead.leadId === draggedLeadId) ?? null;
+              return (
+                <section
+                  className={`lead-status-column ${
+                    dragOverStatus === column ? "is-drop-target" : ""
+                  }`}
+                  key={column}
+                  onDragOver={(event) => {
+                    if (
+                      draggedLead &&
+                      !saving &&
+                      canDropLeadIntoStatus(draggedLead, column)
+                    ) {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      setDragOverStatus(column);
+                    }
+                  }}
+                  onDragLeave={() => setDragOverStatus(null)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const lead = draggedLead;
+                    setDragOverStatus(null);
+                    setDraggedLeadId(null);
+                    if (lead) void handleLeadDrop(lead, column);
+                  }}
+                >
+                  <header>
+                    <strong>{column}</strong>
+                    <span>{columnLeads.length}</span>
+                  </header>
+                  {columnLeads.map((lead) => (
+                    <article
+                      className={`lead-status-card ${
+                        lead.henGoiLaiQuaHan ? "is-overdue" : ""
+                      } ${
+                        draggedLeadId === lead.leadId ? "is-dragging" : ""
+                      }`}
+                      key={lead.leadId}
+                      draggable={
+                        canUpdate &&
+                        !saving &&
+                        (LEAD_STATUS_TRANSITIONS[lead.trangThai]?.length ?? 0) > 0
+                      }
+                      onDragStart={(event) => {
+                        setDraggedLeadId(lead.leadId);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData(
+                          "text/plain",
+                          String(lead.leadId),
+                        );
+                      }}
+                      onDragEnd={() => {
+                        setDraggedLeadId(null);
+                        setDragOverStatus(null);
+                      }}
+                    >
+                      <strong>{lead.hoTen}</strong>
+                      <small>{lead.soDienThoai}</small>
+                      <small>{lead.tenChuongTrinh || "Chưa xác định chương trình"}</small>
+                      {lead.henGoiLaiQuaHan && (
+                        <span className="lead-overdue-badge">Quá hạn gọi lại</span>
+                      )}
+                      <div>
+                        {canUpdate &&
+                          !["Từ chối", "Đã nhập học"].includes(lead.trangThai) && (
+                            <button type="button" onClick={() => editLead(lead)}>
+                              Chuyển / sửa
+                            </button>
+                          )}
+                        <button
+                          type="button"
+                          onClick={() => openLeadHistory(lead)}
+                        >
+                          Nhật ký
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {columnLeads.length === 0 && (
+                    <p className="academic-muted">Không có lead.</p>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+        {viewMode === "table" && (
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
@@ -620,10 +1158,15 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   <th style={{ width: "40px", textAlign: "center" }}>
                     <input
                       type="checkbox"
-                      checked={
-                        leads.length > 0 &&
-                        selectedLeadIds.length === leads.length
-                      }
+                      checked={leads.some(
+                        (lead) => !["Đã nhập học", "Từ chối"].includes(lead.trangThai),
+                      ) &&
+                        selectedLeadIds.length ===
+                          leads.filter((lead) => !["Đã nhập học", "Từ chối"].includes(lead.trangThai))
+                            .length}
+                      disabled={leads.every((lead) =>
+                          ["Đã nhập học", "Từ chối"].includes(lead.trangThai),
+                      )}
                       onChange={toggleSelectAll}
                       aria-label="Chọn tất cả lead"
                     />
@@ -641,12 +1184,13 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
               {!loading &&
                 leads.map((lead) => (
                   <Fragment key={lead.leadId}>
-                    <tr>
+                    <tr className={lead.henGoiLaiQuaHan ? "lead-row-overdue" : undefined}>
                       {canAssign && (
                         <td style={{ textAlign: "center" }}>
                           <input
                             type="checkbox"
                             checked={selectedLeadIds.includes(lead.leadId)}
+                            disabled={["Đã nhập học", "Từ chối"].includes(lead.trangThai)}
                             onChange={() => toggleSelectLead(lead.leadId)}
                             aria-label={`Chọn lead ${lead.hoTen}`}
                           />
@@ -654,6 +1198,11 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                       )}
                       <td>
                         <strong>{lead.hoTen}</strong>
+                        {lead.maHocVien && (
+                          <small className="admissions-student-code">
+                            Mã học viên: {lead.maHocVien}
+                          </small>
+                        )}
                         <small className="academic-muted">{lead.soDienThoai}</small>
                         {lead.email && (
                           <small className="academic-muted">{lead.email}</small>
@@ -663,6 +1212,16 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                       <td>
                         {lead.nguon}
                         <small className="academic-muted">{lead.trangThai}</small>
+                        {lead.lyDoTuChoi && (
+                          <small className="academic-muted">
+                            Lý do: {lead.lyDoTuChoi}
+                          </small>
+                        )}
+                        {lead.henGoiLaiQuaHan && (
+                          <small className="lead-overdue-badge">
+                            Quá hạn gọi lại
+                          </small>
+                        )}
                       </td>
                       <td>
                         {lead.nguoiPhuTrach.length > 0
@@ -672,52 +1231,50 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                       <td>{new Date(lead.ngayTao).toLocaleDateString("vi-VN")}</td>
                       <td>
                         <div className="lead-row-actions">
-                          {canUpdate && (
-                            <button type="button" onClick={() => editLead(lead)}>
-                              Sửa
-                            </button>
-                          )}
+                          {canUpdate &&
+                            !["Đã nhập học", "Từ chối"].includes(lead.trangThai) && (
+                              <button type="button" onClick={() => editLead(lead)}>
+                                Sửa
+                              </button>
+                            )}
+                          {canUpdate &&
+                            !["Đã nhập học", "Từ chối"].includes(lead.trangThai) && (
+                              <button
+                                type="button"
+                                className="lead-convert-btn"
+                                disabled={saving || !lead.email}
+                                title={
+                                  lead.email
+                                    ? "Tạo hồ sơ học viên và gửi email kích hoạt"
+                                    : "Cần bổ sung email trước khi chuyển thành học viên"
+                                }
+                                onClick={() => void convertLead(lead)}
+                              >
+                                Nhập học
+                              </button>
+                            )}
                           <button
                             type="button"
                             onClick={() =>
-                              setExpandedId(
-                                expandedId === lead.leadId ? null : lead.leadId,
-                              )
+                              historyLeadId === lead.leadId
+                                ? setHistoryLeadId(null)
+                                : openLeadHistory(lead)
                             }
                           >
                             Lịch sử
                           </button>
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => void deleteLead(lead)}
-                            >
-                              Xóa
-                            </button>
-                          )}
+                          {canDelete &&
+                            !["Đã nhập học", "Từ chối"].includes(lead.trangThai) && (
+                              <button
+                                type="button"
+                                onClick={() => void deleteLead(lead)}
+                              >
+                                Xóa
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>
-                    {expandedId === lead.leadId && (
-                      <tr>
-                        <td colSpan={canAssign ? 7 : 6}>
-                          <strong>Lịch sử bàn giao</strong>
-                          {lead.lichSuBanGiao.length > 0 ? (
-                            <ul className="lead-history">
-                              {lead.lichSuBanGiao.map((entry, index) => (
-                                <li key={`${lead.leadId}-${index}`}>
-                                  {entry.nguoiBanGiao} bàn giao cho {entry.nguoiNhan}
-                                  {" — "}
-                                  {new Date(entry.thoiGian).toLocaleString("vi-VN")}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="academic-muted">Chưa có lịch sử bàn giao.</p>
-                          )}
-                        </td>
-                      </tr>
-                    )}
                   </Fragment>
                 ))}
               {!loading && leads.length === 0 && (
@@ -733,7 +1290,239 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </tbody>
           </table>
         </div>
+        )}
       </section>
+      {historyLead && (
+        <div
+          className="lead-history-modal-backdrop"
+          onClick={() => {
+            if (!saving) setHistoryLeadId(null);
+          }}
+        >
+          <section
+            className="lead-history-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lead-history-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="lead-history-modal-header">
+              <div>
+                <h2 id="lead-history-modal-title">
+                  Lịch sử lead: {historyLead.hoTen}
+                </h2>
+                <p>
+                  Trạng thái hiện tại: <strong>{historyLead.trangThai}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Đóng lịch sử lead"
+                disabled={saving}
+                onClick={() => setHistoryLeadId(null)}
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="lead-history-modal-content">
+              <div className="lead-history-modal-columns">
+                <section>
+                  <h3>Lịch sử trạng thái</h3>
+                  {historyLead.lichSuTrangThai.length > 0 ? (
+                    <ul className="lead-history">
+                      {historyLead.lichSuTrangThai.map((entry, index) => (
+                        <li key={`${historyLead.leadId}-status-${index}`}>
+                          {entry.trangThaiCu ?? "Khởi tạo"} → {entry.trangThaiMoi}
+                          {entry.lyDo ? ` — ${entry.lyDo}` : ""}
+                          {" · "}
+                          {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
+                          {entry.nguoiThucHien ? ` · ${entry.nguoiThucHien}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="academic-muted">Chưa có lịch sử trạng thái.</p>
+                  )}
+                </section>
+                <section>
+                  <h3>Nhật ký chăm sóc</h3>
+                  {historyLead.tuongTacs.length > 0 ? (
+                    <ul className="lead-history">
+                      {historyLead.tuongTacs.map((entry) => (
+                        <li
+                          className={
+                            entry.henGoiLaiQuaHan
+                              ? "lead-interaction-overdue"
+                              : undefined
+                          }
+                          key={entry.tuongTacId}
+                        >
+                          <strong>{entry.loai}</strong> — {entry.noiDung}
+                          {" · "}
+                          {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
+                          {entry.nguoiThucHien ? ` · ${entry.nguoiThucHien}` : ""}
+                          {entry.henGoiLaiLuc && (
+                            <>
+                              {" · Gọi lại "}
+                              {new Date(entry.henGoiLaiLuc).toLocaleString("vi-VN")}
+                              {entry.henGoiLaiQuaHan && " (QUÁ HẠN)"}
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="academic-muted">Chưa có tương tác.</p>
+                  )}
+                </section>
+              </div>
+
+              {canUpdate && availableStatusTransitions.length > 0 && (
+                <form
+                  className="lead-history-form"
+                  onSubmit={(event) => void saveLeadStatus(event, historyLead)}
+                >
+                  <h3>Ghi nhận trạng thái</h3>
+                  <label>
+                    Trạng thái mới
+                    <select
+                      required
+                      value={statusForm.trangThai}
+                      onChange={(event) =>
+                        setStatusForm({
+                          ...statusForm,
+                          trangThai: event.target.value,
+                          lyDoTuChoi: "",
+                        })
+                      }
+                    >
+                      <option value="" disabled>
+                        Chọn trạng thái
+                      </option>
+                      {availableStatusTransitions.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {statusForm.trangThai === "Từ chối" && (
+                    <label>
+                      Lý do từ chối *
+                      <input
+                        required
+                        maxLength={500}
+                        value={statusForm.lyDoTuChoi}
+                        onChange={(event) =>
+                          setStatusForm({
+                            ...statusForm,
+                            lyDoTuChoi: event.target.value,
+                          })
+                        }
+                        placeholder="Nhập lý do từ chối"
+                      />
+                    </label>
+                  )}
+                  <button type="submit" disabled={saving || !statusForm.trangThai}>
+                    {saving ? "Đang lưu..." : "Cập nhật trạng thái"}
+                  </button>
+                </form>
+              )}
+
+              {canUpdate &&
+                !["Từ chối", "Đã nhập học"].includes(historyLead.trangThai) && (
+                  <form
+                    className="lead-interaction-form"
+                    onSubmit={(event) => void saveInteraction(event, historyLead)}
+                  >
+                    <h3>Ghi tương tác</h3>
+                    <label>
+                      Hình thức
+                      <select
+                        value={interactionForm.loai}
+                        onChange={(event) =>
+                          setInteractionForm({
+                            ...interactionForm,
+                            loai: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="Gọi">Gọi</option>
+                        <option value="Nhắn tin">Nhắn tin</option>
+                        <option value="Gặp">Gặp trực tiếp</option>
+                      </select>
+                    </label>
+                    <label>
+                      Nội dung
+                      <input
+                        required
+                        maxLength={2000}
+                        value={interactionForm.noiDung}
+                        onChange={(event) =>
+                          setInteractionForm({
+                            ...interactionForm,
+                            noiDung: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Thời điểm
+                      <input
+                        required
+                        type="datetime-local"
+                        value={interactionForm.thoiDiem}
+                        onChange={(event) =>
+                          setInteractionForm({
+                            ...interactionForm,
+                            thoiDiem: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Hẹn gọi lại
+                      <input
+                        type="datetime-local"
+                        value={interactionForm.henGoiLaiLuc}
+                        onChange={(event) =>
+                          setInteractionForm({
+                            ...interactionForm,
+                            henGoiLaiLuc: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <button type="submit" disabled={saving}>
+                      {saving ? "Đang lưu..." : "Ghi tương tác"}
+                    </button>
+                  </form>
+                )}
+
+              <section>
+                <h3>Lịch sử bàn giao</h3>
+                {historyLead.lichSuBanGiao.length > 0 ? (
+                  <ul className="lead-history">
+                    {historyLead.lichSuBanGiao.map((entry, index) => (
+                      <li key={`${historyLead.leadId}-handoff-${index}`}>
+                        {entry.nguoiBanGiao ?? "Quản lý"} giao cho{" "}
+                        {entry.nguoiNhan ?? "tư vấn viên"}
+                        {" — "}
+                        {new Date(entry.thoiGian).toLocaleString("vi-VN")}
+                        {entry.ngayBoPhanCong &&
+                          ` — Đã gỡ phân công: ${new Date(entry.ngayBoPhanCong).toLocaleString("vi-VN")}`}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="academic-muted">Chưa có lịch sử bàn giao.</p>
+                )}
+              </section>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };

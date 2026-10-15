@@ -20,6 +20,7 @@ interface InvalidUser {
   vaiTro: string | null;
   trangThai: string;
   errors: string[];
+  outcome?: string;
 }
 
 interface PreviewResponse {
@@ -54,11 +55,13 @@ interface ImportResponse {
 interface UserImportModalProps {
   onClose: () => void;
   onImported: (createdRows: number, failedRows: number) => void | Promise<void>;
+  onViewInvalidData: (rows: InvalidUser[], title: string) => void;
 }
 
 const UserImportModal: React.FC<UserImportModalProps> = ({
   onClose,
   onImported,
+  onViewInvalidData,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -276,7 +279,7 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             alignItems: "center",
             marginBottom: "20px",
           }}
@@ -514,14 +517,69 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
                   value: importResult.failedRows,
                   color: "#c2410c",
                 },
-              ].map((item) => (
+              ].map((item) => {
+                const isErrorMetric =
+                  item.label === "Bỏ qua do lỗi kiểm tra" ||
+                  item.label === "Lỗi khi tạo tài khoản";
+                return (
                 <div
                   key={item.label}
+                  role={
+                    isErrorMetric && item.value > 0 ? "button" : undefined
+                  }
+                  aria-label={
+                    isErrorMetric
+                      ? `${item.label}: ${item.value}. Xem chi tiết`
+                      : undefined
+                  }
+                  tabIndex={isErrorMetric && item.value > 0 ? 0 : undefined}
+                  onClick={
+                    isErrorMetric && item.value > 0
+                      ? () =>
+                          onViewInvalidData(
+                            (item.label === "Bỏ qua do lỗi kiểm tra"
+                              ? importResult.invalidData
+                              : importResult.failedData
+                            ).map((row) => ({
+                              ...row,
+                              outcome:
+                                item.label === "Bỏ qua do lỗi kiểm tra"
+                                  ? "Bỏ qua - dữ liệu không hợp lệ"
+                                  : "Thất bại khi tạo tài khoản",
+                            })),
+                            item.label,
+                          )
+                      : undefined
+                  }
+                  onKeyDown={(event) => {
+                    if (
+                      isErrorMetric &&
+                      item.value > 0 &&
+                      (event.key === "Enter" || event.key === " ")
+                    ) {
+                      event.preventDefault();
+                      onViewInvalidData(
+                        (item.label === "Bỏ qua do lỗi kiểm tra"
+                          ? importResult.invalidData
+                          : importResult.failedData
+                        ).map((row) => ({
+                          ...row,
+                          outcome:
+                            item.label === "Bỏ qua do lỗi kiểm tra"
+                              ? "Bỏ qua - dữ liệu không hợp lệ"
+                              : "Thất bại khi tạo tài khoản",
+                        })),
+                        item.label,
+                      );
+                    }
+                  }}
                   style={{
                     padding: "12px",
                     border: "1px solid #e2e8f0",
                     borderRadius: "8px",
                     background: "#fff",
+                    cursor:
+                      isErrorMetric && item.value > 0 ? "pointer" : "default",
                   }}
                 >
                   <div style={{ color: "#64748b", fontSize: "12px" }}>
@@ -531,7 +589,8 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
                     {item.value}
                   </strong>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {importResult.createdUsers.length > 0 && (
@@ -571,54 +630,6 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
               </div>
             )}
 
-            {importResult.invalidData.length + importResult.failedData.length >
-              0 && (
-              <div style={{ marginTop: "20px" }}>
-                <h4 style={{ margin: "0 0 10px", color: "#b91c1c" }}>
-                  Các dòng bị bỏ qua hoặc thất bại
-                </h4>
-                <div style={{ overflowX: "auto" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      background: "#fff",
-                      fontSize: "13px",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ background: "#fef2f2" }}>
-                        <th style={thStyle}>Dòng</th>
-                        <th style={thStyle}>Email</th>
-                        <th style={thStyle}>Kết quả</th>
-                        <th style={thStyle}>Chi tiết lỗi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ...importResult.invalidData.map((item) => ({
-                          ...item,
-                          outcome: "Bỏ qua - dữ liệu không hợp lệ",
-                        })),
-                        ...importResult.failedData.map((item) => ({
-                          ...item,
-                          outcome: "Thất bại khi tạo tài khoản",
-                        })),
-                      ].map((item) => (
-                        <tr key={`${item.row}-${item.outcome}`}>
-                          <td style={tdStyle}>{item.row}</td>
-                          <td style={tdStyle}>{item.email || "-"}</td>
-                          <td style={tdStyle}>{item.outcome}</td>
-                          <td style={{ ...tdStyle, color: "#b91c1c" }}>
-                            {item.errors.join(", ")}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </section>
         )}
 
@@ -695,11 +706,25 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
                 </strong>
               </div>
 
-              <div
+              <button
+                type="button"
+                onClick={() =>
+                  onViewInvalidData(
+                    preview.invalidData,
+                    "Dữ liệu không hợp lệ",
+                  )
+                }
+                disabled={preview.invalidData.length === 0}
+                aria-label={`Xem ${preview.invalidRows} dòng không hợp lệ`}
                 style={{
                   padding: "14px",
                   background: "#fef2f2",
+                  border: "none",
                   borderRadius: "8px",
+                  textAlign: "left",
+                  cursor:
+                    preview.invalidData.length > 0 ? "pointer" : "default",
+                  opacity: preview.invalidData.length > 0 ? 1 : 0.7,
                 }}
               >
                 <div
@@ -719,7 +744,7 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
                 >
                   {preview.invalidRows}
                 </strong>
-              </div>
+              </button>
             </div>
 
             {/* VALID DATA */}
@@ -788,70 +813,6 @@ const UserImportModal: React.FC<UserImportModalProps> = ({
               </div>
             )}
 
-            {/* INVALID DATA */}
-
-            {preview.invalidData.length > 0 && (
-              <div
-                style={{
-                  marginBottom: "20px",
-                }}
-              >
-                <h4>Dữ liệu không hợp lệ</h4>
-
-                <div
-                  style={{
-                    overflowX: "auto",
-                    border: "1px solid #fecaca",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <thead>
-                      <tr
-                        style={{
-                          background: "#fef2f2",
-                        }}
-                      >
-                        <th style={thStyle}>Dòng</th>
-                        <th style={thStyle}>Họ tên</th>
-                        <th style={thStyle}>Email</th>
-                        <th style={thStyle}>Vai trò</th>
-                        <th style={thStyle}>Lỗi</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {preview.invalidData.map((item) => (
-                        <tr key={item.row}>
-                          <td style={tdStyle}>{item.row}</td>
-
-                          <td style={tdStyle}>{item.hoTen || "-"}</td>
-
-                          <td style={tdStyle}>{item.email || "-"}</td>
-
-                          <td style={tdStyle}>{item.vaiTro || "-"}</td>
-
-                          <td
-                            style={{
-                              ...tdStyle,
-                              color: "#dc2626",
-                            }}
-                          >
-                            {item.errors.join(", ")}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </div>
         )}
 

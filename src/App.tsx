@@ -6,11 +6,13 @@ import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AppStatusPage from "./components/AppStatusPage";
 
-import RoleManagement from "./pages/RoleManagement";
 import UsersPage from "./pages/UsersPage";
+import UserImportInvalidDataPage from "./pages/UserImportInvalidDataPage";
 
 import GradeManagement from "./pages/GradeManagement";
 import ClassManagement from "./pages/ClassManagement";
+import PermissionsManagement from "./pages/PermissionsManagement";
+import TrainingPrograms from "./pages/TrainingPrograms";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
@@ -213,6 +215,43 @@ function hasPermission(user: User | null, maQuyen: string): boolean {
   if (!user) return false;
 
   return user.quyen.some((quyen) => quyen.maQuyen === maQuyen);
+}
+
+const ROUTE_ACCESS_RULES: Record<
+  string,
+  { allOf: string[]; anyOf?: string[] }
+> = {
+  "/danh-muc-dao-tao": { allOf: ["CURRICULUM_VIEW"] },
+  "/quan-ly-lead": { allOf: ["LEAD_VIEW"] },
+  "/quan-ly-nguoi-dung": { allOf: ["USER_VIEW"] },
+  "/du-lieu-import-khong-hop-le": { allOf: ["USER_CREATE"] },
+  "/phan-quyen": { allOf: ["ROLE_VIEW", "ROLE_UPDATE"] },
+  "/quan-ly-vai-tro": { allOf: ["ROLE_VIEW", "ROLE_UPDATE"] },
+  "/quan-ly-diem": { allOf: ["GRADE_VIEW"] },
+  "/quan-ly-lop": { allOf: ["CLASS_VIEW", "QUAN_LY_LOP"] },
+  "/danh-sach-lop": { allOf: ["CLASS_VIEW"] },
+  "/quan-ly-chuong-trinh": {
+    allOf: ["CLASS_VIEW"],
+    anyOf: ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"],
+  },
+  "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
+};
+
+function hasRouteAccess(path: string, user: User | null): boolean {
+  const rule = ROUTE_ACCESS_RULES[path];
+  if (!rule) return true;
+
+  return (
+    rule.allOf.every((permission) => hasPermission(user, permission)) &&
+    (!rule.anyOf ||
+      rule.anyOf.some((permission) => hasPermission(user, permission)))
+  );
+}
+
+function hasAnyPermission(user: User | null, permissionCodes: string[]): boolean {
+  return permissionCodes.some((permissionCode) =>
+    hasPermission(user, permissionCode),
+  );
 }
 
 // ===========================================================
@@ -1012,17 +1051,20 @@ function App() {
   };
 
   // =========================================================
-  // ĐIỀU HƯỚNG QUẢN LÝ VAI TRÒ
+  // ĐIỀU HƯỚNG CẤU HÌNH QUYỀN
   // =========================================================
 
   const handleRoleManagement = () => {
-    if (!hasPermission(user, "ROLE_VIEW")) {
+    if (
+      !hasPermission(user, "ROLE_VIEW") ||
+      !hasPermission(user, "ROLE_UPDATE")
+    ) {
       navigate("/");
 
       return;
     }
 
-    navigate("/quan-ly-vai-tro");
+    navigate("/phan-quyen");
   };
 
   // =========================================================
@@ -1057,12 +1099,31 @@ function App() {
   };
 
   const handleClassManagement = () => {
-    if (!hasPermission(user, "CLASS_VIEW")) {
+    if (
+      !hasPermission(user, "CLASS_VIEW") ||
+      !hasPermission(user, "QUAN_LY_LOP")
+    ) {
       navigate("/");
+
       return;
     }
 
     navigate("/quan-ly-lop");
+  };
+
+  const handleTrainingPrograms = () => {
+    if (
+      !hasPermission(user, "CLASS_VIEW") ||
+      !hasAnyPermission(user, [
+        "CLASS_CREATE",
+        "CLASS_UPDATE",
+        "CLASS_DELETE",
+      ])
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-chuong-trinh");
   };
 
   const handleTrainingCatalog = () => {
@@ -1403,6 +1464,10 @@ function App() {
       : "Chưa có vai trò";
   const currentPermissions = user.quyen.map((permission) => permission.maQuyen);
 
+  if (!hasRouteAccess(currentPath, user)) {
+    return <AppStatusPage status="forbidden" />;
+  }
+
   // =========================================================
   // HỒ SƠ CÁ NHÂN
   // =========================================================
@@ -1423,6 +1488,7 @@ function App() {
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onChangePassword={handleChangePassword}
@@ -1444,6 +1510,7 @@ function App() {
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onProfile={handleProfile}
@@ -1480,6 +1547,7 @@ function App() {
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onChangePassword={handleChangePassword}
@@ -1497,6 +1565,7 @@ function App() {
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
             onClassManagement={handleClassManagement}
+            onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onProfile={handleProfile}
@@ -1528,6 +1597,7 @@ function App() {
         onUserManagement={handleUserManagement}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onChangePassword={handleChangePassword}
@@ -1545,6 +1615,7 @@ function App() {
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onProfile={handleProfile}
@@ -1567,6 +1638,7 @@ function App() {
       onUserManagement={handleUserManagement}
       onGradeManagement={handleGradeManagement}
       onClassManagement={handleClassManagement}
+      onTrainingPrograms={handleTrainingPrograms}
       onTrainingCatalog={handleTrainingCatalog}
       onAdmissionsLeads={handleAdmissionsLeads}
       onChangePassword={handleChangePassword}
@@ -1578,7 +1650,7 @@ function App() {
 
   if (currentPath === "/danh-muc-dao-tao") {
     if (!hasPermission(user, "CURRICULUM_VIEW")) {
-      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+      return <AppStatusPage status="forbidden" />;
     }
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="CURRICULUM_VIEW">
@@ -1589,7 +1661,7 @@ function App() {
 
   if (currentPath === "/quan-ly-lead") {
     if (!hasPermission(user, "LEAD_VIEW")) {
-      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+      return <AppStatusPage status="forbidden" />;
     }
     const isTrainingManager = user.vaiTro.some(
       (role) =>
@@ -1612,7 +1684,7 @@ function App() {
 
   if (currentPath === "/quan-ly-nguoi-dung") {
     if (!hasPermission(user, "USER_VIEW")) {
-      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+      return <AppStatusPage status="forbidden" />;
     }
 
     return renderAdminLayout(
@@ -1622,19 +1694,37 @@ function App() {
     );
   }
 
-  // =========================================================
-  // QUẢN LÝ VAI TRÒ
-  // =========================================================
-
-  if (currentPath === "/quan-ly-vai-tro") {
-    if (!hasPermission(user, "ROLE_VIEW")) {
-      return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+  if (currentPath === "/du-lieu-import-khong-hop-le") {
+    if (!hasPermission(user, "USER_CREATE")) {
+      return <AppStatusPage status="forbidden" />;
     }
 
     return renderAdminLayout(
-      <ProtectedRoute requiredPermission="ROLE_VIEW">
+      <ProtectedRoute requiredPermission="USER_CREATE">
+        <UserImportInvalidDataPage />
+      </ProtectedRoute>,
+    );
+  }
 
-        <RoleManagement />
+  // =========================================================
+  // CẤU HÌNH QUYỀN
+  // =========================================================
+
+  if (currentPath === "/phan-quyen" || currentPath === "/quan-ly-vai-tro") {
+    if (
+      !hasPermission(user, "ROLE_VIEW") ||
+      !hasPermission(user, "ROLE_UPDATE")
+    ) {
+      return <AppStatusPage status="forbidden" />;
+    }
+
+    return renderAdminLayout(
+      <ProtectedRoute
+        requiredPermission="ROLE_VIEW"
+        requiredAnyPermission={["ROLE_UPDATE"]}
+      >
+
+        <PermissionsManagement />
       </ProtectedRoute>,
     );
   }
@@ -1649,8 +1739,30 @@ function App() {
 
   if (currentPath === "/quan-ly-lop") {
     return renderAcademicLayout(
-      <ProtectedRoute requiredPermission="CLASS_VIEW">
+      <ProtectedRoute
+        requiredPermission="CLASS_VIEW"
+        requiredAnyPermission={["QUAN_LY_LOP"]}
+      >
         <ClassManagement permissions={currentPermissions} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/danh-sach-lop") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="CLASS_VIEW">
+        <ClassManagement permissions={currentPermissions} listOnly />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-chuong-trinh") {
+    return renderAcademicLayout(
+      <ProtectedRoute
+        requiredPermission="CLASS_VIEW"
+        requiredAnyPermission={["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"]}
+      >
+        <TrainingPrograms permissions={currentPermissions} />
       </ProtectedRoute>,
     );
   }
@@ -1663,7 +1775,7 @@ function App() {
     currentPath === "/quan-ly-hoc-phi" &&
     !hasPermission(user, "QUAN_LY_HOC_PHI")
   ) {
-    return renderAcademicLayout(<AppStatusPage status="forbidden" />);
+    return <AppStatusPage status="forbidden" />;
   }
 
   if (currentPath !== "/") {
@@ -1691,6 +1803,7 @@ function App() {
           onUserManagement={handleUserManagement}
           onGradeManagement={handleGradeManagement}
           onClassManagement={handleClassManagement}
+          onTrainingPrograms={handleTrainingPrograms}
 
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
@@ -1861,6 +1974,7 @@ function App() {
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
         onClassManagement={handleClassManagement}
+        onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onProfile={handleProfile}

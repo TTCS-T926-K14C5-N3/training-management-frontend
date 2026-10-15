@@ -20,6 +20,7 @@ interface MainLayoutProps {
   onGradeManagement: () => void;
   onClassManagement: () => void;
   onTrainingCatalog: () => void;
+  onTrainingPrograms?: () => void;
   onAdmissionsLeads: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
@@ -38,6 +39,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onGradeManagement,
   onClassManagement,
   onTrainingCatalog,
+  onTrainingPrograms = () => {},
   onAdmissionsLeads,
   onProfile,
   onChangePassword,
@@ -57,6 +59,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   };
   const canViewGrades = permissions.includes("GRADE_VIEW");
   const canViewClasses = permissions.includes("CLASS_VIEW");
+  const canManageClasses =
+    canViewClasses && permissions.includes("QUAN_LY_LOP");
+  const canManageTrainingPrograms =
+    canViewClasses &&
+    ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"].some((permission) =>
+      permissions.includes(permission),
+    );
   const canViewCatalog = permissions.includes("CURRICULUM_VIEW");
   const canViewLeads = permissions.includes("LEAD_VIEW");
   const canManageGrades =
@@ -157,7 +166,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Đổi mật khẩu</span>
           </button>
 
-          {(canViewGrades || canViewClasses || canViewCatalog) && (
+          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms) && (
             <>
               <div className="sidebar-section-title">ĐÀO TẠO</div>
 
@@ -174,7 +183,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 </button>
               )}
 
-              {canViewClasses && (
+              {canManageClasses && (
                 <button
                   type="button"
                   className={`sidebar-item ${
@@ -183,7 +192,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                   onClick={onClassManagement}
                 >
                   <span className="sidebar-item-icon">▤</span>
-                  <span>Xem lớp</span>
+                  <span>Quản lý lớp</span>
+                </button>
+              )}
+              {canManageTrainingPrograms && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/quan-ly-chuong-trinh") ? "active" : ""
+                  }`}
+                  onClick={onTrainingPrograms}
+                >
+                  <span className="sidebar-item-icon">▤</span>
+                  <span>Chương trình đào tạo</span>
                 </button>
               )}
               {canViewCatalog && (

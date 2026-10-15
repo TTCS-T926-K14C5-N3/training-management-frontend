@@ -1,8 +1,10 @@
 .app-status-page {
   display: grid;
-  min-height: 52vh;
+  box-sizing: border-box;
+  min-height: 100vh;
   place-items: center;
   padding: 28px 16px;
+  background: #f4f7fb;
 }
 
 .app-status-card {

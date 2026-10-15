@@ -4,9 +4,14 @@ import AppStatusPage from "../components/AppStatusPage";
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredPermission?: string;
+  requiredAnyPermission?: string[];
 }
 
-function ProtectedRoute({ children, requiredPermission }: ProtectedRouteProps) {
+function ProtectedRoute({
+  children,
+  requiredPermission,
+  requiredAnyPermission,
+}: ProtectedRouteProps) {
   const savedUser = localStorage.getItem("user");
 
   // =========================================================
@@ -41,14 +46,21 @@ function ProtectedRoute({ children, requiredPermission }: ProtectedRouteProps) {
   // KIỂM TRA QUYỀN
   // =========================================================
 
-  if (requiredPermission) {
-    const hasPermission = permissions.some(
+  const hasRequiredPermission =
+    !requiredPermission ||
+    permissions.some(
       (permission: any) => permission?.maQuyen === requiredPermission,
     );
+  const hasAnyRequiredPermission =
+    !requiredAnyPermission ||
+    requiredAnyPermission.some((requiredCode) =>
+      permissions.some(
+        (permission: any) => permission?.maQuyen === requiredCode,
+      ),
+    );
 
-    if (!hasPermission) {
-      return <AppStatusPage status="forbidden" />;
-    }
+  if (!hasRequiredPermission || !hasAnyRequiredPermission) {
+    return <AppStatusPage status="forbidden" />;
   }
 
   // =========================================================

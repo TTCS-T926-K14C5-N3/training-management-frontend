@@ -218,11 +218,10 @@ const UsersPage: React.FC = () => {
       setCurrentRoleIds(roleIds);
       setSelectedRoleIds(roleIds);
       setEditRolesLoaded(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Lỗi tải vai trò người dùng:", error);
       setEditRoleLoadError(
-        error?.response?.data?.detail ||
-          "Không thể tải vai trò. Bạn vẫn có thể sửa thông tin người dùng."
+        "Không thể tải vai trò. Bạn vẫn có thể sửa thông tin người dùng.",
       );
     } finally {
       setEditLoading(false);
@@ -384,8 +383,12 @@ const UsersPage: React.FC = () => {
       profileSaved = true;
 
       if (canManageUserRoles && editRolesLoaded) {
-        const rolesToAssign = selectedRoleIds.filter((id) => !currentRoleIds.includes(id));
-        const rolesToRemove = currentRoleIds.filter((id) => !selectedRoleIds.includes(id));
+        const rolesToAssign = selectedRoleIds.filter(
+          (id) => !currentRoleIds.includes(id),
+        );
+        const rolesToRemove = currentRoleIds.filter(
+          (id) => !selectedRoleIds.includes(id),
+        );
 
         try {
           for (const roleId of rolesToAssign) {
@@ -396,8 +399,12 @@ const UsersPage: React.FC = () => {
           }
         } catch (roleError) {
           try {
-            const response = await api.get<UserRole[]>(`/roles/users/${editingUser.nguoiDungId}`);
-            const roleIds = Array.isArray(response.data) ? response.data.map((role) => role.vaiTroId) : [];
+            const response = await api.get<UserRole[]>(
+              `/roles/users/${editingUser.nguoiDungId}`,
+            );
+            const roleIds = Array.isArray(response.data)
+              ? response.data.map((role) => role.vaiTroId)
+              : [];
             setCurrentRoleIds(roleIds);
             setSelectedRoleIds(roleIds);
           } catch (reloadError) {
@@ -905,7 +912,7 @@ const UsersPage: React.FC = () => {
                             setSelectedRoleIds((previous) =>
                               event.target.checked
                                 ? [...previous, role.vaiTroId]
-                                : previous.filter((id) => id !== role.vaiTroId)
+                                : previous.filter((id) => id !== role.vaiTroId),
                             );
                           }}
                           disabled={
@@ -922,8 +929,8 @@ const UsersPage: React.FC = () => {
                 )
               ) : (
                 <div className="users-edit-roles-error">
-                  Bạn chưa có quyền xem và gán vai trò. Có thể lưu thông tin
-                  cá nhân mà không thay đổi vai trò.
+                  Bạn chưa có quyền xem và gán vai trò. Có thể lưu thông tin cá
+                  nhân mà không thay đổi vai trò.
                 </div>
               )}
             </div>
@@ -933,7 +940,7 @@ const UsersPage: React.FC = () => {
                 type="button"
                 className="users-cancel-button"
                 onClick={closeEditModal}
-                disabled={editSaving}
+                disabled={editSaving || editLoading}
               >
                 Hủy
               </button>
@@ -1069,6 +1076,15 @@ const UsersPage: React.FC = () => {
       {showImportModal && (
         <UserImportModal
           onClose={() => setShowImportModal(false)}
+          onViewInvalidData={(rows, title) => {
+            setShowImportModal(false);
+            window.history.pushState(
+              { userImportInvalidData: { rows, title } },
+              "",
+              "/du-lieu-import-khong-hop-le",
+            );
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }}
           onImported={async (createdRows, failedRows) => {
             setShowImportModal(false);
             setToast({
