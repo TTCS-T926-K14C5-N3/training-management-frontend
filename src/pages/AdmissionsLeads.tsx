@@ -215,6 +215,8 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [viewMode, setViewMode] = useState<"table" | "board">("table");
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+  const [rejectionLead, setRejectionLead] = useState<Lead | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const handleSearchSubmit = () => {
     const term = searchInput.trim();
@@ -531,7 +533,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     lead: Lead,
     targetStatus: string,
     reason: string | null,
-  ) => {
+  ): Promise<boolean> => {
     setSaving(true);
     setError("");
     try {
@@ -544,11 +546,13 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
         `Đã cập nhật trạng thái mới cho học viên ${lead.hoTen}: ${targetStatus}.`,
       );
       await loadData();
+      return true;
     } catch (requestError: unknown) {
       console.error("Không thể cập nhật trạng thái lead:", requestError);
       setError(
         responseError(requestError, "Không thể cập nhật trạng thái lead."),
       );
+      return false;
     } finally {
       setSaving(false);
     }
@@ -561,20 +565,27 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
 
   const handleLeadDrop = async (lead: Lead, targetStatus: string) => {
     if (!canDropLeadIntoStatus(lead, targetStatus)) return;
-    let reason: string | null = null;
     if (targetStatus === "Từ chối") {
-      const enteredReason = window.prompt(
-        `Nhập lý do từ chối ${lead.hoTen}:`,
-        lead.lyDoTuChoi ?? "",
-      );
-      if (enteredReason === null) return;
-      reason = enteredReason.trim();
-      if (!reason) {
-        setError("Vui lòng nhập lý do từ chối trước khi cập nhật trạng thái.");
-        return;
-      }
+      setRejectionLead(lead);
+      setRejectionReason(lead.lyDoTuChoi ?? "");
+      setError("");
+      return;
     }
-    await updateLeadStatus(lead, targetStatus, reason);
+    await updateLeadStatus(lead, targetStatus, null);
+  };
+
+  const submitRejection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!rejectionLead) return;
+    const reason = rejectionReason.trim();
+    if (!reason) {
+      setError("Vui lòng nhập lý do từ chối trước khi cập nhật trạng thái.");
+      return;
+    }
+    if (await updateLeadStatus(rejectionLead, "Từ chối", reason)) {
+      setRejectionLead(null);
+      setRejectionReason("");
+    }
   };
 
   const toggleSelectAll = () => {
@@ -851,6 +862,75 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </div>
           </form>
         </section>
+        </div>
+      )}
+
+      {rejectionLead && (
+        <div
+          className="lead-rejection-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) {
+              setRejectionLead(null);
+              setRejectionReason("");
+            }
+          }}
+        >
+          <section
+            className="lead-rejection-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lead-rejection-title"
+          >
+            <header className="lead-form-modal-header">
+              <div>
+                <h2 id="lead-rejection-title">Từ chối lead</h2>
+                <p>
+                  Lead <strong>{rejectionLead.hoTen}</strong> sẽ được chuyển
+                  sang trạng thái Từ chối.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Đóng popup từ chối lead"
+                disabled={saving}
+                onClick={() => {
+                  setRejectionLead(null);
+                  setRejectionReason("");
+                }}
+              >
+                ×
+              </button>
+            </header>
+            <form className="lead-rejection-form" onSubmit={submitRejection}>
+              <label htmlFor="lead-rejection-reason">Lý do từ chối *</label>
+              <textarea
+                id="lead-rejection-reason"
+                autoFocus
+                required
+                maxLength={500}
+                rows={4}
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                placeholder="Nhập lý do để lưu vào lịch sử lead"
+              />
+              <small>{rejectionReason.length}/500 ký tự</small>
+              <div className="lead-rejection-actions">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setRejectionLead(null);
+                    setRejectionReason("");
+                  }}
+                >
+                  Hủy
+                </button>
+                <button type="submit" disabled={saving || !rejectionReason.trim()}>
+                  {saving ? "Đang lưu..." : "Xác nhận từ chối"}
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
 
