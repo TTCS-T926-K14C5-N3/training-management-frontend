@@ -91,6 +91,7 @@ const LEAD_STATUS_COLUMNS = [
 ] as const;
 
 const LEAD_STATUS_PROGRESS = LEAD_STATUS_COLUMNS.slice(0, 5);
+const INTERACTION_FILTERS = ["Tất cả", "Gọi", "Nhắn tin", "Gặp"] as const;
 
 const LEAD_STATUS_TRANSITIONS: Record<string, string[]> = {
   "Mới": [...LEAD_STATUS_PROGRESS.slice(1), "Từ chối"],
@@ -208,6 +209,9 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     thoiDiem: LOCAL_DATE_TIME(),
     henGoiLaiLuc: "",
   });
+  const [interactionFilter, setInteractionFilter] = useState<
+    (typeof INTERACTION_FILTERS)[number]
+  >(INTERACTION_FILTERS[0]);
   const [statusForm, setStatusForm] = useState({
     trangThai: "",
     lyDoTuChoi: "",
@@ -503,6 +507,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const openLeadHistory = (lead: Lead) => {
     setHistoryLeadId(lead.leadId);
     setViewMode("table");
+    setInteractionFilter(INTERACTION_FILTERS[0]);
     setStatusForm({
       trangThai: LEAD_STATUS_TRANSITIONS[lead.trangThai]?.[0] ?? "",
       lyDoTuChoi: "",
@@ -643,6 +648,19 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const historyLead = leads.find((lead) => lead.leadId === historyLeadId) ?? null;
   const availableStatusTransitions = historyLead
     ? LEAD_STATUS_TRANSITIONS[historyLead.trangThai] ?? []
+    : [];
+  const careEntries = historyLead
+    ? historyLead.tuongTacs
+        .filter(
+          (entry) =>
+            interactionFilter === "Tất cả" || entry.loai === interactionFilter,
+        )
+        .slice()
+        .sort(
+          (first, second) =>
+            new Date(second.thoiDiem).getTime() -
+            new Date(first.thoiDiem).getTime(),
+        )
     : [];
 
   return (
@@ -1425,35 +1443,88 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                     <p className="academic-muted">Chưa có lịch sử trạng thái.</p>
                   )}
                 </section>
-                <section>
-                  <h3>Nhật ký chăm sóc</h3>
-                  {historyLead.tuongTacs.length > 0 ? (
-                    <ul className="lead-history">
-                      {historyLead.tuongTacs.map((entry) => (
+                <section className="lead-care-section">
+                  <div className="lead-care-heading">
+                    <div>
+                      <h3>Nhật ký chăm sóc</h3>
+                      <p>{historyLead.tuongTacs.length} lần tương tác</p>
+                    </div>
+                    <span className="lead-care-latest-label">
+                      Mới nhất trước
+                    </span>
+                  </div>
+                  <div
+                    className="lead-care-filters"
+                    role="group"
+                    aria-label="Lọc nhật ký theo hình thức"
+                  >
+                    {INTERACTION_FILTERS.map((filter) => (
+                      <button
+                        type="button"
+                        key={filter}
+                        aria-pressed={interactionFilter === filter}
+                        onClick={() => setInteractionFilter(filter)}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                  {careEntries.length > 0 ? (
+                    <ol className="lead-care-timeline">
+                      {careEntries.map((entry) => (
                         <li
-                          className={
-                            entry.henGoiLaiQuaHan
-                              ? "lead-interaction-overdue"
-                              : undefined
-                          }
+                          className={`lead-care-entry${
+                            entry.henGoiLaiQuaHan ? " is-overdue" : ""
+                          }`}
                           key={entry.tuongTacId}
                         >
-                          <strong>{entry.loai}</strong> — {entry.noiDung}
-                          {" · "}
-                          {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
-                          {entry.nguoiThucHien ? ` · ${entry.nguoiThucHien}` : ""}
-                          {entry.henGoiLaiLuc && (
-                            <>
-                              {" · Gọi lại "}
-                              {new Date(entry.henGoiLaiLuc).toLocaleString("vi-VN")}
-                              {entry.henGoiLaiQuaHan && " (QUÁ HẠN)"}
-                            </>
-                          )}
+                          <div className="lead-care-entry-topline">
+                            <span
+                              className={`lead-care-type lead-care-type-${
+                                entry.loai === "Gọi"
+                                  ? "call"
+                                  : entry.loai === "Nhắn tin"
+                                    ? "message"
+                                    : "meeting"
+                              }`}
+                            >
+                              {entry.loai}
+                            </span>
+                            <time dateTime={entry.thoiDiem}>
+                              {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
+                            </time>
+                          </div>
+                          <p>{entry.noiDung}</p>
+                          <div className="lead-care-entry-meta">
+                            <span>
+                              {entry.nguoiThucHien ?? "Chưa xác định người thực hiện"}
+                            </span>
+                            {entry.henGoiLaiLuc && (
+                              <span
+                                className={
+                                  entry.henGoiLaiQuaHan
+                                    ? "lead-care-follow-up is-overdue"
+                                    : "lead-care-follow-up"
+                                }
+                              >
+                                {entry.henGoiLaiQuaHan
+                                  ? "Quá hạn gọi lại"
+                                  : "Gọi lại"}{" "}
+                                {new Date(entry.henGoiLaiLuc).toLocaleString(
+                                  "vi-VN",
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </li>
                       ))}
-                    </ul>
+                    </ol>
                   ) : (
-                    <p className="academic-muted">Chưa có tương tác.</p>
+                    <p className="lead-care-empty">
+                      {historyLead.tuongTacs.length === 0
+                        ? "Chưa có tương tác nào được ghi nhận."
+                        : "Không có tương tác phù hợp với bộ lọc."}
+                    </p>
                   )}
                 </section>
               </div>
@@ -1533,11 +1604,12 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                         <option value="Gặp">Gặp trực tiếp</option>
                       </select>
                     </label>
-                    <label>
-                      Nội dung
-                      <input
+                    <label className="lead-interaction-note">
+                      Nội dung chăm sóc
+                      <textarea
                         required
                         maxLength={2000}
+                        rows={3}
                         value={interactionForm.noiDung}
                         onChange={(event) =>
                           setInteractionForm({
@@ -1545,7 +1617,9 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                             noiDung: event.target.value,
                           })
                         }
+                        placeholder="Tóm tắt nội dung đã trao đổi và nhu cầu của lead"
                       />
+                      <small>{interactionForm.noiDung.length}/2000 ký tự</small>
                     </label>
                     <label>
                       Thời điểm
