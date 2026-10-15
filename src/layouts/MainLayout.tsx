@@ -236,6 +236,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               </button>
             </>
           )}
+          <div className="sidebar-section-title">CÔNG VIỆC</div>
+          <a
+            className={`sidebar-item ${isActive("/scrum-board") ? "active" : ""}`}
+            href="/scrum-board"
+            aria-current={isActive("/scrum-board") ? "page" : undefined}
+          >
+            <span className="sidebar-item-icon">▤</span>
+            <span>Board Scrum</span>
+          </a>
         </nav>
 
         {/* ===================================================

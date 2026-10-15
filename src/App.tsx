@@ -16,6 +16,7 @@ import TrainingPrograms from "./pages/TrainingPrograms";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
+import ScrumTaskBoard from "./pages/ScrumTaskBoard";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -1730,6 +1731,10 @@ function App() {
         />
       </ProtectedRoute>,
     );
+  }
+
+  if (currentPath === "/scrum-board") {
+    return renderAcademicLayout(<ScrumTaskBoard />);
   }
 
   // =========================================================

@@ -294,6 +294,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
+          <div className="admin-section-title">CÔNG VIỆC</div>
+          <a
+            className={`admin-menu-item ${
+              currentPath === "/scrum-board" ? "admin-menu-active" : ""
+            }`}
+            href="/scrum-board"
+            aria-current={currentPath === "/scrum-board" ? "page" : undefined}
+          >
+            <span className="admin-menu-symbol">▤</span>
+            <span>Board Scrum</span>
+          </a>
+
 
           {/* =================================================
               HỆ THỐNG

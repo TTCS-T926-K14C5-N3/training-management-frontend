@@ -607,34 +607,6 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         </div>
       </header>
 
-      <section className="subject-list-showcase" aria-label="Subject management mockup">
-        <h1>Xây dựng giao diện danh sách môn học</h1>
-        <p>
-          Là Quản lý đào tạo, tôi muốn quản lý danh mục môn học, để dùng lại
-          một môn cho nhiều chương trình mà không phải khai báo trùng lặp.
-        </p>
-
-        <div className="subject-list-tools" aria-label="Actions">
-          <button type="button" className="subject-list-tool" aria-label="Add subject">
-            +
-          </button>
-          <button type="button" className="subject-list-tool" aria-label="Sort subjects">
-            ≣
-          </button>
-        </div>
-
-        <div className="subject-list-description-block">
-          <h2>Description</h2>
-          <div className="subject-list-description-box">
-            <ul>
-              <li>Khai báo mã, tên, số tín chỉ trong danh mục</li>
-              <li>Một môn học dùng lại ở nhiều chương trình</li>
-              <li>Môn đã có lớp học thì không xóa được</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {canUpdateClasses &&
         isClassFormOpen &&
         createPortal(

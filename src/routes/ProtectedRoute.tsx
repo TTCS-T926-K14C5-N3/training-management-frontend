@@ -42,23 +42,36 @@ function ProtectedRoute({
   // =========================================================
 
   const permissions = Array.isArray(session.quyen) ? session.quyen : [];
+  const isSystemAdmin = Array.isArray(session.vaiTro) && session.vaiTro.some(
+    (role: any) => {
+      const roleName =
+        typeof role?.tenVaiTro === "string"
+          ? role.tenVaiTro.trim().toLowerCase()
+          : "";
+
+      return (
+        role?.vaiTroId === 8 ||
+        roleName === "admin" ||
+        roleName === "quản trị hệ thống" ||
+        roleName === "quản trị viên hệ thống"
+      );
+    },
+  );
+  const hasPermission = (permissionCode: string) =>
+    isSystemAdmin ||
+    permissions.some(
+      (permission: any) => permission?.maQuyen === permissionCode,
+    );
 
   // =========================================================
   // KIỂM TRA QUYỀN
   // =========================================================
 
   const hasRequiredPermission =
-    !requiredPermission ||
-    permissions.some(
-      (permission: any) => permission?.maQuyen === requiredPermission,
-    );
+    !requiredPermission || hasPermission(requiredPermission);
   const hasAnyRequiredPermission =
     !requiredAnyPermission ||
-    requiredAnyPermission.some((requiredCode) =>
-      permissions.some(
-        (permission: any) => permission?.maQuyen === requiredCode,
-      ),
-    );
+    requiredAnyPermission.some(hasPermission);
 
   if (requiredPermission && !hasRequiredPermission) {
     return <AppStatusPage status="forbidden" />;
