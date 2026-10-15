@@ -11,6 +11,30 @@ interface ScrumTask {
 
 const INITIAL_TASKS: ScrumTask[] = [
   {
+    id: "SCRUM-191",
+    title: "Xây dựng giao diện danh sách môn học",
+    status: "Done",
+    assignee: "HM",
+  },
+  {
+    id: "SCRUM-192",
+    title: "Xây dựng form tạo môn học",
+    status: "Done",
+    assignee: "HM",
+  },
+  {
+    id: "SCRUM-193",
+    title: "Xây dựng form chỉnh sửa môn học",
+    status: "Done",
+    assignee: "HM",
+  },
+  {
+    id: "SCRUM-194",
+    title: "Xây dựng chức năng xóa môn học",
+    status: "Done",
+    assignee: "HM",
+  },
+  {
     id: "SCRUM-240",
     title: "Xây dựng giao diện danh sách Lead",
     status: "Done",
@@ -60,12 +84,12 @@ const ScrumTaskBoard = () => {
       <header className="scrum-page-header">
         <div>
           <p className="scrum-eyebrow">SPRINT BOARD</p>
-          <h1>Công việc Lead</h1>
+          <h1>Công việc</h1>
         </div>
         <span className="scrum-task-total">{tasks.length} công việc</span>
       </header>
 
-      <section className="scrum-task-list" aria-label="Danh sách công việc Lead">
+      <section className="scrum-task-list" aria-label="Danh sách công việc">
         <div className="scrum-list-accent" />
         {tasks.length === 0 ? (
           <p className="scrum-empty">Chưa có công việc nào.</p>
