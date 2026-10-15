@@ -474,11 +474,10 @@
 
 .academic-table-wrap {
   width: 100%;
-
-  min-height: 100%;
-  padding: 32px 36px 40px;
+  min-height: 0;
   box-sizing: border-box;
-  background: #f6f8fc;
+  padding: 0;
+  background: transparent;
   color: #172033;
 }
 
@@ -776,6 +775,202 @@
   white-space: nowrap;
 }
 
+.class-list-table .academic-row-actions {
+  min-width: 82px;
+  text-align: center;
+}
+
+.class-list-table .class-actions-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-color: #dbe3ef;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.class-list-table .class-actions-trigger:hover {
+  border-color: #93b4f8;
+  background: #f5f8ff;
+  color: #1d4ed8;
+}
+
+.class-actions-menu {
+  position: fixed;
+  z-index: 2100;
+  width: 144px;
+  padding: 6px;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+}
+
+.class-actions-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.class-actions-menu-items button {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+
+.class-actions-menu-items .academic-text-button {
+  background: #f1f6ff;
+  color: #2459be;
+}
+
+.class-actions-menu-items .class-enrollment-open {
+  background: #e8f8ee;
+  color: #16733b;
+}
+
+.class-actions-menu-items .academic-danger-button {
+  background: #fff3f2;
+  color: #b42318;
+}
+
+.class-actions-menu-items button:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.class-actions-menu-items button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.class-list-table .class-enrollment-open:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.class-management-page {
+  gap: 16px;
+}
+
+.class-management-page .academic-page-banner {
+  min-height: 108px;
+  padding: 18px 22px;
+  border-radius: 16px;
+}
+
+.class-management-page .academic-banner-label {
+  margin-bottom: 5px;
+}
+
+.class-management-page .academic-page-banner p {
+  margin-top: 5px;
+}
+
+.class-management-page .academic-banner-stat {
+  min-width: 104px;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+
+.class-management-page > .academic-card {
+  padding: 18px;
+  border-radius: 14px;
+}
+
+.class-management-page .academic-card-heading {
+  margin-bottom: 12px;
+}
+
+.class-management-page .academic-card-heading h2 {
+  margin-bottom: 4px;
+}
+
+.class-management-page .academic-card-heading p {
+  font-size: 12px;
+}
+
+.class-management-page .academic-actions {
+  gap: 8px;
+}
+
+.class-management-page .academic-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.class-management-page .class-filters {
+  gap: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.class-management-page .class-filters label {
+  gap: 5px;
+  font-size: 11px;
+}
+
+.class-management-page .class-filters input,
+.class-management-page .class-filters select {
+  min-height: 37px;
+  padding: 7px 10px;
+  border-color: #dce3ed;
+  font-size: 12px;
+}
+
+.class-management-page .class-filters input:focus,
+.class-management-page .class-filters select:focus {
+  border-color: #7aa2f7;
+  outline: 3px solid rgba(59, 130, 246, 0.1);
+}
+
+.class-management-page .class-list-table th {
+  padding: 11px 12px;
+  background: #f5f8fd;
+  color: #596981;
+  font-size: 11px;
+}
+
+.class-management-page .class-list-table td {
+  padding: 11px 12px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.class-management-page .class-list-table tbody tr:hover {
+  background: #fafcff;
+}
+
+.class-management-page .class-list-table td small {
+  display: block;
+  margin-top: 3px;
+  color: #718096;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.class-management-page .class-list-table progress {
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #e8edf5;
+  accent-color: #3975ec;
+}
+
 .academic-state {
   display: grid;
   min-height: 150px;
@@ -1037,6 +1232,102 @@
   width: min(100%, 620px);
 }
 
+.class-enrollment-modal {
+  width: min(100%, 620px);
+}
+
+.class-enrollment-search {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #34445c;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.class-enrollment-search input {
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid #d7dfeb;
+  border-radius: 8px;
+  color: #26364f;
+  font: inherit;
+  font-weight: 400;
+}
+
+.class-enrollment-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.class-enrollment-candidates {
+  display: flex;
+  flex-direction: column;
+  max-height: min(42vh, 360px);
+  overflow-y: auto;
+  border: 1px solid #e5eaf2;
+  border-radius: 9px;
+}
+
+.class-enrollment-candidate {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 54px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eef2f7;
+  cursor: pointer;
+}
+
+.class-enrollment-candidate:last-child {
+  border-bottom: 0;
+}
+
+.class-enrollment-candidate input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: #16a34a;
+}
+
+.class-enrollment-candidate span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.class-enrollment-candidate strong {
+  color: #1d2b43;
+  font-size: 13px;
+}
+
+.class-enrollment-candidate small {
+  overflow-wrap: anywhere;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.class-enrollment-empty {
+  margin: 0;
+  padding: 22px 14px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.class-enrollment-submit {
+  background: #16a34a;
+}
+
+.class-enrollment-submit:hover:not(:disabled) {
+  background: #15803d;
+}
+
 @media (max-width: 760px) {
   .grade-entry-modal .academic-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1044,6 +1335,11 @@
 
   .class-entry-modal .academic-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .class-enrollment-selection {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .subject-entry-modal .academic-form-grid {

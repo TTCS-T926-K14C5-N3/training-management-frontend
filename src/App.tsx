@@ -16,6 +16,7 @@ import TrainingPrograms from "./pages/TrainingPrograms";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
+import AdminDashboard from "./pages/AdminDashboard";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -533,57 +534,6 @@ function App() {
       return null;
     }
   });
-
-  const [dashboardUserCount, setDashboardUserCount] = useState<number | null>(
-    null,
-  );
-  const [dashboardUsersLoading, setDashboardUsersLoading] = useState(false);
-
-  useEffect(() => {
-    if (!user || !isAdminUser(user) || currentPath !== "/") {
-      return;
-    }
-
-    let isCurrentRequest = true;
-
-    const loadDashboardUsers = async () => {
-      setDashboardUsersLoading(true);
-
-      try {
-        const response = await api.get("/users/", {
-          params: { page: 1, limit: 5 },
-        });
-        const data = response.data;
-        const users = Array.isArray(data?.data) ? data.data : [];
-
-        if (!isCurrentRequest) {
-          return;
-        }
-
-        setDashboardUserCount(
-          typeof data?.pagination?.total === "number"
-            ? data.pagination.total
-            : users.length,
-        );
-      } catch (error: any) {
-        if (!isCurrentRequest) {
-          return;
-        }
-
-        console.error("Không thể tải tổng số người dùng:", error);
-      } finally {
-        if (isCurrentRequest) {
-          setDashboardUsersLoading(false);
-        }
-      }
-    };
-
-    void loadDashboardUsers();
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [user?.nguoiDungId, user?.token, currentPath]);
 
   // =========================================================
   // LOGIN STATE
@@ -1151,6 +1101,28 @@ function App() {
     navigate("/quan-ly-diem");
   };
 
+  const handleStudentInformation = () => {
+    if (
+      !hasPermission(user, "USER_VIEW") ||
+      !hasPermission(user, "GRADE_VIEW")
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/thong-tin-hoc-vien");
+  };
+
+  const handleClassHistory = () => {
+    if (
+      !hasPermission(user, "USER_VIEW") ||
+      !hasPermission(user, "GRADE_VIEW")
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/lich-su-lop-hoc");
+  };
+
   const handleClassManagement = () => {
     if (
       !hasPermission(user, "CLASS_VIEW") ||
@@ -1540,6 +1512,8 @@ function App() {
             onHome={handleHome}
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
@@ -1562,6 +1536,8 @@ function App() {
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
@@ -1599,6 +1575,8 @@ function App() {
             onHome={handleHome}
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
@@ -1617,6 +1595,8 @@ function App() {
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
@@ -1650,6 +1630,8 @@ function App() {
         onHome={handleHome}
         onUserManagement={handleUserManagement}
         onGradeManagement={handleGradeManagement}
+        onStudentInformation={handleStudentInformation}
+        onClassHistory={handleClassHistory}
         onClassManagement={handleClassManagement}
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
@@ -1668,6 +1650,8 @@ function App() {
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
+        onStudentInformation={handleStudentInformation}
+        onClassHistory={handleClassHistory}
         onClassManagement={handleClassManagement}
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
@@ -1691,6 +1675,8 @@ function App() {
       onHome={handleHome}
       onUserManagement={handleUserManagement}
       onGradeManagement={handleGradeManagement}
+      onStudentInformation={handleStudentInformation}
+      onClassHistory={handleClassHistory}
       onClassManagement={handleClassManagement}
       onTrainingPrograms={handleTrainingPrograms}
       onTrainingCatalog={handleTrainingCatalog}
@@ -1791,6 +1777,21 @@ function App() {
     );
   }
 
+  if (
+    currentPath === "/thong-tin-hoc-vien" ||
+    currentPath === "/lich-su-lop-hoc"
+  ) {
+    const profileSection =
+      currentPath === "/thong-tin-hoc-vien" ? "information" : "history";
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="USER_VIEW">
+        <ProtectedRoute requiredPermission="GRADE_VIEW">
+          <UsersPage key={profileSection} profileSection={profileSection} />
+        </ProtectedRoute>
+      </ProtectedRoute>,
+    );
+  }
+
   if (currentPath === "/quan-ly-lop") {
     return renderAcademicLayout(
       <ProtectedRoute
@@ -1856,6 +1857,8 @@ function App() {
           onHome={handleHome}
           onUserManagement={handleUserManagement}
           onGradeManagement={handleGradeManagement}
+          onStudentInformation={handleStudentInformation}
+          onClassHistory={handleClassHistory}
           onClassManagement={handleClassManagement}
           onTrainingPrograms={handleTrainingPrograms}
 
@@ -1865,151 +1868,12 @@ function App() {
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
-          <section className="dashboard-hero">
-            <div className="dashboard-hero-content">
-              <div className="dashboard-hero-label">
-                HỆ THỐNG QUẢN LÝ ĐÀO TẠO
-              </div>
-
-              <h2>
-                Xin chào, <span>{user.hoTen}</span> 👋
-              </h2>
-
-              <p>
-                Chào mừng bạn quay trở lại. Chúc bạn có một ngày làm việc hiệu
-                quả!
-              </p>
-
-              <div className="dashboard-hero-info">
-                <div>
-                  <span className="hero-info-label">Tài khoản</span>
-
-                  <strong>{user.email}</strong>
-                </div>
-
-                <div>
-                  <span className="hero-info-label">Vai trò</span>
-
-                  <strong>{roleName}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-hero-decoration">
-              <div className="hero-circle hero-circle-1"></div>
-
-              <div className="hero-circle hero-circle-2"></div>
-
-              <div className="hero-graduation">🎓</div>
-            </div>
-          </section>
-
-          <div className="admin-stat-grid">
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon blue">👥</div>
-
-              <div>
-                <span>Người dùng</span>
-
-                <strong>
-                  {dashboardUserCount === null
-                    ? dashboardUsersLoading
-                      ? "..."
-                      : "--"
-                    : dashboardUserCount.toLocaleString("vi-VN")}
-                </strong>
-
-                <small>Người dùng trong hệ thống</small>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon purple">🛡️</div>
-
-              <div>
-                <span>Vai trò</span>
-
-                <strong>{user.vaiTro.length}</strong>
-
-                <small>Vai trò hiện tại</small>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon green">🔐</div>
-
-              <div>
-                <span>Quyền</span>
-
-                <strong>{user.quyen.length}</strong>
-
-                <small>Quyền được cấp</small>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon orange">⚙️</div>
-
-              <div>
-                <span>Trạng thái</span>
-
-                <strong>Hoạt động</strong>
-
-                <small>Tài khoản hiện tại</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="admin-dashboard-grid">
-            <div className="admin-panel">
-              <div className="admin-panel-header">
-                <div>
-                  <h3>Hoạt động gần đây</h3>
-
-                  <p>Thông tin hoạt động của hệ thống</p>
-                </div>
-              </div>
-
-              <div className="admin-activity">
-                <div className="admin-activity-item">
-                  <div className="activity-icon blue">🔑</div>
-
-                  <div>
-                    <strong>Đăng nhập hệ thống</strong>
-
-                    <span>{user.hoTen} đã đăng nhập</span>
-
-                    <small>Vừa mới đây</small>
-                  </div>
-                </div>
-
-                <div className="admin-activity-item">
-                  <div className="activity-icon green">👤</div>
-
-                  <div>
-                    <strong>Tài khoản đang hoạt động</strong>
-
-                    <span>Tài khoản đang ở trạng thái hoạt động</span>
-
-                    <small>Hiện tại</small>
-                  </div>
-                </div>
-
-                <div className="admin-activity-item">
-                  <div className="activity-icon purple">🛡️</div>
-
-                  <div>
-                    <strong>Phân quyền</strong>
-
-                    <span>{user.quyen.length} quyền được cấp</span>
-
-                    <small>Hiện tại</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <AdminDashboard
+            userName={user.hoTen}
+            onUserManagement={handleUserManagement}
+            onClassManagement={handleClassManagement}
+            onTrainingCatalog={handleTrainingCatalog}
+          />
         </AdminLayout>
       </ProtectedRoute>
     );
@@ -2029,6 +1893,8 @@ function App() {
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
+        onStudentInformation={handleStudentInformation}
+        onClassHistory={handleClassHistory}
         onClassManagement={handleClassManagement}
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}

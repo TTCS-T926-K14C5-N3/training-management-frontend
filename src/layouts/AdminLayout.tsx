@@ -22,6 +22,8 @@ interface AdminLayoutProps {
 
 
   onGradeManagement: () => void;
+  onStudentInformation: () => void;
+  onClassHistory: () => void;
   onClassManagement: () => void;
   onTrainingCatalog?: () => void;
   onTrainingPrograms?: () => void;
@@ -46,6 +48,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onHome,
   onUserManagement,
   onGradeManagement,
+  onStudentInformation,
+  onClassHistory,
   onClassManagement,
   onTrainingCatalog = () => {},
   onTrainingPrograms = () => {},
@@ -239,6 +243,31 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   : "Xem điểm"}
               </span>
             </button>
+          )}
+
+          {hasPermission("GRADE_VIEW") && hasPermission("USER_VIEW") && (
+            <>
+              <button
+                type="button"
+                className={`admin-menu-item ${
+                  currentPath === "/thong-tin-hoc-vien" ? "admin-menu-active" : ""
+                }`}
+                onClick={onStudentInformation}
+              >
+                <span className="admin-menu-symbol">♙</span>
+                <span>Thông tin học viên</span>
+              </button>
+              <button
+                type="button"
+                className={`admin-menu-item ${
+                  currentPath === "/lich-su-lop-hoc" ? "admin-menu-active" : ""
+                }`}
+                onClick={onClassHistory}
+              >
+                <span className="admin-menu-symbol">▤</span>
+                <span>Lịch sử lớp học</span>
+              </button>
+            </>
           )}
 
           {hasPermission("CLASS_VIEW") && hasPermission("QUAN_LY_LOP") && (

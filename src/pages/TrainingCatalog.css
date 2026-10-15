@@ -54,6 +54,101 @@
   gap: 8px;
 }
 
+.academic-subject-list-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.academic-subject-search {
+  display: grid;
+  width: min(100%, 420px);
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academic-subject-search input {
+  width: 100%;
+  min-height: 39px;
+  padding: 8px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+  font-size: 13px;
+}
+
+.academic-subject-search input:focus {
+  border-color: #3b82f6;
+  outline: 3px solid rgba(59, 130, 246, 0.15);
+}
+
+.academic-subject-result-count {
+  padding-bottom: 10px;
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.academic-subject-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.academic-subject-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.academic-subject-pagination button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #1e40af;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.academic-subject-pagination button:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.academic-subject-pagination button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.academic-subject-pagination strong {
+  color: #334155;
+  white-space: nowrap;
+}
+
+.academic-subject-reactivate {
+  border-color: #bbf7d0 !important;
+  background: #f0fdf4 !important;
+  color: #15803d !important;
+}
+
+.academic-subject-reactivate:hover:not(:disabled) {
+  border-color: #86efac !important;
+  background: #dcfce7 !important;
+}
+
 .academic-subject-delete {
   border-color: #fecaca !important;
   background: #fff1f2 !important;
@@ -63,6 +158,26 @@
 .academic-subject-delete:hover:not(:disabled) {
   border-color: #fda4af !important;
   background: #ffe4e6 !important;
+}
+
+@media (max-width: 560px) {
+  .academic-subject-list-toolbar,
+  .academic-subject-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .academic-subject-search {
+    width: 100%;
+  }
+
+  .academic-subject-result-count {
+    padding-bottom: 0;
+  }
+
+  .academic-subject-pagination > div {
+    justify-content: space-between;
+  }
 }
 
 .academic-subject-modal-overlay {
