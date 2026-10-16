@@ -58,6 +58,7 @@ interface ScheduleConflict {
   ten: string | null;
   vaiTro?: string;
   maPhong?: string | null;
+  linkTrucTuyen?: string | null;
   ngay: string;
   gioBatDau: string;
   gioKetThuc: string;
@@ -637,6 +638,7 @@ const ScheduleManagement = ({
                             : "Trùng phòng"}
                           {conflict.ten ? `: ${conflict.ten}` : ""}
                           {conflict.maPhong ? ` (${conflict.maPhong})` : ""}
+                          {conflict.linkTrucTuyen ? ` · ${conflict.linkTrucTuyen}` : ""}
                           {` · ${conflict.maLop || "Lớp"} ${conflict.tenLop || ""}`}
                           {` · ${new Date(`${conflict.ngay}T00:00:00`).toLocaleDateString("vi-VN")}`}
                           {` · ${conflict.gioBatDau}–${conflict.gioKetThuc}`}
