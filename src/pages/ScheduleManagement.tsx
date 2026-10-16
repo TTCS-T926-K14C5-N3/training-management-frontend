@@ -56,6 +56,7 @@ interface Schedule {
 interface ScheduleConflict {
   loai: "giangVien" | "phongHoc";
   ten: string | null;
+  vaiTro?: string;
   maPhong?: string | null;
   ngay: string;
   gioBatDau: string;
@@ -631,7 +632,9 @@ const ScheduleManagement = ({
                     {conflictWarning.conflicts.map((conflict, index) => (
                       <li key={`${conflict.lichHocId}-${conflict.loai}-${index}`}>
                         <span>
-                          {conflict.loai === "giangVien" ? "Trùng giảng viên" : "Trùng phòng"}
+                          {conflict.loai === "giangVien"
+                            ? `Trùng giảng viên${conflict.vaiTro ? ` (${conflict.vaiTro})` : ""}`
+                            : "Trùng phòng"}
                           {conflict.ten ? `: ${conflict.ten}` : ""}
                           {conflict.maPhong ? ` (${conflict.maPhong})` : ""}
                           {` · ${conflict.maLop || "Lớp"} ${conflict.tenLop || ""}`}
