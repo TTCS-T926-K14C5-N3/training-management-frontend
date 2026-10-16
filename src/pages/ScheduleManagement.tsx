@@ -212,6 +212,13 @@ const schedulePayload = (form: ScheduleForm) => ({
   giangVienId: Number(form.giangVienId),
 });
 
+const sortSchedules = (items: ScheduleRecord[]): ScheduleRecord[] =>
+  [...items].sort((left, right) =>
+    `${left.ngayHoc}T${left.gioBatDau}`.localeCompare(
+      `${right.ngayHoc}T${right.gioBatDau}`,
+    ),
+  );
+
 const fetchScheduleData = () =>
   Promise.all([
     api.get<ScheduleOptions>("/academic/schedule-options"),
@@ -377,9 +384,25 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
     try {
       const payload = schedulePayload(form);
       if (editing) {
-        await api.put(`/academic/schedules/${editing.lichHocId}`, payload);
+        const response = await api.put<ScheduleRecord>(
+          `/academic/schedules/${editing.lichHocId}`,
+          payload,
+        );
+        setSchedules((current) =>
+          sortSchedules(
+            current.map((schedule) =>
+              schedule.lichHocId === response.data.lichHocId
+                ? response.data
+                : schedule,
+            ),
+          ),
+        );
       } else {
-        await api.post("/academic/schedules", payload);
+        const response = await api.post<ScheduleRecord>(
+          "/academic/schedules",
+          payload,
+        );
+        setSchedules((current) => sortSchedules([...current, response.data]));
       }
       setFormOpen(false);
       setEditing(null);
@@ -410,9 +433,17 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
     setCancelSaving(true);
     setCancelError("");
     try {
-      await api.post(`/academic/schedules/${cancelling.lichHocId}/cancel`, {
-        lyDo: reason,
-      });
+      const response = await api.post<ScheduleRecord>(
+        `/academic/schedules/${cancelling.lichHocId}/cancel`,
+        { lyDo: reason },
+      );
+      setSchedules((current) =>
+        current.map((schedule) =>
+          schedule.lichHocId === response.data.lichHocId
+            ? response.data
+            : schedule,
+        ),
+      );
       setCancelling(null);
       setCancelReason("");
       setToast({ type: "success", text: "Đã hủy buổi học." });
