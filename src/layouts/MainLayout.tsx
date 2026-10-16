@@ -19,6 +19,7 @@ interface MainLayoutProps {
   onHome: () => void;
   onGradeManagement: () => void;
   onClassManagement: () => void;
+  onScheduleManagement?: () => void;
   onTrainingCatalog: () => void;
   onTrainingPrograms?: () => void;
   onAdmissionsLeads: () => void;
@@ -38,6 +39,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onHome,
   onGradeManagement,
   onClassManagement,
+  onScheduleManagement = () => {
+    window.history.pushState({}, "", "/quan-ly-lich-hoc");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  },
   onTrainingCatalog,
   onTrainingPrograms = () => {},
   onAdmissionsLeads,
@@ -67,6 +72,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       permissions.includes(permission),
     );
   const canViewCatalog = permissions.includes("CURRICULUM_VIEW");
+  const normalizedRoleName = roleName.trim().toLowerCase();
+  const isSystemAdmin =
+    normalizedRoleName.includes("admin") ||
+    normalizedRoleName.includes("quản trị hệ thống") ||
+    normalizedRoleName.includes("quản trị viên hệ thống");
+  const canViewSchedules =
+    permissions.includes("SCHEDULE_VIEW") || isSystemAdmin;
   const canViewLeads = permissions.includes("LEAD_VIEW");
   const canManageGrades =
     permissions.includes("GRADE_CREATE") ||
@@ -166,7 +178,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Đổi mật khẩu</span>
           </button>
 
-          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms) && (
+          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms || canViewSchedules) && (
             <>
               <div className="sidebar-section-title">ĐÀO TẠO</div>
 
@@ -219,6 +231,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                   <span>Danh mục đào tạo</span>
                 </button>
               )}
+              {canViewSchedules && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${isActive("/quan-ly-lich-hoc") ? "active" : ""}`}
+                  onClick={onScheduleManagement}
+                >
+                  <span className="sidebar-item-icon">▦</span>
+                  <span>Lịch học</span>
+                </button>
+              )}
             </>
           )}
           {canViewLeads && (
@@ -236,15 +258,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               </button>
             </>
           )}
-          <div className="sidebar-section-title">CÔNG VIỆC</div>
-          <a
-            className={`sidebar-item ${isActive("/scrum-board") ? "active" : ""}`}
-            href="/scrum-board"
-            aria-current={isActive("/scrum-board") ? "page" : undefined}
-          >
-            <span className="sidebar-item-icon">▤</span>
-            <span>Board Scrum</span>
-          </a>
         </nav>
 
         {/* ===================================================

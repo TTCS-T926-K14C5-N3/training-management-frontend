@@ -16,6 +16,7 @@ import TrainingPrograms from "./pages/TrainingPrograms";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
+import ScheduleManagement from "./pages/ScheduleManagement";
 import ScrumTaskBoard from "./pages/ScrumTaskBoard";
 
 
@@ -226,6 +227,7 @@ const ROUTE_ACCESS_RULES: Record<
 > = {
   "/danh-muc-dao-tao": { allOf: ["CURRICULUM_VIEW"] },
   "/quan-ly-lead": { allOf: ["LEAD_VIEW"] },
+  "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
   "/quan-ly-nguoi-dung": { allOf: ["USER_VIEW"] },
   "/du-lieu-import-khong-hop-le": { allOf: ["USER_CREATE"] },
   "/phan-quyen": { allOf: ["ROLE_VIEW", "ROLE_UPDATE"] },
@@ -1728,6 +1730,22 @@ function App() {
         <AdmissionsLeads
           permissions={currentPermissions}
           isTrainingManager={isTrainingManager || isAdmin}
+        />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc") {
+    const isTrainingManager = user.vaiTro.some(
+      (role) => role.vaiTroId === 7 ||
+        role.tenVaiTro.trim().toLowerCase() === "quản lý đào tạo",
+    );
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleManagement
+          permissions={currentPermissions}
+          isTrainingManager={isTrainingManager}
+          isSystemAdmin={isAdmin}
         />
       </ProtectedRoute>,
     );

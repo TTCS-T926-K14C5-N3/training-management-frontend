@@ -23,6 +23,7 @@ interface AdminLayoutProps {
 
   onGradeManagement: () => void;
   onClassManagement: () => void;
+  onScheduleManagement?: () => void;
   onTrainingCatalog?: () => void;
   onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
@@ -47,6 +48,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUserManagement,
   onGradeManagement,
   onClassManagement,
+  onScheduleManagement = () => {
+    window.history.pushState({}, "", "/quan-ly-lich-hoc");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  },
   onTrainingCatalog = () => {},
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
@@ -121,6 +126,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isTrainingCatalogActive = currentPath === "/danh-muc-dao-tao";
 
   const isAdmissionsLeadsActive = currentPath === "/quan-ly-lead";
+
+  const isScheduleManagementActive = currentPath === "/quan-ly-lich-hoc";
 
   const isChangePasswordActive = currentPath === "/change-password";
 
@@ -294,18 +301,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
-          <div className="admin-section-title">CÔNG VIỆC</div>
-          <a
-            className={`admin-menu-item ${
-              currentPath === "/scrum-board" ? "admin-menu-active" : ""
-            }`}
-            href="/scrum-board"
-            aria-current={currentPath === "/scrum-board" ? "page" : undefined}
-          >
-            <span className="admin-menu-symbol">▤</span>
-            <span>Board Scrum</span>
-          </a>
-
+          {hasPermission("SCHEDULE_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isScheduleManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onScheduleManagement}
+            >
+              <span className="admin-menu-symbol">▦</span>
+              <span>Lịch học</span>
+            </button>
+          )}
 
           {/* =================================================
               HỆ THỐNG

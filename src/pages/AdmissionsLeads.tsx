@@ -1150,7 +1150,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
           </div>
         )}
         {viewMode === "table" && (
-        <div className="academic-table-wrap">
+        <div className="academic-table-wrap lead-table-wrap">
           <table className="academic-table">
             <thead>
               <tr>
@@ -1278,7 +1278,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   </Fragment>
                 ))}
               {!loading && leads.length === 0 && (
-                <tr>
+                <tr className="lead-empty-row">
                   <td colSpan={canAssign ? 7 : 6}>Không có lead phù hợp.</td>
                 </tr>
               )}
