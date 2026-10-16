@@ -28,6 +28,7 @@ interface AdminLayoutProps {
   onTrainingCatalog?: () => void;
   onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
+  onScheduleManagement?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -54,6 +55,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onTrainingCatalog = () => {},
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
+  onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
   onChangePassword,
   onProfile,
 }) => {
@@ -90,6 +92,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
      * - Cấu hình quyền         (ROLE_VIEW)
      * - Danh mục đào tạo       (CURRICULUM_VIEW)
      * - Lead tư vấn            (LEAD_VIEW)
+     * - Lịch học                (SCHEDULE_VIEW/CREATE/UPDATE)
      *
      * Việc này giúp tránh trường hợp tài khoản Admin
      * bị thiếu permission trong JWT nhưng vẫn phải có
@@ -101,7 +104,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         maQuyen === "USER_VIEW" ||
         maQuyen === "ROLE_VIEW" ||
         maQuyen === "CURRICULUM_VIEW" ||
-        maQuyen === "LEAD_VIEW"
+        maQuyen === "LEAD_VIEW" ||
+        maQuyen === "SCHEDULE_VIEW" ||
+        maQuyen === "SCHEDULE_CREATE" ||
+        maQuyen === "SCHEDULE_UPDATE"
       )
     ) {
       return true;
@@ -130,6 +136,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isGradeManagementActive = currentPath === "/quan-ly-diem";
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
+
+  const isScheduleManagementActive = currentPath === "/quan-ly-lich-hoc";
 
   const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
 
@@ -165,6 +173,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           available: hasPermission("CLASS_VIEW") && hasPermission("QUAN_LY_LOP"),
         },
         {
+          label: "Quản lý lịch học",
+          action: onScheduleManagement,
+          available: hasPermission("SCHEDULE_VIEW"),
+        },
+        {
           label: "Chương trình đào tạo",
           action: onTrainingPrograms,
           available: hasPermission("CLASS_VIEW"),
@@ -191,6 +204,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       onHome,
       onProfile,
       onRoleManagement,
+      onScheduleManagement,
       onTrainingCatalog,
       onTrainingPrograms,
       onUserManagement,
@@ -370,6 +384,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span className="admin-menu-symbol">▤</span>
 
               <span>Quản lý lớp</span>
+            </button>
+          )}
+
+          {hasPermission("SCHEDULE_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isScheduleManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onScheduleManagement}
+            >
+              <span className="admin-menu-symbol">▦</span>
+              <span>Quản lý lịch học</span>
             </button>
           )}
 
