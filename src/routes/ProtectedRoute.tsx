@@ -42,17 +42,35 @@ function ProtectedRoute({
   // =========================================================
 
   const permissions = Array.isArray(session.quyen) ? session.quyen : [];
+
+  // =========================================================
+  // KIỂM TRA ADMIN
+  // =========================================================
+
+  const roles = Array.isArray(session.vaiTro) ? session.vaiTro : [];
+  const isAdmin = roles.some((role: any) => {
+    const name = (role?.tenVaiTro ?? "").trim().toLowerCase();
+    return (
+      name === "admin" ||
+      name === "quản trị hệ thống" ||
+      name === "quản trị viên hệ thống" ||
+      role?.vaiTroId === 8
+    );
+  });
+
   // =========================================================
   // KIỂM TRA QUYỀN
   // =========================================================
 
   const hasRequiredPermission =
     !requiredPermission ||
+    isAdmin ||
     permissions.some(
       (permission: any) => permission?.maQuyen === requiredPermission,
     );
   const hasAnyRequiredPermission =
     !requiredAnyPermission ||
+    isAdmin ||
     requiredAnyPermission.some((requiredCode) =>
       permissions.some(
         (permission: any) => permission?.maQuyen === requiredCode,

@@ -238,6 +238,8 @@ const ROUTE_ACCESS_RULES: Record<
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
+  if (isAdminUser(user)) return true;
+
   const rule = ROUTE_ACCESS_RULES[path];
   if (!rule) return true;
 
@@ -1127,7 +1129,7 @@ function App() {
   };
 
   const handleTrainingCatalog = () => {
-    if (!hasPermission(user, "CURRICULUM_VIEW")) {
+    if (!isAdminUser(user) && !hasPermission(user, "CURRICULUM_VIEW")) {
       navigate("/");
       return;
     }
@@ -1135,7 +1137,7 @@ function App() {
   };
 
   const handleAdmissionsLeads = () => {
-    if (!hasPermission(user, "LEAD_VIEW")) {
+    if (!isAdminUser(user) && !hasPermission(user, "LEAD_VIEW")) {
       navigate("/");
       return;
     }
@@ -1263,16 +1265,24 @@ function App() {
         <div className="login-container">
           <section className="login-form-section">
             <div className="brand">
-              <div className="brand-icon">🎓</div>
-
-              <h1>
-                Hệ thống quản lý <span>đào tạo</span>
-              </h1>
+              <div className="brand-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="m5 18 19-9 19 9-19 9-19-9Z" fill="currentColor" />
+                  <path d="M13 22v9c6 6 16 6 22 0v-9l-11 5-11-5Z" fill="currentColor" opacity=".86" />
+                  <path d="M42 19v11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="42" cy="33" r="2.5" fill="#ffd166" />
+                </svg>
+              </div>
+              <div className="brand-copy">
+                <h1>
+                  Hệ thống quản lý
+                  <span>đào tạo</span>
+                </h1>
+                <p>Đồng hành cùng nhà trường trong hành trình chuyển đổi số giáo dục</p>
+              </div>
             </div>
 
-            <p className="subtitle">
-              Đăng nhập để truy cập và quản lý các chức năng của hệ thống
-            </p>
+            <p className="subtitle">Đăng nhập để tiếp tục sử dụng hệ thống</p>
 
             {message && (
               <div
@@ -1294,8 +1304,9 @@ function App() {
                   <span className="input-icon">✉️</span>
 
                   <input
+                    aria-label="Email"
                     type="email"
-                    placeholder="Nhập email"
+                    placeholder="Nhập địa chỉ email của bạn..."
                     value={email}
                     onChange={(e) => {
                       const newEmail = e.target.value;
@@ -1325,8 +1336,9 @@ function App() {
                   <span className="input-icon">🔒</span>
 
                   <input
+                    aria-label="Mật khẩu"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Nhập mật khẩu"
+                    placeholder="Nhập mật khẩu của bạn..."
                     value={password}
                     onChange={(e) => {
                       clearExpiredSessionNotice();
@@ -1343,6 +1355,7 @@ function App() {
                     type="button"
                     className="show-password"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   >
                     {showPassword ? "🙈" : "👁"}
                   </button>
@@ -1372,10 +1385,12 @@ function App() {
                 </a>
               </div>
 
-              <p className="admissions-login-link">
-                Muốn tìm hiểu chương trình học?{" "}
-                <a href="/dang-ky-tu-van">Đăng ký tư vấn tuyển sinh</a>
-              </p>
+              <div className="login-registration">
+                <span>Hoặc đăng ký tài khoản</span>
+                <a href="/dang-ky-tu-van">
+                  Đăng ký tư vấn tuyển sinh <span aria-hidden="true">›</span>
+                </a>
+              </div>
 
               <button
                 type="submit"
@@ -1399,12 +1414,51 @@ function App() {
 
           <section className="information-section">
             <div className="overlay"></div>
+            <svg
+              className="login-education-visual"
+              viewBox="0 0 360 420"
+              fill="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="cap-gradient" x1="76" y1="174" x2="282" y2="251" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#56E7FF" />
+                  <stop offset="1" stopColor="#887CFF" />
+                </linearGradient>
+                <linearGradient id="book-gradient" x1="110" y1="252" x2="276" y2="331" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#22BFF7" />
+                  <stop offset="1" stopColor="#647BFF" />
+                </linearGradient>
+                <filter id="visual-glow" x="0" y="0" width="360" height="420" filterUnits="userSpaceOnUse">
+                  <feGaussianBlur stdDeviation="10" />
+                </filter>
+              </defs>
+              <ellipse cx="194" cy="296" rx="133" ry="25" fill="#22D3EE" opacity=".35" filter="url(#visual-glow)" />
+              <path d="M55 299c38-63 222-81 269-21 38 48-75 79-171 81-88 2-138-21-98-60Z" stroke="#26D7FF" strokeWidth="2" opacity=".8" />
+              <path d="m110 252 107-43 97 39-108 45-96-41Z" fill="url(#book-gradient)" stroke="#8BE8FF" strokeWidth="2" />
+              <path d="m124 279 92 38 83-34v19l-83 39-92-40v-22Z" fill="#234DAE" stroke="#65CFFF" strokeWidth="2" />
+              <path d="m124 302 92 39 83-38v18l-83 39-92-39v-19Z" fill="#193E94" stroke="#64BFFF" strokeWidth="2" />
+              <path d="m78 174 109-42 103 43-108 46-104-47Z" fill="url(#cap-gradient)" stroke="#B2F3FF" strokeWidth="3" />
+              <path d="m111 193 71 31 69-29v28c-38 29-101 30-140 0v-30Z" fill="#3971E8" stroke="#8DDFFF" strokeWidth="2" />
+              <path d="M289 176v76" stroke="#8BE8FF" strokeWidth="3" />
+              <circle cx="289" cy="255" r="6" fill="#F8D977" />
+              <rect x="218" y="38" width="93" height="76" rx="12" fill="#4E8EFF" fillOpacity=".2" stroke="#58CFFF" />
+              <path d="M238 97V79m17 18V66m17 31V57m17 40V47" stroke="#8DE6FF" strokeWidth="7" strokeLinecap="round" />
+              <rect x="240" y="322" width="84" height="64" rx="10" fill="#5A8FFF" fillOpacity=".2" stroke="#76CFFF" />
+              <path d="M258 343h47M258 356h31M258 369h39" stroke="#9DEBFF" strokeWidth="4" strokeLinecap="round" />
+              <circle cx="298" cy="365" r="16" fill="#2249A0" stroke="#91E5FF" strokeWidth="2" />
+              <path d="M298 355v11l7 4" stroke="#B5F4FF" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="58" cy="93" r="3" fill="#55E6FF" />
+              <circle cx="175" cy="24" r="2.5" fill="#55E6FF" />
+              <circle cx="333" cy="145" r="3" fill="#A4A9FF" />
+              <path d="m58 93 68 32m49-101 43 35m115 86-22-31" stroke="#55C9FF" strokeOpacity=".3" />
+            </svg>
 
             <div className="information-content">
               <h2>
                 Quản lý đào tạo
                 <br />
-                hiệu quả hơn
+                <span>thông minh hơn</span>
               </h2>
 
               <p className="description">
@@ -1463,6 +1517,23 @@ function App() {
       ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
       : "Chưa có vai trò";
   const currentPermissions = user.quyen.map((permission) => permission.maQuyen);
+  const isAdmin = isAdminUser(user);
+  const effectivePermissions = isAdmin
+    ? [
+        ...new Set([
+          ...currentPermissions,
+          "CURRICULUM_VIEW",
+          "CURRICULUM_CREATE",
+          "CURRICULUM_UPDATE",
+          "CURRICULUM_DELETE",
+          "LEAD_VIEW",
+          "LEAD_CREATE",
+          "LEAD_UPDATE",
+          "LEAD_DELETE",
+          "LEAD_ASSIGN",
+        ]),
+      ]
+    : currentPermissions;
 
   if (!hasRouteAccess(currentPath, user)) {
     return <AppStatusPage status="forbidden" />;
@@ -1582,7 +1653,6 @@ function App() {
   // ADMIN
   // =========================================================
 
-  const isAdmin = isAdminUser(user);
   const renderAcademicLayout = (children: React.ReactNode) =>
     isAdmin ? (
       <AdminLayout
@@ -1649,18 +1719,18 @@ function App() {
   );
 
   if (currentPath === "/danh-muc-dao-tao") {
-    if (!hasPermission(user, "CURRICULUM_VIEW")) {
+    if (!isAdmin && !hasPermission(user, "CURRICULUM_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="CURRICULUM_VIEW">
-        <TrainingCatalog permissions={currentPermissions} />
+        <TrainingCatalog permissions={effectivePermissions} />
       </ProtectedRoute>,
     );
   }
 
   if (currentPath === "/quan-ly-lead") {
-    if (!hasPermission(user, "LEAD_VIEW")) {
+    if (!isAdmin && !hasPermission(user, "LEAD_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
     const isTrainingManager = user.vaiTro.some(
@@ -1671,7 +1741,7 @@ function App() {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="LEAD_VIEW">
         <AdmissionsLeads
-          permissions={currentPermissions}
+          permissions={effectivePermissions}
           isTrainingManager={isTrainingManager || isAdmin}
         />
       </ProtectedRoute>,
@@ -1826,19 +1896,6 @@ function App() {
                 quả!
               </p>
 
-              <div className="dashboard-hero-info">
-                <div>
-                  <span className="hero-info-label">Tài khoản</span>
-
-                  <strong>{user.email}</strong>
-                </div>
-
-                <div>
-                  <span className="hero-info-label">Vai trò</span>
-
-                  <strong>{roleName}</strong>
-                </div>
-              </div>
             </div>
 
             <div className="dashboard-hero-decoration">
@@ -1846,7 +1903,7 @@ function App() {
 
               <div className="hero-circle hero-circle-2"></div>
 
-              <div className="hero-graduation">🎓</div>
+              <DashboardDateTime />
             </div>
           </section>
 
@@ -2000,19 +2057,6 @@ function App() {
                 quả!
               </p>
 
-              <div className="dashboard-hero-info">
-                <div>
-                  <span className="hero-info-label">Tài khoản</span>
-
-                  <strong>{user.email}</strong>
-                </div>
-
-                <div>
-                  <span className="hero-info-label">Vai trò</span>
-
-                  <strong>{roleName}</strong>
-                </div>
-              </div>
             </div>
 
             <div className="dashboard-hero-decoration">
@@ -2020,7 +2064,7 @@ function App() {
 
               <div className="hero-circle hero-circle-2"></div>
 
-              <div className="hero-graduation">🎓</div>
+              <DashboardDateTime />
             </div>
           </section>
 
@@ -2131,13 +2175,44 @@ interface FeatureProps {
 function Feature({ icon, title, description }: FeatureProps) {
   return (
     <div className="feature">
-      <div className="feature-icon">{icon}</div>
+      <div className="feature-icon">
+        <span className="feature-icon-glyph">{icon}</span>
+      </div>
 
       <div>
         <h3>{title}</h3>
 
         <p>{description}</p>
       </div>
+    </div>
+  );
+}
+
+function DashboardDateTime() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(now);
+  const date = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+
+  return (
+    <div className="dashboard-date-time" aria-label={`Hôm nay ${date}, ${time}`}>
+      <span className="dashboard-date-time-label">Thời gian hiện tại</span>
+      <strong className="dashboard-clock">{time}</strong>
+      <span className="dashboard-date">{date}</span>
     </div>
   );
 }

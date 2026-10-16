@@ -388,8 +388,6 @@
 
 .academic-table-wrap {
   width: 100%;
-
-  min-height: 100%;
   padding: 32px 36px 40px;
   box-sizing: border-box;
   background: #f6f8fc;
@@ -1079,3 +1077,69 @@
     gap: 6px;
     margin-top: 5px;
   }
+
+.class-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.class-list-table th:nth-child(1) {
+  width: 13%;
+}
+
+.class-list-table th:nth-child(2) {
+  width: 7%;
+}
+
+.class-list-table th:nth-child(3) {
+  width: 14%;
+}
+
+.class-list-table th:nth-child(4) {
+  width: 11%;
+}
+
+.class-list-table th:nth-child(5) {
+  width: 13%;
+}
+
+.class-list-table th:nth-child(6) {
+  width: 13%;
+}
+
+.class-list-table th:nth-child(7) {
+  width: 12%;
+}
+
+.class-list-table th:nth-child(8) {
+  width: 17%;
+}
+
+.academic-page .class-list-table {
+  min-width: 900px;
+}
+
+.class-list-table td.academic-row-actions {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.class-list-table .academic-row-actions button {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.class-list-table .academic-row-actions button + button {
+  margin-left: 5px;
+}
+
+@media (max-width: 900px) {
+  .class-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .class-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

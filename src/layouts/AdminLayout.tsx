@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AvatarImage from "../components/AvatarImage";
 import "./AdminLayout.css";
 
@@ -80,15 +80,26 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const hasPermission = (maQuyen: string): boolean => {
     /*
-     * Admin hệ thống luôn được phép truy cập:
-     * - Quản lý người dùng
-     * - Cấu hình quyền hệ thống
+     * Admin hệ thống luôn được phép truy cập tất cả các tính năng
+     * chính của hệ thống, bao gồm:
+     * - Quản lý người dùng     (USER_VIEW)
+     * - Cấu hình quyền         (ROLE_VIEW)
+     * - Danh mục đào tạo       (CURRICULUM_VIEW)
+     * - Lead tư vấn            (LEAD_VIEW)
      *
      * Việc này giúp tránh trường hợp tài khoản Admin
-     * bị thiếu USER_VIEW / ROLE_VIEW trong danh sách
-     * permission từ frontend nhưng vẫn phải có quyền quản trị.
+     * bị thiếu permission trong JWT nhưng vẫn phải có
+     * quyền truy cập toàn bộ chức năng quản trị.
      */
-    if (isAdminRole() && (maQuyen === "USER_VIEW" || maQuyen === "ROLE_VIEW")) {
+    if (
+      isAdminRole() &&
+      (
+        maQuyen === "USER_VIEW" ||
+        maQuyen === "ROLE_VIEW" ||
+        maQuyen === "CURRICULUM_VIEW" ||
+        maQuyen === "LEAD_VIEW"
+      )
+    ) {
       return true;
     }
 
@@ -125,6 +136,84 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isChangePasswordActive = currentPath === "/change-password";
 
   const isProfileActive = currentPath === "/ho-so-ca-nhan";
+
+  const [quickSearch, setQuickSearch] = useState("");
+  const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
+  const quickSearchRef = useRef<HTMLInputElement>(null);
+  const quickLinks = useMemo(
+    () =>
+      [
+        { label: "Trang chủ", action: onHome, available: true },
+        { label: "Người dùng", action: onUserManagement, available: hasPermission("USER_VIEW") },
+        {
+          label: "Phân quyền",
+          action: onRoleManagement,
+          available: hasPermission("ROLE_VIEW") && hasPermission("ROLE_UPDATE"),
+        },
+        {
+          label: hasPermission("GRADE_CREATE") || hasPermission("GRADE_UPDATE") ? "Quản lý điểm" : "Xem điểm",
+          action: onGradeManagement,
+          available: hasPermission("GRADE_VIEW") || hasPermission("QUAN_LY_DIEM"),
+        },
+        {
+          label: "Quản lý lớp",
+          action: onClassManagement,
+          available: hasPermission("CLASS_VIEW") && hasPermission("QUAN_LY_LOP"),
+        },
+        {
+          label: "Chương trình đào tạo",
+          action: onTrainingPrograms,
+          available: hasPermission("CLASS_VIEW"),
+        },
+        {
+          label: "Danh mục đào tạo",
+          action: onTrainingCatalog,
+          available: hasPermission("CURRICULUM_VIEW"),
+        },
+        {
+          label: "Lead tư vấn",
+          action: onAdmissionsLeads,
+          available: hasPermission("LEAD_VIEW"),
+        },
+        { label: "Hồ sơ cá nhân", action: onProfile, available: true },
+        { label: "Đổi mật khẩu", action: onChangePassword, available: true },
+      ].filter((link) => link.available),
+    [
+      hasPermission,
+      onAdmissionsLeads,
+      onChangePassword,
+      onClassManagement,
+      onGradeManagement,
+      onHome,
+      onProfile,
+      onRoleManagement,
+      onTrainingCatalog,
+      onTrainingPrograms,
+      onUserManagement,
+    ],
+  );
+  const filteredQuickLinks = quickLinks
+    .filter((link) =>
+      link.label.toLocaleLowerCase("vi").includes(quickSearch.trim().toLocaleLowerCase("vi")),
+    )
+    .slice(0, 6);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setIsQuickSearchOpen(true);
+        quickSearchRef.current?.focus();
+      }
+      if (event.key === "Escape") {
+        setIsQuickSearchOpen(false);
+        setQuickSearch("");
+        quickSearchRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   return (
     <div className="admin-layout">
@@ -387,8 +476,73 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       ===================================================== */}
 
       <main className="admin-main">
-
-
+        <header className="admin-topbar">
+          <div className="admin-quick-search">
+            <span className="admin-quick-search-icon" aria-hidden="true">⌕</span>
+            <input
+              ref={quickSearchRef}
+              type="search"
+              value={quickSearch}
+              placeholder="Tìm kiếm nhanh lớp, môn học, người dùng..."
+              aria-label="Tìm kiếm nhanh trong hệ thống"
+              aria-expanded={isQuickSearchOpen && quickSearch.trim().length > 0}
+              onFocus={() => setIsQuickSearchOpen(true)}
+              onChange={(event) => {
+                setQuickSearch(event.target.value);
+                setIsQuickSearchOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && filteredQuickLinks[0]) {
+                  filteredQuickLinks[0].action();
+                  setIsQuickSearchOpen(false);
+                  setQuickSearch("");
+                  quickSearchRef.current?.blur();
+                }
+              }}
+            />
+            <kbd>Ctrl + K</kbd>
+            {isQuickSearchOpen && quickSearch.trim() && (
+              <div className="admin-quick-search-results" role="listbox">
+                {filteredQuickLinks.length ? (
+                  filteredQuickLinks.map((link) => (
+                    <button
+                      key={link.label}
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        link.action();
+                        setIsQuickSearchOpen(false);
+                        setQuickSearch("");
+                        quickSearchRef.current?.blur();
+                      }}
+                    >
+                      {link.label}
+                    </button>
+                  ))
+                ) : (
+                  <span>Không tìm thấy mục phù hợp.</span>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="admin-topbar-user"
+            onClick={onProfile}
+            aria-label={`Mở hồ sơ của ${userName}`}
+          >
+            <span className="admin-topbar-avatar">
+              <AvatarImage source={avatarUrl} fallback={avatarLetter} alt="" />
+            </span>
+            <span className="admin-topbar-user-copy">
+              <strong>{userName}</strong>
+              <small>{roleName}</small>
+            </span>
+            <span className="admin-topbar-chevron" aria-hidden="true">⌄</span>
+          </button>
+        </header>
         {/* =================================================
           CONTENT
         ================================================= */}
