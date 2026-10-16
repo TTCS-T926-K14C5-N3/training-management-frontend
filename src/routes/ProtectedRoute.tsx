@@ -77,7 +77,11 @@ function ProtectedRoute({
       ),
     );
 
-  if (!hasRequiredPermission || !hasAnyRequiredPermission) {
+  if (requiredPermission && !hasRequiredPermission) {
+    return <AppStatusPage status="forbidden" />;
+  }
+
+  if (requiredAnyPermission && !hasAnyRequiredPermission) {
     return <AppStatusPage status="forbidden" />;
   }
 

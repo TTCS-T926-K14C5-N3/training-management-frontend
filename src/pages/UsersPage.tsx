@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
 import AvatarImage from "../components/AvatarImage";
+import StudentProfileModal from "../components/StudentProfileModal";
 import UserImportModal from "../components/UserImportModal";
 import "./UsersPage.css";
 
@@ -14,6 +15,8 @@ interface User {
   trangThai: string;
   vaiTro?: string;
   vaiTroId?: number;
+  vaiTroIds?: number[];
+  maHocVien?: string | null;
 }
 
 interface Role {
@@ -86,12 +89,18 @@ const ROLE_OPTIONS = [
   { value: "8", label: "Admin" },
 ];
 
-const UsersPage: React.FC = () => {
+export type StudentProfileSection = "information" | "history";
+
+interface UsersPageProps {
+  profileSection?: StudentProfileSection;
+}
+
+const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [search, setSearch] = useState("");
-  const [roleId, setRoleId] = useState("");
+  const [roleId, setRoleId] = useState(profileSection ? "2" : "");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -125,6 +134,10 @@ const UsersPage: React.FC = () => {
 
   const canCreateUser = isAdmin || permissions.includes("USER_CREATE");
   const canUpdateUser = isAdmin || permissions.includes("USER_UPDATE");
+  const canEditStudentProfile =
+    isAdmin || permissions.includes("STUDENT_PROFILE_UPDATE");
+  const canViewAcademicProfile =
+    isAdmin || permissions.includes("GRADE_VIEW");
   const canLockUser = isAdmin || permissions.includes("USER_LOCK");
   const canUnlockUser = isAdmin || permissions.includes("USER_UNLOCK");
   const canDeleteUser = isAdmin || permissions.includes("USER_DELETE");
@@ -145,6 +158,9 @@ const UsersPage: React.FC = () => {
 
   // Edit Modal State
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [studentProfileUser, setStudentProfileUser] = useState<User | null>(
+    null,
+  );
   const [editForm, setEditForm] = useState({
     hoTen: "",
     email: "",
@@ -243,7 +259,7 @@ const UsersPage: React.FC = () => {
       const response = await api.get("/users/", {
         params: {
           search: search || undefined,
-          role_id: roleId || undefined,
+          role_id: profileSection ? "2" : roleId || undefined,
           status: status || undefined,
           page,
           limit,
@@ -273,7 +289,7 @@ const UsersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, roleId, status, limit]);
+  }, [page, profileSection, search, roleId, status, limit]);
 
   useEffect(() => {
     loadUsers();
@@ -514,13 +530,27 @@ const UsersPage: React.FC = () => {
 
       <section className="dashboard-hero users-page-hero">
         <div className="dashboard-hero-content">
-          <div className="dashboard-hero-label">QUẢN LÝ HỆ THỐNG</div>
-          <h2>Quản lý người dùng</h2>
-          <p>Quản lý tài khoản người dùng trong hệ thống.</p>
+          <div className="dashboard-hero-label">
+            {profileSection ? "HỒ SƠ HỌC VIÊN" : "QUẢN LÝ HỆ THỐNG"}
+          </div>
+          <h2>
+            {profileSection === "information"
+              ? "Thông tin học viên"
+              : profileSection === "history"
+                ? "Lịch sử lớp học"
+                : "Quản lý người dùng"}
+          </h2>
+          <p>
+            {profileSection === "information"
+              ? "Tra cứu thông tin cá nhân, liên hệ và trình độ đầu vào của học viên."
+              : profileSection === "history"
+                ? "Theo dõi lớp đang học, lịch sử lớp và bảng điểm của học viên."
+                : "Tra cứu học viên theo mã, ID, họ tên hoặc số điện thoại; mở hồ sơ để xem quá trình học và bảng điểm."}
+          </p>
         </div>
 
         <div className="users-header-actions">
-          {canCreateUser && (
+          {!profileSection && canCreateUser && (
             <>
               <button
                 type="button"
@@ -542,7 +572,11 @@ const UsersPage: React.FC = () => {
         </div>
       </section>
 
-      <div className="users-filter-card">
+      <div
+        className={`users-filter-card ${
+          profileSection ? "users-filter-student-profile" : ""
+        }`}
+      >
         <div className="users-search-wrapper">
           <span className="users-search-icon">⌕</span>
           <input
@@ -551,24 +585,26 @@ const UsersPage: React.FC = () => {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSearch();
             }}
-            placeholder="Tìm theo họ tên, email, số điện thoại..."
+            placeholder="Tìm mã học viên, ID, họ tên, email hoặc số điện thoại..."
           />
         </div>
-        <select
-          value={roleId}
-          onChange={(e) => {
-            setRoleId(e.target.value);
-            setPage(1);
-          }}
-          className="users-filter-select"
-        >
-          <option value="">Tất cả vai trò</option>
-          {ROLE_OPTIONS.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+        {!profileSection && (
+          <select
+            value={roleId}
+            onChange={(e) => {
+              setRoleId(e.target.value);
+              setPage(1);
+            }}
+            className="users-filter-select"
+          >
+            <option value="">Tất cả vai trò</option>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           value={status}
           onChange={(e) => {
@@ -589,8 +625,10 @@ const UsersPage: React.FC = () => {
       <div className="users-table-card">
         <div className="users-table-header">
           <div>
-            <h2>Danh sách người dùng</h2>
-            <span>{total} người dùng</span>
+            <h2>{profileSection || roleId === "2" ? "Danh sách học viên" : "Danh sách người dùng"}</h2>
+            <span>
+              {total} {profileSection || roleId === "2" ? "học viên" : "người dùng"}
+            </span>
           </div>
         </div>
 
@@ -611,19 +649,21 @@ const UsersPage: React.FC = () => {
               <table className="users-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    <th>Mã / ID</th>
                     <th>Họ tên</th>
                     <th>Email</th>
                     <th>Số điện thoại</th>
                     <th>Vai trò</th>
                     <th>Trạng thái</th>
-                    <th>Thao tác</th>
+                    <th>{profileSection ? "Xem chi tiết" : "Thao tác"}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.nguoiDungId}>
-                      <td className="users-id">{user.nguoiDungId}</td>
+                      <td className="users-id">
+                        {user.maHocVien || user.nguoiDungId}
+                      </td>
                       <td>
                         <div className="users-name">
                           <div className="users-avatar">
@@ -671,7 +711,28 @@ const UsersPage: React.FC = () => {
                       </td>
                       <td>
                         <div className="users-actions">
-                          {canUpdateUser && (
+                          {canViewAcademicProfile &&
+                            (user.vaiTroIds?.includes(2) ||
+                              user.vaiTroId === 2) && (
+                              <button
+                                className="action-profile"
+                                onClick={() => setStudentProfileUser(user)}
+                                title={
+                                  profileSection === "information"
+                                    ? "Xem thông tin học viên"
+                                    : profileSection === "history"
+                                      ? "Xem lịch sử lớp học"
+                                      : "Mở hồ sơ học tập của học viên"
+                                }
+                              >
+                                {profileSection === "information"
+                                  ? "Thông tin"
+                                  : profileSection === "history"
+                                    ? "Lịch sử lớp"
+                                    : "Hồ sơ học tập"}
+                              </button>
+                            )}
+                          {!profileSection && canUpdateUser && (
                             <button
                               className="action-edit"
                               onClick={() => void openEditModal(user)}
@@ -680,7 +741,7 @@ const UsersPage: React.FC = () => {
                               Sửa
                             </button>
                           )}
-                          {user.trangThai === "HoatDong"
+                          {!profileSection && (user.trangThai === "HoatDong"
                             ? canLockUser && (
                                 <button
                                   className="action-lock"
@@ -703,8 +764,8 @@ const UsersPage: React.FC = () => {
                                 >
                                   Mở khóa
                                 </button>
-                              )}
-                          {canDeleteUser && (
+                              ))}
+                          {!profileSection && canDeleteUser && (
                             <button
                               className="action-delete"
                               onClick={() => handleDelete(user)}
@@ -752,6 +813,18 @@ const UsersPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {studentProfileUser && (
+        <StudentProfileModal
+          student={studentProfileUser}
+          canEdit={
+            profileSection !== "history" && canEditStudentProfile
+          }
+          section={profileSection}
+          onClose={() => setStudentProfileUser(null)}
+          onSaved={() => void loadUsers()}
+        />
+      )}
 
       {/* MODAL EDIT USER */}
       {editingUser && (

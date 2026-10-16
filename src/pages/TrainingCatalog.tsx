@@ -30,6 +30,8 @@ const EMPTY_SUBJECT = {
   moTaChuanDauRa: "",
 };
 
+const SUBJECTS_PER_PAGE = 10;
+
 const errorMessage = (error: unknown, fallback: string): string => {
   if (
     axios.isAxiosError<{ detail?: unknown }>(error) &&
@@ -53,6 +55,31 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredSubjects = subjects.filter((subject) => {
+    const query = searchQuery.trim().toLocaleLowerCase("vi");
+    return (
+      !query ||
+      subject.maMonHoc.toLocaleLowerCase("vi").includes(query) ||
+      subject.tenMonHoc.toLocaleLowerCase("vi").includes(query)
+    );
+  });
+  const totalPages = Math.ceil(filteredSubjects.length / SUBJECTS_PER_PAGE);
+  const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1));
+  const paginatedSubjects = filteredSubjects.slice(
+    (safeCurrentPage - 1) * SUBJECTS_PER_PAGE,
+    safeCurrentPage * SUBJECTS_PER_PAGE,
+  );
+  const firstVisibleSubject =
+    filteredSubjects.length === 0
+      ? 0
+      : (safeCurrentPage - 1) * SUBJECTS_PER_PAGE + 1;
+  const lastVisibleSubject = Math.min(
+    safeCurrentPage * SUBJECTS_PER_PAGE,
+    filteredSubjects.length,
+  );
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -379,6 +406,23 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
             </div>,
             document.body,
           )}
+        <div className="academic-subject-list-toolbar">
+          <label className="academic-subject-search">
+            <span>Tìm kiếm môn học</span>
+            <input
+              type="search"
+              value={searchQuery}
+              placeholder="Nhập mã hoặc tên môn học..."
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </label>
+          <span className="academic-subject-result-count">
+            {filteredSubjects.length} môn học
+          </span>
+        </div>
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
@@ -392,7 +436,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
               </tr>
             </thead>
             <tbody>
-              {subjects.map((subject) => (
+              {paginatedSubjects.map((subject) => (
                 <tr key={subject.monHocId}>
                   <td>{subject.maMonHoc}</td>
                   <td>
@@ -420,6 +464,11 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                         {canDelete && (
                           <button
                             type="button"
+                            className={
+                              subject.trangThai === "Đang hoạt động"
+                                ? undefined
+                                : "academic-subject-reactivate"
+                            }
                             onClick={() =>
                               void handleToggleSubjectStatus(subject)
                             }
@@ -443,14 +492,50 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                   )}
                 </tr>
               ))}
-              {subjects.length === 0 && (
+              {paginatedSubjects.length === 0 && (
                 <tr>
-                  <td colSpan={6}>Chưa có môn học nào.</td>
+                  <td colSpan={canUpdate || canDelete ? 6 : 5}>
+                    {searchQuery.trim()
+                      ? "Không tìm thấy môn học phù hợp."
+                      : "Chưa có môn học nào."}
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        <nav
+          className="academic-subject-pagination"
+          aria-label="Phân trang môn học"
+        >
+          <span>
+            Hiển thị {firstVisibleSubject}–{lastVisibleSubject} /{" "}
+            {filteredSubjects.length} môn học
+          </span>
+          <div>
+            <button
+              type="button"
+              disabled={safeCurrentPage <= 1}
+              onClick={() =>
+                setCurrentPage((page) => Math.max(1, page - 1))
+              }
+            >
+              Trang trước
+            </button>
+            <strong>
+              {totalPages === 0 ? 0 : safeCurrentPage} / {totalPages}
+            </strong>
+            <button
+              type="button"
+              disabled={totalPages === 0 || safeCurrentPage >= totalPages}
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+            >
+              Trang sau
+            </button>
+          </div>
+        </nav>
       </section>
 
     </div>

@@ -85,6 +85,12 @@ interface ClassOptions {
   }>;
 }
 
+interface ClassEnrollmentResult {
+  daGhiDanh: number[];
+  siSoHienTai: number;
+  siSoToiDa: number;
+}
+
 interface ClassForm {
   maLop: string;
   tenLop: string;
@@ -169,6 +175,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   listOnly = false,
 }) => {
   const studentPickerRef = useRef<HTMLDetailsElement>(null);
+  const classActionsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const classActionsMenuRef = useRef<HTMLDivElement>(null);
   const canUpdateClasses = permissions.includes("CLASS_UPDATE");
   const canDeleteClasses = permissions.includes("CLASS_DELETE");
   const canCreateSubjects = permissions.includes("CLASS_CREATE");
@@ -185,6 +193,20 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const [editingClassId, setEditingClassId] = useState<number | null>(null);
   const [isClassFormOpen, setIsClassFormOpen] = useState(false);
   const [isSubjectFormOpen, setIsSubjectFormOpen] = useState(false);
+  const [classActionsMenu, setClassActionsMenu] = useState<{
+    classId: number;
+    top: number;
+    left: number;
+  } | null>(null);
+  const [enrollmentClass, setEnrollmentClass] = useState<ClassRecord | null>(
+    null,
+  );
+  const [enrollmentStudentIds, setEnrollmentStudentIds] = useState<number[]>(
+    [],
+  );
+  const [enrollmentSearch, setEnrollmentSearch] = useState("");
+  const [enrollmentError, setEnrollmentError] = useState("");
+  const [enrolling, setEnrolling] = useState(false);
   const [subjectForm, setSubjectForm] = useState({
     maMonHoc: "",
     tenMonHoc: "",
@@ -277,6 +299,19 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     statusFilter,
   ]);
 
+  const enrollmentCandidates = useMemo(() => {
+    if (!enrollmentClass) return [];
+    const enrolledIds = new Set(enrollmentClass.hocVienIds);
+    const searchTerm = enrollmentSearch.trim().toLocaleLowerCase("vi");
+    return options.hocViens.filter((student) => {
+      if (enrolledIds.has(student.nguoiDungId)) return false;
+      if (!searchTerm) return true;
+      return `${student.hoTen} ${student.email}`
+        .toLocaleLowerCase("vi")
+        .includes(searchTerm);
+    });
+  }, [enrollmentClass, enrollmentSearch, options.hocViens]);
+
   useEffect(() => {
     const closeStudentPickerOnOutsideClick = (event: MouseEvent) => {
       if (!(event.target instanceof Node)) return;
@@ -305,6 +340,35 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
       );
     };
   }, []);
+
+  useEffect(() => {
+    if (!classActionsMenu) return;
+
+    const closeMenu = () => setClassActionsMenu(null);
+    const closeMenuOnOutsideClick = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (
+        !classActionsTriggerRef.current?.contains(event.target) &&
+        !classActionsMenuRef.current?.contains(event.target)
+      ) {
+        closeMenu();
+      }
+    };
+    const closeMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+
+    document.addEventListener("mousedown", closeMenuOnOutsideClick);
+    document.addEventListener("keydown", closeMenuOnEscape);
+    window.addEventListener("resize", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+    return () => {
+      document.removeEventListener("mousedown", closeMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeMenuOnEscape);
+      window.removeEventListener("resize", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [classActionsMenu]);
 
   const loadData = async () => {
     try {
@@ -398,6 +462,74 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
       setErrorMessage(responseError(error, "Không thể lưu phòng học."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEnrollment = (record: ClassRecord) => {
+    setClassActionsMenu(null);
+    setEnrollmentClass(record);
+    setEnrollmentStudentIds([]);
+    setEnrollmentSearch("");
+    setEnrollmentError("");
+  };
+
+  const toggleClassActions = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    record: ClassRecord,
+  ) => {
+    if (classActionsMenu?.classId === record.lopHocId) {
+      setClassActionsMenu(null);
+      return;
+    }
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 144;
+    const menuHeight =
+      (Number(canUpdateClasses) * 2 + Number(canDeleteClasses)) * 36 + 16;
+    const top =
+      bounds.bottom + menuHeight + 8 <= window.innerHeight
+        ? bounds.bottom + 6
+        : Math.max(8, bounds.top - menuHeight - 6);
+    classActionsTriggerRef.current = event.currentTarget;
+    setClassActionsMenu({
+      classId: record.lopHocId,
+      top,
+      left: Math.max(8, Math.min(bounds.right - menuWidth, window.innerWidth - menuWidth - 8)),
+    });
+  };
+
+  const closeEnrollment = () => {
+    if (enrolling) return;
+    setEnrollmentClass(null);
+    setEnrollmentStudentIds([]);
+    setEnrollmentSearch("");
+    setEnrollmentError("");
+  };
+
+  const submitEnrollment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!enrollmentClass || enrollmentStudentIds.length === 0) return;
+    setEnrolling(true);
+    setEnrollmentError("");
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      const response = await api.post<ClassEnrollmentResult>(
+        `/academic/classes/${enrollmentClass.lopHocId}/enrollments`,
+        { hocVienIds: enrollmentStudentIds },
+      );
+      setSuccessMessage(
+        `Đã ghi danh ${response.data.daGhiDanh.length} học viên vào lớp ${enrollmentClass.maLop}.`,
+      );
+      setEnrollmentClass(null);
+      setEnrollmentStudentIds([]);
+      void loadData();
+    } catch (error: unknown) {
+      console.error("Không thể ghi danh học viên vào lớp:", error);
+      setEnrollmentError(
+        responseError(error, "Không thể ghi danh học viên vào lớp."),
+      );
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -565,9 +697,15 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const selectedProgram = trainingPrograms.find(
     (program) => program.chuongTrinhId === form.chuongTrinhId,
   );
+  const enrollmentSeatsRemaining = enrollmentClass
+    ? Math.max(
+        0,
+        enrollmentClass.siSoToiDa - enrollmentClass.siSoHienTai,
+      )
+    : 0;
 
   return (
-    <section className="academic-page">
+    <section className="academic-page class-management-page">
       {(errorMessage || successMessage) && (
         <ToastNotification
           type={successMessage ? "success" : "error"}
@@ -579,6 +717,73 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           }}
         />
       )}
+
+      {classActionsMenu &&
+        createPortal(
+          <div
+            id={`class-actions-menu-${classActionsMenu.classId}`}
+            ref={classActionsMenuRef}
+            className="class-actions-menu"
+            role="menu"
+            aria-label="Tác vụ lớp học"
+            style={{
+              top: classActionsMenu.top,
+              left: classActionsMenu.left,
+            }}
+          >
+            {classes
+              .filter(
+                (record) => record.lopHocId === classActionsMenu.classId,
+              )
+              .map((record) => (
+                <div key={record.lopHocId} className="class-actions-menu-items">
+                  {canUpdateClasses && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="academic-text-button"
+                        onClick={() => {
+                          setClassActionsMenu(null);
+                          editClass(record);
+                        }}
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="academic-primary-button class-enrollment-open"
+                        disabled={record.siSoHienTai >= record.siSoToiDa}
+                        title={
+                          record.siSoHienTai >= record.siSoToiDa
+                            ? "Lớp đã đủ sĩ số"
+                            : "Ghi danh một hoặc nhiều học viên"
+                        }
+                        onClick={() => openEnrollment(record)}
+                      >
+                        Ghi danh
+                      </button>
+                    </>
+                  )}
+                  {canDeleteClasses && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="academic-danger-button"
+                      onClick={() => {
+                        setClassActionsMenu(null);
+                        void archiveClass(record);
+                      }}
+                    >
+                      Ngừng
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>,
+          document.body,
+        )}
 
       <header className="academic-page-banner">
         <div className="academic-banner-content">
@@ -606,6 +811,182 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           <span>Lớp học</span>
         </div>
       </header>
+
+      <section className="subject-list-showcase" aria-label="Subject management mockup">
+        <h1>Xây dựng giao diện danh sách môn học</h1>
+        <p>
+          Là Quản lý đào tạo, tôi muốn quản lý danh mục môn học, để dùng lại
+          một môn cho nhiều chương trình mà không phải khai báo trùng lặp.
+        </p>
+
+        <div className="subject-list-tools" aria-label="Actions">
+          <button type="button" className="subject-list-tool" aria-label="Add subject">
+            +
+          </button>
+          <button type="button" className="subject-list-tool" aria-label="Sort subjects">
+            ≣
+          </button>
+        </div>
+
+        <div className="subject-list-description-block">
+          <h2>Description</h2>
+          <div className="subject-list-description-box">
+            <ul>
+              <li>Khai báo mã, tên, số tín chỉ trong danh mục</li>
+              <li>Một môn học dùng lại ở nhiều chương trình</li>
+              <li>Môn đã có lớp học thì không xóa được</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {canUpdateClasses &&
+        enrollmentClass &&
+        createPortal(
+          <div
+            className="academic-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) closeEnrollment();
+            }}
+          >
+            <form
+              className="academic-modal class-enrollment-modal"
+              onSubmit={submitEnrollment}
+            >
+              <div className="academic-modal-heading">
+                <div>
+                  <h3>Ghi danh học viên</h3>
+                  <p>
+                    {enrollmentClass.maLop} · Còn {enrollmentSeatsRemaining} chỗ
+                    trống. Có thể chọn một hoặc nhiều học viên.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="academic-modal-close"
+                  onClick={closeEnrollment}
+                  disabled={enrolling}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+              {enrollmentError && (
+                <div
+                  className="academic-alert academic-alert-error"
+                  role="alert"
+                >
+                  {enrollmentError}
+                </div>
+              )}
+              <label className="class-enrollment-search">
+                Tìm học viên
+                <input
+                  autoFocus
+                  type="search"
+                  placeholder="Nhập tên hoặc email"
+                  value={enrollmentSearch}
+                  onChange={(event) => setEnrollmentSearch(event.target.value)}
+                />
+              </label>
+              <div className="class-enrollment-selection">
+                <span>
+                  Đã chọn {enrollmentStudentIds.length}/{enrollmentSeatsRemaining}
+                  {" "}học viên
+                </span>
+                <button
+                  type="button"
+                  className="academic-text-button"
+                  disabled={
+                    enrollmentSeatsRemaining === 0 ||
+                    enrollmentCandidates.length === 0
+                  }
+                  onClick={() => {
+                    const remaining = Math.max(
+                      0,
+                      enrollmentSeatsRemaining - enrollmentStudentIds.length,
+                    );
+                    const selected = new Set(enrollmentStudentIds);
+                    const candidatesToAdd = enrollmentCandidates
+                      .filter((student) => !selected.has(student.nguoiDungId))
+                      .slice(0, remaining)
+                      .map((student) => student.nguoiDungId);
+                    setEnrollmentStudentIds((current) => [
+                      ...current,
+                      ...candidatesToAdd,
+                    ]);
+                  }}
+                >
+                  Chọn học viên hiển thị
+                </button>
+              </div>
+              <div className="class-enrollment-candidates">
+                {enrollmentCandidates.length ? (
+                  enrollmentCandidates.map((student) => {
+                    const checked = enrollmentStudentIds.includes(
+                      student.nguoiDungId,
+                    );
+                    return (
+                      <label
+                        className="class-enrollment-candidate"
+                        key={student.nguoiDungId}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={
+                            !checked &&
+                            enrollmentStudentIds.length >=
+                              enrollmentSeatsRemaining
+                          }
+                          onChange={(event) => {
+                            setEnrollmentStudentIds((current) =>
+                              event.target.checked
+                                ? current.length < enrollmentSeatsRemaining
+                                  ? [...current, student.nguoiDungId]
+                                  : current
+                                : current.filter(
+                                    (id) => id !== student.nguoiDungId,
+                                  ),
+                            );
+                          }}
+                        />
+                        <span>
+                          <strong>{student.hoTen}</strong>
+                          <small>{student.email}</small>
+                        </span>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <p className="class-enrollment-empty">
+                    {enrollmentSeatsRemaining === 0
+                      ? "Lớp đã đủ sĩ số."
+                      : "Không có học viên phù hợp hoặc mọi học viên đang hiển thị đã ở trong lớp."}
+                  </p>
+                )}
+              </div>
+              <div className="academic-modal-actions">
+                <button
+                  type="button"
+                  className="academic-secondary-button"
+                  onClick={closeEnrollment}
+                  disabled={enrolling}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="academic-primary-button class-enrollment-submit"
+                  disabled={enrolling || enrollmentStudentIds.length === 0}
+                >
+                  {enrolling ? "Đang ghi danh..." : "Xác nhận ghi danh"}
+                </button>
+              </div>
+            </form>
+          </div>,
+          document.body,
+        )}
 
       {canUpdateClasses &&
         isClassFormOpen &&
@@ -1553,26 +1934,25 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                         {["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
                           record.trangThai,
                         ) && (
-                          <>
-                            {canUpdateClasses && (
-                              <button
-                                className="academic-text-button"
-                                type="button"
-                                onClick={() => editClass(record)}
-                              >
-                                Sửa
-                              </button>
-                            )}
-                            {canDeleteClasses && (
-                              <button
-                                className="academic-danger-button"
-                                type="button"
-                                onClick={() => void archiveClass(record)}
-                              >
-                                Ngừng
-                              </button>
-                            )}
-                          </>
+                          <button
+                            ref={
+                              classActionsMenu?.classId === record.lopHocId
+                                ? classActionsTriggerRef
+                                : null
+                            }
+                            type="button"
+                            className="academic-secondary-button class-actions-trigger"
+                            aria-haspopup="menu"
+                            aria-expanded={
+                              classActionsMenu?.classId === record.lopHocId
+                            }
+                            aria-controls={`class-actions-menu-${record.lopHocId}`}
+                            onClick={(event) =>
+                              toggleClassActions(event, record)
+                            }
+                          >
+                            Tác vụ <span aria-hidden="true">▾</span>
+                          </button>
                         )}
                       </td>
                     )}

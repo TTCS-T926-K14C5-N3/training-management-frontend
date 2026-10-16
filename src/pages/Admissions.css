@@ -882,6 +882,17 @@
   border-radius: 10px;
 }
 
+.lead-assignment-empty-notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .lead-bulk-info {
   display: flex;
   align-items: center;
