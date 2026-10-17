@@ -17,6 +17,23 @@ interface User {
   vaiTroId?: number;
   vaiTroIds?: number[];
   maHocVien?: string | null;
+  lopHienTai?: Array<{ lopHocId: number; maLop: string; tenLop: string }>;
+  lopHocs?: Array<{
+    lopHocId: number;
+    maLop: string;
+    tenLop: string;
+    trangThai: string;
+  }>;
+  trangThaiTaiKhoan?: string;
+  trangThaiGhiDanh?: string;
+  ngayHieuLuc?: string | null;
+}
+
+interface StudentStatusClass {
+  lopHocId: number;
+  maLop: string;
+  tenLop: string;
+  trangThai: string;
 }
 
 interface Role {
@@ -102,6 +119,11 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [search, setSearch] = useState("");
   const [roleId, setRoleId] = useState(profileSection ? "2" : "");
   const [status, setStatus] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState("");
+  const [studentStatusClasses, setStudentStatusClasses] = useState<
+    StudentStatusClass[]
+  >([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -145,6 +167,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const canManageUserRoles =
     isAdmin ||
     (permissions.includes("ROLE_VIEW") && permissions.includes("ROLE_UPDATE"));
+  const canManageEnrollment = isAdmin || permissions.includes("CLASS_UPDATE");
 
   // Create Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -162,6 +185,16 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [studentProfileUser, setStudentProfileUser] = useState<User | null>(
     null,
   );
+  const [studentActionUser, setStudentActionUser] = useState<User | null>(null);
+  const [studentActionForm, setStudentActionForm] = useState({
+    classId: "" as number | "",
+    type: "BaoLuu" as "BaoLuu" | "ChuyenLop" | "ThoiHoc",
+    targetClassId: "" as number | "",
+    effectiveDate: new Date().toISOString().slice(0, 10),
+    reason: "",
+  });
+  const [studentActionSaving, setStudentActionSaving] = useState(false);
+  const [studentActionError, setStudentActionError] = useState("");
   const [editForm, setEditForm] = useState({
     hoTen: "",
     email: "",
@@ -257,20 +290,35 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get("/users/", {
-        params: {
-          search: search || undefined,
-          role_id: profileSection ? "2" : roleId || undefined,
-          status: status || undefined,
-          page,
-          limit,
-        },
-      });
+      const response = profileSection === "information"
+        ? await api.get("/academic/students/statuses", {
+            params: {
+              search: search || undefined,
+              classId: classFilter || undefined,
+              enrollmentStatus: enrollmentStatusFilter || undefined,
+              page,
+              limit,
+            },
+          })
+        : await api.get("/users/", {
+            params: {
+              search: search || undefined,
+              role_id: profileSection ? "2" : roleId || undefined,
+              status: status || undefined,
+              page,
+              limit,
+            },
+          });
       const data = response.data as UserResponse | User[];
       if (Array.isArray(data)) {
         setUsers(data);
         setTotal(data.length);
       } else {
+        if (profileSection === "information") {
+          setStudentStatusClasses(
+            (data as UserResponse & { classes?: StudentStatusClass[] }).classes ?? [],
+          );
+        }
         const userList = data.items || data.users || data.data || [];
         setUsers(userList);
         if (typeof data.pagination?.total === "number") {
@@ -290,7 +338,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
     } finally {
       setLoading(false);
     }
-  }, [page, profileSection, search, roleId, status, limit]);
+  }, [classFilter, enrollmentStatusFilter, page, profileSection, search, roleId, status, limit]);
 
   useEffect(() => {
     loadUsers();
@@ -471,6 +519,60 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
     }
   };
 
+  const openStudentAction = (student: User) => {
+    setStudentActionUser(student);
+    setStudentActionForm({
+      classId: student.lopHienTai?.length === 1
+        ? student.lopHienTai[0].lopHocId
+        : "",
+      type: "BaoLuu",
+      targetClassId: "",
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      reason: "",
+    });
+    setStudentActionError("");
+  };
+
+  const saveStudentAction = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!studentActionUser || !studentActionForm.classId) {
+      setStudentActionError("Vui lòng chọn lớp cần xử lý.");
+      return;
+    }
+    if (
+      studentActionForm.type === "ChuyenLop" &&
+      !studentActionForm.targetClassId
+    ) {
+      setStudentActionError("Vui lòng chọn lớp chuyển đến.");
+      return;
+    }
+    setStudentActionSaving(true);
+    setStudentActionError("");
+    try {
+      await api.post(
+        `/academic/classes/${studentActionForm.classId}/students/${studentActionUser.nguoiDungId}/actions`,
+        {
+          loaiThaoTac: studentActionForm.type,
+          lopHocDichId:
+            studentActionForm.type === "ChuyenLop"
+              ? studentActionForm.targetClassId
+              : null,
+          ngayHieuLuc: studentActionForm.effectiveDate,
+          lyDo: studentActionForm.reason,
+        },
+      );
+      setStudentActionUser(null);
+      setToast({ type: "success", text: "Đã lưu quyết định xử lý học viên." });
+      await loadUsers();
+    } catch (error: any) {
+      setStudentActionError(
+        error?.response?.data?.detail || "Không thể lưu quyết định học viên.",
+      );
+    } finally {
+      setStudentActionSaving(false);
+    }
+  };
+
   // Lock User
   const handleLock = async (user: User) => {
     if (user.nguoiDungId === currentUserId) {
@@ -558,7 +660,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
           </h2>
           <p>
             {profileSection === "information"
-              ? "Tra cứu thông tin cá nhân, liên hệ và trình độ đầu vào của học viên."
+              ? "Tra cứu học viên theo mã, họ tên hoặc lớp; theo dõi bảo lưu, chuyển lớp và thôi học."
               : profileSection === "history"
                 ? "Theo dõi lớp đang học, lịch sử lớp và bảng điểm của học viên."
                 : "Tra cứu học viên theo mã, ID, họ tên hoặc số điện thoại; mở hồ sơ để xem quá trình học và bảng điểm."}
@@ -590,7 +692,11 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
 
       <div
         className={`users-filter-card ${
-          profileSection ? "users-filter-student-profile" : ""
+          profileSection === "information"
+            ? "users-filter-enrollment-status"
+            : profileSection
+              ? "users-filter-student-profile"
+              : ""
         }`}
       >
         <div className="users-search-wrapper">
@@ -604,6 +710,50 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             placeholder="Tìm mã học viên, ID, họ tên, email hoặc số điện thoại..."
           />
         </div>
+        {profileSection === "information" && (
+          <>
+            <select
+              value={classFilter}
+              onChange={(event) => {
+                setClassFilter(event.target.value);
+                setPage(1);
+              }}
+              className="users-filter-select"
+              aria-label="Lọc theo lớp"
+            >
+              <option value="">Tất cả lớp</option>
+              {studentStatusClasses.map((classItem) => (
+                <option key={classItem.lopHocId} value={classItem.lopHocId}>
+                  {classItem.maLop} · {classItem.tenLop}
+                </option>
+              ))}
+            </select>
+            <select
+              value={enrollmentStatusFilter}
+              onChange={(event) => {
+                setEnrollmentStatusFilter(event.target.value);
+                setPage(1);
+              }}
+              className="users-filter-select"
+              aria-label="Lọc tình trạng ghi danh"
+            >
+              <option value="">Mọi tình trạng ghi danh</option>
+              {[
+                "Đang học",
+                "Sắp bảo lưu",
+                "Sắp chuyển lớp",
+                "Sắp thôi học",
+                "Bảo lưu",
+                "Đã chuyển lớp",
+                "Thôi học",
+                "Đã kết thúc",
+                "Chưa ghi danh",
+              ].map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </>
+        )}
         {!profileSection && (
           <select
             value={roleId}
@@ -621,18 +771,20 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             ))}
           </select>
         )}
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="users-filter-select"
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="HoatDong">Hoạt động</option>
-          <option value="BiKhoa">Bị khóa</option>
-        </select>
+        {profileSection !== "information" && (
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="users-filter-select"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="HoatDong">Hoạt động</option>
+            <option value="BiKhoa">Bị khóa</option>
+          </select>
+        )}
         <button className="users-search-button" onClick={handleSearch}>
           Tìm kiếm
         </button>
@@ -656,8 +808,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
         ) : users.length === 0 ? (
           <div className="users-empty">
             <div className="users-empty-icon">👤</div>
-            <h3>Không tìm thấy người dùng</h3>
-            <p>Không có tài khoản nào phù hợp với điều kiện tìm kiếm.</p>
+            <h3>{profileSection ? "Không tìm thấy học viên" : "Không tìm thấy người dùng"}</h3>
+            <p>Không có bản ghi phù hợp với điều kiện tìm kiếm.</p>
           </div>
         ) : (
           <>
@@ -669,8 +821,9 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                     <th>Họ tên</th>
                     <th>Email</th>
                     <th>Số điện thoại</th>
-                    <th>Vai trò</th>
-                    <th>Trạng thái</th>
+                    <th>{profileSection === "information" ? "Lớp hiện tại" : "Vai trò"}</th>
+                    <th>{profileSection === "information" ? "Tình trạng ghi danh" : "Trạng thái"}</th>
+                    {profileSection === "information" && <th>Tài khoản</th>}
                     <th>{profileSection ? "Xem chi tiết" : "Thao tác"}</th>
                   </tr>
                 </thead>
@@ -705,28 +858,82 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                         )}
                       </td>
                       <td>
-                        {user.vaiTro ? (
+                        {profileSection === "information" ? (
+                          user.lopHienTai?.length ? (
+                            <div className="student-current-classes">
+                              {user.lopHienTai.map((classItem) => (
+                                <span key={classItem.lopHocId}>
+                                  {classItem.maLop}
+                                </span>
+                              ))}
+                            </div>
+                          ) : <span className="users-empty-value">—</span>
+                        ) : user.vaiTro ? (
                           <span className="users-role">{user.vaiTro}</span>
                         ) : (
                           <span className="users-empty-value">—</span>
                         )}
                       </td>
                       <td>
-                        <span
-                          className={`users-status ${
-                            user.trangThai === "HoatDong"
+                        {profileSection === "information" ? (
+                          <div className="student-enrollment-status-cell">
+                            <span className={`student-enrollment-badge ${
+                              user.trangThaiGhiDanh === "Đang học"
+                                ? "is-active"
+                                : user.trangThaiGhiDanh?.startsWith("Sắp ")
+                                  ? "is-pending"
+                                  : "is-inactive"
+                            }`}>
+                              {user.trangThaiGhiDanh ?? "Chưa ghi danh"}
+                            </span>
+                            {user.ngayHieuLuc && (
+                              <small>
+                                Từ {new Date(`${user.ngayHieuLuc}T00:00:00`).toLocaleDateString("vi-VN")}
+                              </small>
+                            )}
+                          </div>
+                        ) : (
+                          <span
+                            className={`users-status ${
+                              user.trangThai === "HoatDong"
+                                ? "users-status-active"
+                                : "users-status-locked"
+                            }`}
+                          >
+                            <span className="status-dot" />
+                            {user.trangThai === "HoatDong"
+                              ? "Hoạt động"
+                              : "Bị khóa"}
+                          </span>
+                        )}
+                      </td>
+                      {profileSection === "information" && (
+                        <td>
+                          <span className={`users-status ${
+                            (user.trangThaiTaiKhoan ?? user.trangThai) === "HoatDong"
                               ? "users-status-active"
                               : "users-status-locked"
-                          }`}
-                        >
-                          <span className="status-dot" />
-                          {user.trangThai === "HoatDong"
-                            ? "Hoạt động"
-                            : "Bị khóa"}
-                        </span>
-                      </td>
+                          }`}>
+                            <span className="status-dot" />
+                            {(user.trangThaiTaiKhoan ?? user.trangThai) === "HoatDong"
+                              ? "Hoạt động"
+                              : "Bị khóa"}
+                          </span>
+                        </td>
+                      )}
                       <td>
                         <div className="users-actions">
+                          {profileSection === "information" &&
+                            canManageEnrollment &&
+                            !!user.lopHienTai?.length && (
+                              <button
+                                type="button"
+                                className="student-enrollment-action"
+                                onClick={() => openStudentAction(user)}
+                              >
+                                Xử lý
+                              </button>
+                            )}
                           <div className="users-action-menu-wrap">
                             <button
                               type="button"
@@ -877,6 +1084,161 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
           onClose={() => setStudentProfileUser(null)}
           onSaved={() => void loadUsers()}
         />
+      )}
+
+      {studentActionUser && (
+        <div
+          className="users-modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !studentActionSaving) {
+              setStudentActionUser(null);
+            }
+          }}
+        >
+          <form
+            className="users-modal student-enrollment-action-modal"
+            onSubmit={saveStudentAction}
+          >
+            <div className="users-modal-header">
+              <div>
+                <h2>Xử lý tình trạng học viên</h2>
+                <p>{studentActionUser.hoTen}</p>
+              </div>
+              <button
+                type="button"
+                className="users-modal-close"
+                onClick={() => setStudentActionUser(null)}
+                disabled={studentActionSaving}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+            {studentActionError && (
+              <div className="users-message users-message-error" role="alert">
+                {studentActionError}
+              </div>
+            )}
+            <div className="student-enrollment-action-fields">
+              <label>
+                Lớp hiện tại
+                <select
+                  required
+                  value={studentActionForm.classId}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      classId: event.target.value ? Number(event.target.value) : "",
+                      targetClassId: "",
+                    }))
+                  }
+                >
+                  <option value="">Chọn lớp</option>
+                  {studentActionUser.lopHienTai?.map((classItem) => (
+                    <option key={classItem.lopHocId} value={classItem.lopHocId}>
+                      {classItem.maLop} · {classItem.tenLop}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Thao tác
+                <select
+                  value={studentActionForm.type}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      type: event.target.value as typeof current.type,
+                      targetClassId: "",
+                    }))
+                  }
+                >
+                  <option value="BaoLuu">Bảo lưu</option>
+                  <option value="ChuyenLop">Chuyển lớp</option>
+                  <option value="ThoiHoc">Thôi học</option>
+                </select>
+              </label>
+              {studentActionForm.type === "ChuyenLop" && (
+                <label>
+                  Lớp chuyển đến
+                  <select
+                    required
+                    value={studentActionForm.targetClassId}
+                    onChange={(event) =>
+                      setStudentActionForm((current) => ({
+                        ...current,
+                        targetClassId: event.target.value
+                          ? Number(event.target.value)
+                          : "",
+                      }))
+                    }
+                  >
+                    <option value="">Chọn lớp đích</option>
+                    {studentStatusClasses
+                      .filter(
+                        (classItem) =>
+                          classItem.lopHocId !== studentActionForm.classId &&
+                          ["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
+                            classItem.trangThai,
+                          ),
+                      )
+                      .map((classItem) => (
+                        <option key={classItem.lopHocId} value={classItem.lopHocId}>
+                          {classItem.maLop} · {classItem.tenLop}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
+              <label>
+                Ngày hiệu lực
+                <input
+                  required
+                  type="date"
+                  value={studentActionForm.effectiveDate}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      effectiveDate: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="student-enrollment-reason">
+                Lý do
+                <textarea
+                  required
+                  rows={3}
+                  maxLength={1000}
+                  value={studentActionForm.reason}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      reason: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+            <div className="student-enrollment-action-footer">
+              <button
+                type="button"
+                className="users-search-button users-action-cancel"
+                onClick={() => setStudentActionUser(null)}
+                disabled={studentActionSaving}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="users-create-button"
+                disabled={studentActionSaving}
+              >
+                {studentActionSaving ? "Đang lưu..." : "Lưu quyết định"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {/* MODAL EDIT USER */}

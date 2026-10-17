@@ -39,7 +39,12 @@ interface ClassRecord {
   trangThai: string;
   hocVienIds: number[];
   hocViens: Array<
-    UserOption & { ngayGhiDanh: string; nguoiGhiDanh: string | null }
+    UserOption & {
+      ngayGhiDanh: string;
+      nguoiGhiDanh: string | null;
+      trangThaiGhiDanh: string;
+      ngayHieuLuc: string | null;
+    }
   >;
   monHocIds: number[];
   monHocs: SubjectOption[];
@@ -124,6 +129,16 @@ interface StudentProfile {
     trangThai: string;
   };
   lopHocs: ClassRecord[];
+  thaoTacs: Array<{
+    actionId: number;
+    loaiThaoTac: "BaoLuu" | "ChuyenLop" | "ThoiHoc";
+    ngayHieuLuc: string;
+    lyDo: string;
+    maLop: string;
+    maLopDich: string | null;
+    nguoiThucHien: string | null;
+    ngayTao: string;
+  }>;
   diems: Array<{
     maLop: string;
     tenLop: string;
@@ -226,6 +241,16 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [studentAction, setStudentAction] = useState<{
+    classId: number;
+    student: UserOption;
+  } | null>(null);
+  const [studentActionForm, setStudentActionForm] = useState({
+    loaiThaoTac: "BaoLuu" as "BaoLuu" | "ChuyenLop" | "ThoiHoc",
+    ngayHieuLuc: new Date().toISOString().slice(0, 10),
+    lyDo: "",
+    lopHocDichId: "" as number | "",
+  });
   const [roomForm, setRoomForm] = useState({ maPhong: "", tenPhong: "", sucChua: 30 });
   const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
 
@@ -443,6 +468,55 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     } catch (error: unknown) {
       console.error("Không thể tải hồ sơ học viên:", error);
       setErrorMessage(responseError(error, "Không thể tải hồ sơ học viên."));
+    }
+  };
+
+  const openStudentAction = (classId: number, student: UserOption) => {
+    setStudentAction({ classId, student });
+    setStudentActionForm({
+      loaiThaoTac: "BaoLuu",
+      ngayHieuLuc: new Date().toISOString().slice(0, 10),
+      lyDo: "",
+      lopHocDichId: "",
+    });
+    setErrorMessage("");
+  };
+
+  const closeStudentAction = () => {
+    if (saving) return;
+    setStudentAction(null);
+  };
+
+  const saveStudentAction = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!studentAction) return;
+    setSaving(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      await api.post(
+        `/academic/classes/${studentAction.classId}/students/${studentAction.student.nguoiDungId}/actions`,
+        {
+          loaiThaoTac: studentActionForm.loaiThaoTac,
+          ngayHieuLuc: studentActionForm.ngayHieuLuc,
+          lyDo: studentActionForm.lyDo,
+          lopHocDichId:
+            studentActionForm.loaiThaoTac === "ChuyenLop"
+              ? studentActionForm.lopHocDichId
+              : null,
+        },
+      );
+      const studentId = studentAction.student.nguoiDungId;
+      setStudentAction(null);
+      setSuccessMessage("Đã lưu quyết định xử lý học viên.");
+      await loadData();
+      if (studentProfile?.hocVien.nguoiDungId === studentId) {
+        await loadStudentProfile(studentId);
+      }
+    } catch (error: unknown) {
+      setErrorMessage(responseError(error, "Không thể lưu quyết định học viên."));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -717,6 +791,139 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           }}
         />
       )}
+
+      {studentAction &&
+        createPortal(
+          <div
+            className="academic-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) closeStudentAction();
+            }}
+          >
+            <form
+              className="academic-modal student-action-modal"
+              onSubmit={saveStudentAction}
+            >
+              <div className="academic-modal-heading">
+                <div>
+                  <h3>Xử lý học viên</h3>
+                  <p>
+                    {studentAction.student.hoTen} · lớp {classes.find(
+                      (item) => item.lopHocId === studentAction.classId,
+                    )?.maLop}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="academic-modal-close"
+                  onClick={closeStudentAction}
+                  disabled={saving}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="academic-form-grid">
+                <label>
+                  Thao tác
+                  <select
+                    value={studentActionForm.loaiThaoTac}
+                    onChange={(event) =>
+                      setStudentActionForm((current) => ({
+                        ...current,
+                        loaiThaoTac: event.target.value as typeof current.loaiThaoTac,
+                        lopHocDichId: "",
+                      }))
+                    }
+                  >
+                    <option value="BaoLuu">Bảo lưu</option>
+                    <option value="ChuyenLop">Chuyển lớp</option>
+                    <option value="ThoiHoc">Thôi học</option>
+                  </select>
+                </label>
+                <label>
+                  Ngày hiệu lực
+                  <input
+                    required
+                    type="date"
+                    value={studentActionForm.ngayHieuLuc}
+                    onChange={(event) =>
+                      setStudentActionForm((current) => ({
+                        ...current,
+                        ngayHieuLuc: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                {studentActionForm.loaiThaoTac === "ChuyenLop" && (
+                  <label>
+                    Lớp chuyển đến
+                    <select
+                      required
+                      value={studentActionForm.lopHocDichId}
+                      onChange={(event) =>
+                        setStudentActionForm((current) => ({
+                          ...current,
+                          lopHocDichId: event.target.value
+                            ? Number(event.target.value)
+                            : "",
+                        }))
+                      }
+                    >
+                      <option value="">Chọn lớp</option>
+                      {classes
+                        .filter(
+                          (item) =>
+                            item.lopHocId !== studentAction.classId &&
+                            ["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
+                              item.trangThai,
+                            ),
+                        )
+                        .map((item) => (
+                          <option key={item.lopHocId} value={item.lopHocId}>
+                            {item.maLop} · {item.tenLop} ({item.siSoHienTai}/{item.siSoToiDa})
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+                <label className="academic-wide-field">
+                  Lý do
+                  <textarea
+                    required
+                    maxLength={1000}
+                    rows={3}
+                    value={studentActionForm.lyDo}
+                    onChange={(event) =>
+                      setStudentActionForm((current) => ({
+                        ...current,
+                        lyDo: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="academic-form-actions">
+                <button
+                  className="academic-secondary-button"
+                  type="button"
+                  onClick={closeStudentAction}
+                  disabled={saving}
+                >
+                  Hủy
+                </button>
+                <button
+                  className="academic-primary-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving ? "Đang lưu..." : "Lưu quyết định"}
+                </button>
+              </div>
+            </form>
+          </div>,
+          document.body,
+        )}
 
       {classActionsMenu &&
         createPortal(
@@ -1613,6 +1820,46 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               </p>
             );
           })}
+          <h3>Lịch sử xử lý</h3>
+          {studentProfile.thaoTacs.length ? (
+            <div className="academic-table-wrap">
+              <table className="academic-table">
+                <thead>
+                  <tr>
+                    <th>Thao tác</th>
+                    <th>Ngày hiệu lực</th>
+                    <th>Lớp</th>
+                    <th>Lý do</th>
+                    <th>Người thực hiện</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentProfile.thaoTacs.map((action) => (
+                    <tr key={action.actionId}>
+                      <td>
+                        {action.loaiThaoTac === "BaoLuu"
+                          ? "Bảo lưu"
+                          : action.loaiThaoTac === "ChuyenLop"
+                            ? "Chuyển lớp"
+                            : "Thôi học"}
+                      </td>
+                      <td>
+                        {new Date(`${action.ngayHieuLuc}T00:00:00`).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td>
+                        {action.maLop}
+                        {action.maLopDich ? ` → ${action.maLopDich}` : ""}
+                      </td>
+                      <td>{action.lyDo}</td>
+                      <td>{action.nguoiThucHien ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="academic-muted">Chưa có thao tác xử lý học viên.</p>
+          )}
           <h3>Điểm</h3>
           {studentProfile.diems.length ? (
             <div className="academic-table-wrap">
@@ -1866,6 +2113,29 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                                   ? ` · ${student.nguoiGhiDanh}`
                                   : ""}
                               </small>
+                              <span
+                                className={`student-enrollment-status ${
+                                  student.trangThaiGhiDanh === "Đang học"
+                                    ? "active"
+                                    : "pending"
+                                }`}
+                              >
+                                {student.trangThaiGhiDanh}
+                                {student.ngayHieuLuc
+                                  ? ` · ${new Date(`${student.ngayHieuLuc}T00:00:00`).toLocaleDateString("vi-VN")}`
+                                  : ""}
+                              </span>
+                                {!listOnly && canUpdateClasses && (
+                                  <button
+                                    className="class-student-action-button"
+                                    type="button"
+                                    onClick={() =>
+                                      openStudentAction(record.lopHocId, student)
+                                    }
+                                  >
+                                    Xử lý học viên
+                                  </button>
+                                )}
                             </div>
                           ))
                         ) : (

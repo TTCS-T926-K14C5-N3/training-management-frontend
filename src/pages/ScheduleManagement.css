@@ -1,6 +1,7 @@
 .schedule-page {
   display: grid;
   gap: 20px;
+  min-height: 100%;
   width: min(100%, 1600px);
   margin: 0 auto;
   padding: 4px 0 32px;
@@ -455,6 +456,10 @@
   width: min(100%, 540px);
 }
 
+.schedule-attendance-modal {
+  width: min(100%, 980px);
+}
+
 .schedule-modal-heading {
   display: flex;
   align-items: flex-start;
@@ -592,6 +597,46 @@
   border-top: 1px solid #edf1f7;
 }
 
+.schedule-attendance-list {
+  display: grid;
+  max-height: min(58vh, 620px);
+  overflow: auto;
+  border-top: 1px solid #e8edf5;
+}
+
+.schedule-attendance-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 0.7fr) minmax(160px, 1fr) 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.schedule-attendance-student {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.schedule-attendance-student strong {
+  color: #172554;
+  font-size: 0.86rem;
+}
+
+.schedule-attendance-student small {
+  overflow-wrap: anywhere;
+  color: #64748b;
+  font-size: 0.74rem;
+}
+
+.schedule-attendance-index {
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .schedule-cancel-summary {
   display: grid;
   gap: 6px;
@@ -679,6 +724,21 @@
 
   .schedule-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-attendance-row {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    gap: 8px;
+  }
+
+  .schedule-attendance-student,
+  .schedule-attendance-row .schedule-field {
+    grid-column: 1;
+  }
+
+  .schedule-attendance-index {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .schedule-field-full {

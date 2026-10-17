@@ -33,7 +33,26 @@ interface ScheduleOptions {
     tenPhong: string;
     trangThai: string;
   }>;
-  diemDanhDuocHoTro: boolean;
+}
+
+type AttendanceStatus = "Có mặt" | "Vắng" | "Muộn" | "Có phép";
+
+interface AttendanceStudent {
+  hocVienId: number;
+  hoTen: string;
+  email: string;
+  trangThai: AttendanceStatus | "";
+  ghiChu: string;
+  nguoiDiemDanh: string | null;
+  ngayCapNhat: string | null;
+}
+
+interface AttendanceResponse {
+  lichHocId: number;
+  maBuoiHoc: string;
+  ngayHoc: string;
+  hocViens: AttendanceStudent[];
+  trangThaiDiemDanh: string | null;
 }
 
 interface ScheduleRecord {
@@ -233,6 +252,7 @@ interface ScheduleManagementProps {
 function ScheduleManagement({ permissions }: ScheduleManagementProps) {
   const canCreate = permissions.includes("SCHEDULE_CREATE");
   const canUpdate = permissions.includes("SCHEDULE_UPDATE");
+  const canUpdateAttendance = permissions.includes("ATTENDANCE_UPDATE");
   const [options, setOptions] = useState<ScheduleOptions | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [history, setHistory] = useState<ScheduleHistory[]>([]);
@@ -249,6 +269,12 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState("");
   const [cancelSaving, setCancelSaving] = useState(false);
+  const [attendanceSession, setAttendanceSession] =
+    useState<ScheduleRecord | null>(null);
+  const [attendanceStudents, setAttendanceStudents] = useState<AttendanceStudent[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
+  const [attendanceError, setAttendanceError] = useState("");
   const [toast, setToast] = useState<{
     type: "success" | "error";
     text: string;
@@ -443,6 +469,67 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
     setCancelError("");
   };
 
+  const openAttendance = async (schedule: ScheduleRecord) => {
+    setAttendanceSession(schedule);
+    setAttendanceLoading(true);
+    setAttendanceError("");
+    try {
+      const response = await api.get<AttendanceResponse>(
+        `/academic/schedules/${schedule.lichHocId}/attendance`,
+      );
+      setAttendanceStudents(response.data.hocViens);
+      setSchedules((current) =>
+        current.map((item) =>
+          item.lichHocId === schedule.lichHocId
+            ? { ...item, trangThaiDiemDanh: response.data.trangThaiDiemDanh }
+            : item,
+        ),
+      );
+    } catch (error) {
+      setAttendanceError(errorFromApi(error).message);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const saveAttendance = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!attendanceSession || attendanceSaving) return;
+    if (attendanceStudents.some((student) => !student.trangThai)) {
+      setAttendanceError("Vui lòng chọn trạng thái cho từng học viên.");
+      return;
+    }
+
+    setAttendanceSaving(true);
+    setAttendanceError("");
+    try {
+      const response = await api.put<AttendanceResponse>(
+        `/academic/schedules/${attendanceSession.lichHocId}/attendance`,
+        {
+          hocViens: attendanceStudents.map((student) => ({
+            hocVienId: student.hocVienId,
+            trangThai: student.trangThai,
+            ghiChu: student.ghiChu || null,
+          })),
+        },
+      );
+      setSchedules((current) =>
+        current.map((item) =>
+          item.lichHocId === attendanceSession.lichHocId
+            ? { ...item, trangThaiDiemDanh: response.data.trangThaiDiemDanh }
+            : item,
+        ),
+      );
+      setAttendanceSession(null);
+      setToast({ type: "success", text: "Đã lưu điểm danh buổi học." });
+      await loadData(false);
+    } catch (error) {
+      setAttendanceError(errorFromApi(error).message);
+    } finally {
+      setAttendanceSaving(false);
+    }
+  };
+
   return (
     <main className="schedule-page">
       <header className="schedule-hero">
@@ -465,14 +552,6 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
           </button>
         )}
       </header>
-
-      {!options?.diemDanhDuocHoTro && (
-        <div className="schedule-info-banner" role="status">
-          Backend hiện chưa có dữ liệu hoặc API điểm danh theo buổi học. Trạng
-          thái điểm danh chưa được ghi nhận; buổi đã bắt đầu/đã qua giờ được
-          khóa chỉnh sửa và hủy.
-        </div>
-      )}
 
       <section className="schedule-panel" aria-labelledby="schedule-list-title">
         <div className="schedule-panel-heading">
@@ -516,6 +595,7 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                   <th>Phòng học</th>
                   <th>Giảng viên</th>
                   <th>Trạng thái</th>
+                  <th>Điểm danh</th>
                   <th><span className="schedule-sr-only">Thao tác</span></th>
                 </tr>
               </thead>
@@ -538,8 +618,17 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                         {schedule.trangThai}
                       </span>
                     </td>
+                    <td>{schedule.trangThaiDiemDanh ?? "—"}</td>
                     <td>
                       <div className="schedule-row-actions">
+                        {canUpdateAttendance && schedule.trangThai !== "Đã hủy" && (
+                          <button
+                            type="button"
+                            onClick={() => void openAttendance(schedule)}
+                          >
+                            Điểm danh
+                          </button>
+                        )}
                         {canUpdate && schedule.coTheChinhSua && (
                           <button type="button" onClick={() => openEdit(schedule)}>
                             Chỉnh sửa
@@ -673,7 +762,7 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                     <span><b>Trạng thái:</b> {editing.trangThai}</span>
                     <span>
                       <b>Điểm danh:</b>{" "}
-                      {editing.trangThaiDiemDanh ?? "Backend chưa có dữ liệu điểm danh"}
+                      {editing.trangThaiDiemDanh ?? "Chưa ghi nhận"}
                     </span>
                   </div>
                 )}
@@ -809,7 +898,7 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                 </label>
               </div>
               <p className="schedule-readonly-note">
-                Lớp và môn học là thông tin chỉ đọc khi chỉnh sửa. Trạng thái điểm danh chưa được Backend hỗ trợ.
+                Lớp và môn học là thông tin chỉ đọc khi chỉnh sửa. Điểm danh được quản lý riêng theo từng buổi học.
               </p>
               <div className="schedule-modal-actions">
                 <button type="button" className="schedule-secondary-button" onClick={() => setFormOpen(false)} disabled={saving}>
@@ -873,6 +962,129 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {attendanceSession && (
+        <div className="schedule-modal-backdrop" role="presentation">
+          <section
+            className="schedule-modal schedule-attendance-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="schedule-attendance-title"
+          >
+            <div className="schedule-modal-heading">
+              <div>
+                <span className="schedule-eyebrow">
+                  {attendanceSession.maBuoiHoc} · {attendanceSession.maLop}
+                </span>
+                <h2 id="schedule-attendance-title">Điểm danh học viên</h2>
+                <p>
+                  {displayDate(attendanceSession.ngayHoc)} · {attendanceSession.gioBatDau}–{attendanceSession.gioKetThuc} · {attendanceSession.tenMonHoc}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={() => setAttendanceSession(null)}
+                aria-label="Đóng"
+                disabled={attendanceSaving}
+              >
+                ×
+              </button>
+            </div>
+            {attendanceError && (
+              <div className="schedule-form-error" role="alert">
+                {attendanceError}
+              </div>
+            )}
+            {attendanceLoading ? (
+              <div className="schedule-state" role="status">
+                Đang tải danh sách học viên...
+              </div>
+            ) : attendanceStudents.length === 0 ? (
+              <div className="schedule-state">
+                Không có học viên thuộc lớp vào ngày diễn ra buổi học.
+              </div>
+            ) : (
+              <form onSubmit={(event) => void saveAttendance(event)}>
+                <div className="schedule-attendance-list">
+                  {attendanceStudents.map((student, index) => (
+                    <div className="schedule-attendance-row" key={student.hocVienId}>
+                      <div className="schedule-attendance-student">
+                        <strong>{student.hoTen}</strong>
+                        <small>{student.email}</small>
+                        {student.nguoiDiemDanh && student.ngayCapNhat && (
+                          <small>
+                            Cập nhật bởi {student.nguoiDiemDanh} · {displayTimestamp(student.ngayCapNhat)}
+                          </small>
+                        )}
+                      </div>
+                      <label className="schedule-field">
+                        <span>Trạng thái</span>
+                        <select
+                          required
+                          value={student.trangThai}
+                          onChange={(event) =>
+                            setAttendanceStudents((current) =>
+                              current.map((item) =>
+                                item.hocVienId === student.hocVienId
+                                  ? { ...item, trangThai: event.target.value as AttendanceStatus }
+                                  : item,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="">Chọn trạng thái</option>
+                          <option value="Có mặt">Có mặt</option>
+                          <option value="Vắng">Vắng</option>
+                          <option value="Muộn">Muộn</option>
+                          <option value="Có phép">Có phép</option>
+                        </select>
+                      </label>
+                      <label className="schedule-field schedule-attendance-note">
+                        <span>Ghi chú</span>
+                        <input
+                          maxLength={1000}
+                          value={student.ghiChu}
+                          onChange={(event) =>
+                            setAttendanceStudents((current) =>
+                              current.map((item) =>
+                                item.hocVienId === student.hocVienId
+                                  ? { ...item, ghiChu: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          aria-label={`Ghi chú điểm danh ${student.hoTen}`}
+                        />
+                      </label>
+                      <span className="schedule-attendance-index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="schedule-modal-actions">
+                  <button
+                    type="button"
+                    className="schedule-secondary-button"
+                    onClick={() => setAttendanceSession(null)}
+                    disabled={attendanceSaving}
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="submit"
+                    className="schedule-primary-button"
+                    disabled={attendanceSaving || attendanceLoading}
+                  >
+                    {attendanceSaving ? "Đang lưu..." : "Lưu điểm danh"}
+                  </button>
+                </div>
+              </form>
+            )}
           </section>
         </div>
       )}
