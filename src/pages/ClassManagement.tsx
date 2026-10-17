@@ -52,6 +52,7 @@ interface ClassRecord {
   maPhong: string | null;
   tenPhong: string | null;
   sucChuaPhong: number | null;
+  loaiPhong: "Trực tiếp" | "Trực tuyến" | null;
   canhBaoSucChuaPhong: boolean;
   linkTrucTuyen: string | null;
   tienDo: number;
@@ -82,6 +83,7 @@ interface ClassOptions {
     maPhong: string;
     tenPhong: string;
     sucChua: number;
+    loaiPhong: "Trực tiếp" | "Trực tuyến";
   }>;
 }
 
@@ -226,7 +228,12 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
-  const [roomForm, setRoomForm] = useState({ maPhong: "", tenPhong: "", sucChua: 30 });
+  const [roomForm, setRoomForm] = useState({
+    maPhong: "",
+    tenPhong: "",
+    sucChua: 30,
+    loaiPhong: "Trực tiếp" as "Trực tiếp" | "Trực tuyến",
+  });
   const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
 
   const instructorOptions = useMemo(() => {
@@ -454,7 +461,12 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     try {
       await api.post("/academic/rooms", roomForm);
       setIsRoomFormOpen(false);
-      setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+      setRoomForm({
+        maPhong: "",
+        tenPhong: "",
+        sucChua: 30,
+        loaiPhong: "Trực tiếp",
+      });
       setSuccessMessage("Thêm phòng thành công.");
       await loadData();
     } catch (error: unknown) {
@@ -534,7 +546,12 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   };
 
   const openCreateRoomForm = () => {
-    setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+    setRoomForm({
+      maPhong: "",
+      tenPhong: "",
+      sucChua: 30,
+      loaiPhong: "Trực tiếp",
+    });
     setErrorMessage("");
     setSuccessMessage("");
     setIsRoomFormOpen(true);
@@ -543,7 +560,12 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const closeRoomForm = () => {
     if (saving) return;
     setIsRoomFormOpen(false);
-    setRoomForm({ maPhong: "", tenPhong: "", sucChua: 30 });
+    setRoomForm({
+      maPhong: "",
+      tenPhong: "",
+      sucChua: 30,
+      loaiPhong: "Trực tiếp",
+    });
     setErrorMessage("");
   };
 
@@ -700,7 +722,10 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const enrollmentSeatsRemaining = enrollmentClass
     ? Math.max(
         0,
-        enrollmentClass.siSoToiDa - enrollmentClass.siSoHienTai,
+        Math.min(
+          enrollmentClass.siSoToiDa,
+          enrollmentClass.sucChuaPhong ?? enrollmentClass.siSoToiDa,
+        ) - enrollmentClass.siSoHienTai,
       )
     : 0;
 
@@ -1094,11 +1119,13 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               }
             >
               <option value="">Chưa phân công</option>
-              {options.giangViens.map((teacher) => (
+              {options.giangViens
+                .filter((teacher) => teacher.vaiTroIds?.includes(3))
+                .map((teacher) => (
                 <option key={teacher.nguoiDungId} value={teacher.nguoiDungId}>
                   {teacher.hoTen}
                 </option>
-              ))}
+                ))}
             </select>
           </label>
           <label>
@@ -1189,29 +1216,35 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               <option value="Kết hợp">Kết hợp</option>
             </select>
           </label>
-          {form.hinhThuc !== "Trực tuyến" && (
-            <label>
-              Phòng học
-              <select
-                value={form.phongHocId}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    phongHocId: event.target.value
-                      ? Number(event.target.value)
-                      : "",
-                  }))
-                }
-              >
-                <option value="">Chưa xếp phòng</option>
-                {options.phongHocs.map((room) => (
+          <label>
+            {form.hinhThuc === "Trực tuyến"
+              ? "Phòng học trực tuyến"
+              : "Phòng học trực tiếp"}
+            <select
+              value={form.phongHocId}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  phongHocId: event.target.value
+                    ? Number(event.target.value)
+                    : "",
+                }))
+              }
+            >
+              <option value="">Chưa xếp phòng</option>
+              {options.phongHocs
+                .filter((room) =>
+                  form.hinhThuc === "Trực tuyến"
+                    ? room.loaiPhong === "Trực tuyến"
+                    : room.loaiPhong === "Trực tiếp",
+                )
+                .map((room) => (
                   <option key={room.phongHocId} value={room.phongHocId}>
                     {room.maPhong} — {room.tenPhong} (sức chứa {room.sucChua})
                   </option>
                 ))}
-              </select>
-            </label>
-          )}
+            </select>
+          </label>
           {form.hinhThuc !== "Trực tiếp" && (
             <label>
               Liên kết học trực tuyến
@@ -1491,7 +1524,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               <div className="academic-modal-heading">
                 <div>
                   <h3>Thêm phòng học</h3>
-                  <p>Khai báo sức chứa để cảnh báo khi xếp lớp vượt sức chứa phòng.</p>
+                  <p>Khai báo loại phòng và sức chứa tối đa.</p>
                 </div>
                 <button
                   type="button"
@@ -1539,6 +1572,23 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                       }))
                     }
                   />
+                </label>
+                <label>
+                  Loại phòng
+                  <select
+                    value={roomForm.loaiPhong}
+                    onChange={(event) =>
+                      setRoomForm((current) => ({
+                        ...current,
+                        loaiPhong: event.target.value as
+                          | "Trực tiếp"
+                          | "Trực tuyến",
+                      }))
+                    }
+                  >
+                    <option value="Trực tiếp">Trực tiếp</option>
+                    <option value="Trực tuyến">Trực tuyến</option>
+                  </select>
                 </label>
                 <label>
                   Sức chứa

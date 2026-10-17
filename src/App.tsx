@@ -18,6 +18,8 @@ import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
 import AdminDashboard from "./pages/AdminDashboard";
 import ScheduleManagement from "./pages/ScheduleManagement";
+import AttendanceManagement from "./pages/AttendanceManagement";
+import Assignments from "./pages/Assignments";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -240,6 +242,8 @@ const ROUTE_ACCESS_RULES: Record<
   },
   "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
   "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-diem-danh": { allOf: ["CLASS_VIEW"] },
+  "/quan-ly-bai-tap": { allOf: [], anyOf: ["ASSIGNMENT_VIEW", "ASSIGNMENT_CREATE", "ASSIGNMENT_SUBMIT", "ASSIGNMENT_GRADE"] },
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
@@ -1171,6 +1175,31 @@ function App() {
     navigate("/quan-ly-lich-hoc");
   };
 
+  const handleAttendanceManagement = () => {
+    if (
+      !isAdminUser(user) &&
+      !hasAnyPermission(user, ["CLASS_VIEW", "ATTENDANCE_VIEW"])
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-diem-danh");
+  };
+
+  const handleAssignments = () => {
+    const assignmentPermissions = [
+      "ASSIGNMENT_VIEW",
+      "ASSIGNMENT_CREATE",
+      "ASSIGNMENT_SUBMIT",
+      "ASSIGNMENT_GRADE",
+    ];
+    if (!isAdminUser(user) && !hasAnyPermission(user, assignmentPermissions)) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-bai-tap");
+  };
+
   const handleAdmissionsLeads = () => {
     if (!isAdminUser(user) && !hasPermission(user, "LEAD_VIEW")) {
       navigate("/");
@@ -1866,9 +1895,44 @@ function App() {
     if (!hasPermission(user, "SCHEDULE_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
+
     return renderAdminLayout(
       <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
         <ScheduleManagement permissions={effectivePermissions} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-diem-danh") {
+    return renderAcademicLayout(
+      <ProtectedRoute
+        requiredAnyPermission={["CLASS_VIEW", "ATTENDANCE_VIEW"]}
+      >
+        <AttendanceManagement />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-bai-tap") {
+    const assignmentPermissions = [
+      "ASSIGNMENT_VIEW",
+      "ASSIGNMENT_CREATE",
+      "ASSIGNMENT_SUBMIT",
+      "ASSIGNMENT_GRADE",
+    ];
+    if (!isAdmin && !hasAnyPermission(user, assignmentPermissions)) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    const studentOnly =
+      !isAdminUser(user) &&
+      hasPermission(user, "ASSIGNMENT_SUBMIT") &&
+      !hasAnyPermission(user, ["ASSIGNMENT_CREATE", "ASSIGNMENT_GRADE"]);
+    return renderAcademicLayout(
+      <ProtectedRoute requiredAnyPermission={assignmentPermissions}>
+        <Assignments
+          studentOnly={studentOnly}
+          canSubmit={hasPermission(user, "ASSIGNMENT_SUBMIT")}
+        />
       </ProtectedRoute>,
     );
   }
@@ -1960,6 +2024,8 @@ function App() {
 
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
+          onAttendanceManagement={handleAttendanceManagement}
+          onAssignments={handleAssignments}
 
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
@@ -1995,6 +2061,8 @@ function App() {
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
+        onAttendanceManagement={handleAttendanceManagement}
+        onAssignments={handleAssignments}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
