@@ -237,7 +237,9 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       if (filters.search) params.search = filters.search;
       if (filters.trangThai) params.status = filters.trangThai;
       if (filters.nguon) params.source = filters.nguon;
-      if (filters.assignedUserId) {
+      if (filters.assignedUserId === "unassigned") {
+        params.unassigned = "true";
+      } else if (filters.assignedUserId) {
         params.assigned_user_id = filters.assignedUserId;
       }
       if (filters.startDate) params.start_date = filters.startDate;
@@ -506,8 +508,6 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
 
   const openLeadHistory = (lead: Lead) => {
     setHistoryLeadId(lead.leadId);
-    setViewMode("table");
-    setInteractionFilter(INTERACTION_FILTERS[0]);
     setStatusForm({
       trangThai: LEAD_STATUS_TRANSITIONS[lead.trangThai]?.[0] ?? "",
       lyDoTuChoi: "",
@@ -570,6 +570,10 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
 
   const handleLeadDrop = async (lead: Lead, targetStatus: string) => {
     if (!canDropLeadIntoStatus(lead, targetStatus)) return;
+    if (targetStatus === "Chốt") {
+      await convertLead(lead);
+      return;
+    }
     if (targetStatus === "Từ chối") {
       setRejectionLead(lead);
       setRejectionReason(lead.lyDoTuChoi ?? "");
@@ -646,6 +650,14 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   };
 
   const historyLead = leads.find((lead) => lead.leadId === historyLeadId) ?? null;
+  const hasActiveLeadFilters = Boolean(
+    filters.search ||
+      filters.trangThai ||
+      filters.nguon ||
+      filters.assignedUserId ||
+      filters.startDate ||
+      filters.endDate,
+  );
   const availableStatusTransitions = historyLead
     ? LEAD_STATUS_TRANSITIONS[historyLead.trangThai] ?? []
     : [];
@@ -1068,6 +1080,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                 }
               >
                 <option value="">Tất cả</option>
+                <option value="unassigned">Chưa phân công</option>
                 {consultants.map((consultant) => (
                   <option
                     key={consultant.nguoiDungId}
@@ -1100,6 +1113,15 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             />
           </label>
         </div>
+        {!loading &&
+          !canAssign &&
+          leads.length === 0 &&
+          !hasActiveLeadFilters && (
+            <p className="lead-assignment-empty-notice" role="status">
+              Hiện chưa có lead được phân công cho tài khoản này. Vui lòng nhờ
+              Quản lý đào tạo hoặc Admin phân công lead.
+            </p>
+          )}
         {canAssign && selectedLeadIds.length > 0 && (
           <div className="lead-bulk-toolbar" role="region" aria-label="Phân công hàng loạt">
             <div className="lead-bulk-info">
@@ -1155,6 +1177,8 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   ? !LEAD_STATUS_COLUMNS.includes(
                       lead.trangThai as (typeof LEAD_STATUS_COLUMNS)[number],
                     )
+                  : column === "Chốt"
+                    ? ["Chốt", "Đã nhập học"].includes(lead.trangThai)
                   : lead.trangThai === column,
               );
               const draggedLead =

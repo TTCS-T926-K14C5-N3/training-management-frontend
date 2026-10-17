@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
+import "./PermissionsManagement.css";
 
 interface Role {
   vaiTroId: number;
@@ -112,6 +113,10 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
       if (code.startsWith("TUITION_") || code === "QUAN_LY_HOC_PHI") {
         return "Học phí";
       }
+      if (code.startsWith("ATTENDANCE_")) return "Điểm danh";
+      if (code.startsWith("SCHEDULE_")) return "Lịch học";
+      if (code.startsWith("CURRICULUM_")) return "Danh mục đào tạo";
+      if (code.startsWith("LEAD_")) return "Tuyển sinh";
       return "Lớp học";
     };
 
@@ -150,10 +155,17 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
       setSaving(true);
       setMessage("");
       setErrorMessage("");
+      const availableCodes = new Set(
+        catalog.map((permission) => permission.maQuyen),
+      );
+      const permissionCodes = Array.from(selectedPermissions).filter((code) =>
+        availableCodes.has(code),
+      );
+      setSelectedPermissions(new Set(permissionCodes));
       const response = await api.put(
         `/roles/${activeRoleId}/permissions`,
         {
-          permissionCodes: Array.from(selectedPermissions),
+          permissionCodes,
         },
       );
       const currentUser = JSON.parse(localStorage.getItem("user") || "null");
@@ -190,15 +202,7 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
   const selectedRole = roles.find((role) => role.vaiTroId === activeRoleId);
 
   return (
-    <section
-      style={{
-        padding: "24px",
-        border: "1px solid #e8edf5",
-        borderRadius: "16px",
-        background: "#fff",
-        boxShadow: "0 4px 18px rgba(15, 23, 42, 0.04)",
-      }}
-    >
+    <section className="role-permissions-panel">
       {(message || errorMessage) && (
         <ToastNotification
           type={message ? "success" : "error"}
@@ -210,24 +214,14 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
         />
       )}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          justifyContent: "space-between",
-          gap: "16px",
-          marginBottom: "20px",
-        }}
-      >
+      <div className="role-permissions-header">
         <div>
-          <h3 style={{ margin: 0, color: "#172033" }}>
-            Cấu hình quyền theo vai trò
-          </h3>
-          <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "13px" }}>
+          <h3>Cấu hình quyền theo vai trò</h3>
+          <p>
             Quyền không được chọn sẽ bị từ chối tại backend.
           </p>
         </div>
-        <label style={{ color: "#475569", fontSize: "12px", fontWeight: 700 }}>
+        <label className="role-permissions-role-select">
           Vai trò
           <select
             value={activeRoleId ?? ""}
@@ -237,16 +231,6 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
               setSelectedRoleId(Number(event.target.value));
             }}
             disabled={roles.length === 0 || loadingPermissions || saving}
-            style={{
-              display: "block",
-              minWidth: "220px",
-              height: "40px",
-              marginTop: "6px",
-              padding: "0 10px",
-              border: "1px solid #cbd5e1",
-              borderRadius: "8px",
-              background: "#fff",
-            }}
           >
             {roles.map((role) => (
               <option key={role.vaiTroId} value={role.vaiTroId}>
@@ -258,35 +242,22 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
       </div>
 
       {loadingCatalog || (activeRoleId !== null && loadingPermissions) ? (
-        <p role="status" style={{ color: "#64748b" }}>
+        <p className="role-permissions-status" role="status">
           Đang tải cấu hình quyền...
         </p>
       ) : roles.length === 0 ? (
-        <p role="alert" style={{ color: "#b91c1c" }}>
+        <p className="role-permissions-error" role="alert">
           Không tải được danh sách tám vai trò hệ thống.
         </p>
       ) : catalog.length === 0 ? (
-        <p role="alert" style={{ color: "#b91c1c" }}>
+        <p className="role-permissions-error" role="alert">
           Chưa có danh mục quyền để cấu hình.
         </p>
       ) : (
-        <div style={{ display: "grid", gap: "18px" }}>
+        <div className="role-permissions-groups">
           {Object.entries(groupedPermissions).map(([group, permissions]) => (
-            <fieldset
-              key={group}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: "8px",
-                margin: 0,
-                padding: "16px",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-              }}
-            >
-              <legend style={{ padding: "0 6px", fontWeight: 750 }}>
-                {group}
-              </legend>
+            <fieldset key={group} className="role-permissions-group">
+              <legend>{group}</legend>
               {permissions.map((permission) => {
                 const lockedAdminPermission =
                   activeRoleId === 8 &&
@@ -294,16 +265,7 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
                 return (
                   <label
                     key={permission.maQuyen}
-                    style={{
-                      display: "flex",
-                      alignItems: "start",
-                      gap: "9px",
-                      padding: "9px",
-                      borderRadius: "8px",
-                      background: "#f8fafc",
-                      color: "#334155",
-                      fontSize: "13px",
-                    }}
+                    className="role-permission-item"
                     title={permission.moTa}
                   >
                     <input
@@ -315,12 +277,8 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
                       onChange={() => togglePermission(permission.maQuyen)}
                     />
                     <span>
-                      <strong style={{ display: "block" }}>
-                        {permission.tenQuyen}
-                      </strong>
-                      <small style={{ color: "#64748b" }}>
-                        {permission.maQuyen}
-                      </small>
+                      <strong>{permission.tenQuyen}</strong>
+                      <small>{permission.maQuyen}</small>
                     </span>
                   </label>
                 );
@@ -330,16 +288,8 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          marginTop: "20px",
-        }}
-      >
-        <span style={{ color: "#64748b", fontSize: "12px" }}>
+      <div className="role-permissions-actions">
+        <span>
           {selectedRole ? `Đang cấu hình: ${selectedRole.tenVaiTro}` : ""}
         </span>
         <button
@@ -351,16 +301,7 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
             loadingCatalog ||
             activeRoleId === null
           }
-          style={{
-            minWidth: "160px",
-            height: "42px",
-            border: 0,
-            borderRadius: "9px",
-            background: saving ? "#94a3b8" : "#2563eb",
-            color: "#fff",
-            fontWeight: 700,
-            cursor: saving ? "wait" : "pointer",
-          }}
+          className="role-permissions-save"
         >
           {saving ? "Đang lưu..." : "Lưu cấu hình quyền"}
         </button>

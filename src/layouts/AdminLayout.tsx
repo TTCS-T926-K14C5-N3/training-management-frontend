@@ -22,6 +22,8 @@ interface AdminLayoutProps {
 
 
   onGradeManagement: () => void;
+  onStudentInformation: () => void;
+  onClassHistory: () => void;
   onClassManagement: () => void;
   onTrainingCatalog?: () => void;
   onTrainingPrograms?: () => void;
@@ -47,6 +49,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onHome,
   onUserManagement,
   onGradeManagement,
+  onStudentInformation,
+  onClassHistory,
   onClassManagement,
   onTrainingCatalog = () => {},
   onTrainingPrograms = () => {},
@@ -82,15 +86,30 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const hasPermission = (maQuyen: string): boolean => {
     /*
-     * Admin hệ thống luôn được phép truy cập:
-     * - Quản lý người dùng
-     * - Cấu hình quyền hệ thống
+     * Admin hệ thống luôn được phép truy cập tất cả các tính năng
+     * chính của hệ thống, bao gồm:
+     * - Quản lý người dùng     (USER_VIEW)
+     * - Cấu hình quyền         (ROLE_VIEW)
+     * - Danh mục đào tạo       (CURRICULUM_VIEW)
+     * - Lead tư vấn            (LEAD_VIEW)
+     * - Lịch học                (SCHEDULE_VIEW/CREATE/UPDATE)
      *
      * Việc này giúp tránh trường hợp tài khoản Admin
-     * bị thiếu USER_VIEW / ROLE_VIEW trong danh sách
-     * permission từ frontend nhưng vẫn phải có quyền quản trị.
+     * bị thiếu permission trong JWT nhưng vẫn phải có
+     * quyền truy cập toàn bộ chức năng quản trị.
      */
-    if (isAdminRole() && (maQuyen === "USER_VIEW" || maQuyen === "ROLE_VIEW")) {
+    if (
+      isAdminRole() &&
+      (
+        maQuyen === "USER_VIEW" ||
+        maQuyen === "ROLE_VIEW" ||
+        maQuyen === "CURRICULUM_VIEW" ||
+        maQuyen === "LEAD_VIEW" ||
+        maQuyen === "SCHEDULE_VIEW" ||
+        maQuyen === "SCHEDULE_CREATE" ||
+        maQuyen === "SCHEDULE_UPDATE"
+      )
+    ) {
       return true;
     }
 
@@ -127,8 +146,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isAdmissionsLeadsActive = currentPath === "/quan-ly-lead";
 
   const isChangePasswordActive = currentPath === "/change-password";
-
-  const isProfileActive = currentPath === "/ho-so-ca-nhan";
 
   return (
     <div className="admin-layout">
@@ -245,6 +262,31 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
+          {hasPermission("GRADE_VIEW") && hasPermission("USER_VIEW") && (
+            <>
+              <button
+                type="button"
+                className={`admin-menu-item ${
+                  currentPath === "/thong-tin-hoc-vien" ? "admin-menu-active" : ""
+                }`}
+                onClick={onStudentInformation}
+              >
+                <span className="admin-menu-symbol">♙</span>
+                <span>Thông tin học viên</span>
+              </button>
+              <button
+                type="button"
+                className={`admin-menu-item ${
+                  currentPath === "/lich-su-lop-hoc" ? "admin-menu-active" : ""
+                }`}
+                onClick={onClassHistory}
+              >
+                <span className="admin-menu-symbol">▤</span>
+                <span>Lịch sử lớp học</span>
+              </button>
+            </>
+          )}
+
           {hasPermission("CLASS_VIEW") && hasPermission("QUAN_LY_LOP") && (
             <button
               type="button"
@@ -331,22 +373,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           <div className="admin-section-title">HỆ THỐNG</div>
 
           {/* =================================================
-              HỒ SƠ CÁ NHÂN
-          ================================================= */}
-
-          <button
-            type="button"
-            className={`admin-menu-item ${
-              isProfileActive ? "admin-menu-active" : ""
-            }`}
-            onClick={onProfile}
-          >
-            <span className="admin-menu-symbol">👤</span>
-
-            <span>Hồ sơ cá nhân</span>
-          </button>
-
-          {/* =================================================
               ĐỔI MẬT KHẨU
           ================================================= */}
 
@@ -378,7 +404,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         ===================================================== */}
 
         <div className="admin-sidebar-footer">
-          <div className="admin-account">
+          <button
+            type="button"
+            className="admin-account"
+            onClick={onProfile}
+            aria-label={`Mở hồ sơ của ${userName}`}
+          >
             {/* Avatar */}
 
             <div className="admin-avatar">
@@ -398,7 +429,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
               <span>{roleName}</span>
             </div>
-          </div>
+          </button>
 
           {/* =================================================
               ĐĂNG XUẤT
@@ -416,8 +447,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       ===================================================== */}
 
       <main className="admin-main">
-
-
         {/* =================================================
           CONTENT
         ================================================= */}
