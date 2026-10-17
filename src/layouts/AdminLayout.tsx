@@ -26,6 +26,7 @@ interface AdminLayoutProps {
   onTrainingCatalog?: () => void;
   onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
+  onScheduleManagement?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -50,6 +51,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onTrainingCatalog = () => {},
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
+  onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
   onChangePassword,
   onProfile,
 }) => {
@@ -115,6 +117,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isGradeManagementActive = currentPath === "/quan-ly-diem";
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
+
+  const isScheduleManagementActive = currentPath === "/quan-ly-lich-hoc";
 
   const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
 
@@ -252,6 +256,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span className="admin-menu-symbol">▤</span>
 
               <span>Quản lý lớp</span>
+            </button>
+          )}
+
+          {hasPermission("SCHEDULE_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isScheduleManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onScheduleManagement}
+            >
+              <span className="admin-menu-symbol">▦</span>
+              <span>Quản lý lịch học</span>
             </button>
           )}
 

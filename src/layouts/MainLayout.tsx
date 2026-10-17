@@ -22,6 +22,7 @@ interface MainLayoutProps {
   onTrainingCatalog: () => void;
   onTrainingPrograms?: () => void;
   onAdmissionsLeads: () => void;
+  onScheduleManagement?: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
 
@@ -41,6 +42,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onTrainingCatalog,
   onTrainingPrograms = () => {},
   onAdmissionsLeads,
+  onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
   onProfile,
   onChangePassword,
 }) => {
@@ -68,6 +70,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     );
   const canViewCatalog = permissions.includes("CURRICULUM_VIEW");
   const canViewLeads = permissions.includes("LEAD_VIEW");
+  const canViewSchedule = permissions.includes("SCHEDULE_VIEW");
   const canManageGrades =
     permissions.includes("GRADE_CREATE") ||
     permissions.includes("GRADE_UPDATE");
@@ -166,7 +169,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Đổi mật khẩu</span>
           </button>
 
-          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms) && (
+          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms || canViewSchedule) && (
             <>
               <div className="sidebar-section-title">ĐÀO TẠO</div>
 
@@ -193,6 +196,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 >
                   <span className="sidebar-item-icon">▤</span>
                   <span>Quản lý lớp</span>
+                </button>
+              )}
+              {canViewSchedule && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/quan-ly-lich-hoc") ? "active" : ""
+                  }`}
+                  onClick={onScheduleManagement}
+                >
+                  <span className="sidebar-item-icon">▦</span>
+                  <span>Quản lý lịch học</span>
                 </button>
               )}
               {canManageTrainingPrograms && (
