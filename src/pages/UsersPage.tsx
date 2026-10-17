@@ -546,6 +546,31 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
       setStudentActionError("Vui lòng chọn lớp chuyển đến.");
       return;
     }
+
+    if (studentActionForm.type === "BaoLuu") {
+      const confirmed = window.confirm(
+        `Xác nhận bảo lưu học viên "${studentActionUser.hoTen}" kể từ ngày ${studentActionForm.effectiveDate}?\n\nLƯU Ý: Học viên sẽ NGỪNG XUẤT HIỆN trong danh sách điểm danh kể từ ngày này.`,
+      );
+      if (!confirmed) return;
+    }
+
+    if (studentActionForm.type === "ChuyenLop") {
+      const targetClass = studentStatusClasses.find(
+        (c) => c.lopHocId === studentActionForm.targetClassId,
+      );
+      const confirmed = window.confirm(
+        `Xác nhận chuyển học viên "${studentActionUser.hoTen}" sang lớp "${targetClass ? targetClass.tenLop : studentActionForm.targetClassId}" từ ngày ${studentActionForm.effectiveDate}?\n\nLịch sử điểm và điểm danh ở lớp cũ vẫn được giữ nguyên đầy đủ.`,
+      );
+      if (!confirmed) return;
+    }
+
+    if (studentActionForm.type === "ThoiHoc") {
+      const confirmed = window.confirm(
+        `CẢNH BÁO: Bạn có chắc chắn muốn cho học viên "${studentActionUser.hoTen}" THÔI HỌC từ ngày ${studentActionForm.effectiveDate}?\n\nHọc viên sẽ chính thức ngừng xuất hiện trong danh sách điểm danh.`,
+      );
+      if (!confirmed) return;
+    }
+
     setStudentActionSaving(true);
     setStudentActionError("");
     try {
@@ -1219,6 +1244,86 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                   }
                 />
               </label>
+              {studentActionForm.type === "BaoLuu" && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#fffbeb",
+                    border: "1px solid #fcd34d",
+                    color: "#92400e",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <span style={{ fontSize: "18px" }}>⚠️</span>
+                  <div>
+                    <strong style={{ display: "block", color: "#78350f", marginBottom: "2px" }}>
+                      Cảnh báo ngừng điểm danh:
+                    </strong>
+                    Học viên sẽ <strong>ngừng xuất hiện trong danh sách điểm danh</strong> kể từ ngày{" "}
+                    <strong>{studentActionForm.effectiveDate}</strong>. Lịch sử điểm và điểm danh trước thời điểm này vẫn được bảo lưu trọn vẹn.
+                  </div>
+                </div>
+              )}
+
+              {studentActionForm.type === "ChuyenLop" && studentActionForm.targetClassId && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    color: "#1e40af",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <span style={{ fontSize: "18px" }}>ℹ️</span>
+                  <div>
+                    <strong style={{ display: "block", color: "#1e3a8a", marginBottom: "2px" }}>
+                      Thông tin chuyển lớp:
+                    </strong>
+                    Học viên sẽ được chuyển từ lớp hiện tại sang lớp mới kể từ ngày{" "}
+                    <strong>{studentActionForm.effectiveDate}</strong>. Toàn bộ lịch sử điểm và điểm danh ở lớp cũ vẫn được lưu trữ nguyên vẹn.
+                  </div>
+                </div>
+              )}
+
+              {studentActionForm.type === "ThoiHoc" && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#fef2f2",
+                    border: "1px solid #fca5a5",
+                    color: "#991b1b",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <span style={{ fontSize: "18px" }}>🛑</span>
+                  <div>
+                    <strong style={{ display: "block", color: "#7f1d1d", marginBottom: "2px" }}>
+                      Cảnh báo thôi học:
+                    </strong>
+                    Học viên sẽ chính thức dừng chương trình học tại lớp này kể từ ngày{" "}
+                    <strong>{studentActionForm.effectiveDate}</strong> và <strong>ngừng xuất hiện trong danh sách điểm danh</strong>.
+                  </div>
+                </div>
+              )}
             </div>
             <div className="student-enrollment-action-footer">
               <button

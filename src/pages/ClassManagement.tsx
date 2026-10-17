@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
+import StudentReservationModal from "../components/StudentReservationModal";
+import StudentTransferModal from "../components/StudentTransferModal";
 import "./AcademicManagement.css";
 
 interface UserOption {
@@ -253,6 +255,40 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   });
   const [roomForm, setRoomForm] = useState({ maPhong: "", tenPhong: "", sucChua: 30 });
   const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
+  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const [reservationTarget, setReservationTarget] = useState<{
+    classId: number | null;
+    studentId: number | null;
+    studentName?: string;
+  }>({ classId: null, studentId: null });
+
+  const openReservationModal = (
+    classId: number | null = null,
+    studentId: number | null = null,
+    studentName?: string,
+  ) => {
+    setReservationTarget({ classId, studentId, studentName });
+    setIsReservationModalOpen(true);
+  };
+
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferModalMode, setTransferModalMode] = useState<"ChuyenLop" | "ThoiHoc">("ChuyenLop");
+  const [transferTarget, setTransferTarget] = useState<{
+    classId: number | null;
+    studentId: number | null;
+    studentName?: string;
+  }>({ classId: null, studentId: null });
+
+  const openTransferModal = (
+    mode: "ChuyenLop" | "ThoiHoc",
+    classId: number | null = null,
+    studentId: number | null = null,
+    studentName?: string,
+  ) => {
+    setTransferModalMode(mode);
+    setTransferTarget({ classId, studentId, studentName });
+    setIsTransferModalOpen(true);
+  };
 
   const instructorOptions = useMemo(() => {
     const teachers = new Map<number, string>();
@@ -490,6 +526,14 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const saveStudentAction = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!studentAction) return;
+
+    if (studentActionForm.loaiThaoTac === "BaoLuu") {
+      const confirmed = window.confirm(
+        `Xác nhận bảo lưu học viên "${studentAction.student.hoTen}" kể từ ngày ${studentActionForm.ngayHieuLuc}?\n\nLƯU Ý: Học viên sẽ NGỪNG XUẤT HIỆN trong danh sách điểm danh kể từ ngày này.`,
+      );
+      if (!confirmed) return;
+    }
+
     setSaving(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -902,6 +946,32 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     }
                   />
                 </label>
+                {studentActionForm.loaiThaoTac === "BaoLuu" && (
+                  <div
+                    style={{
+                      gridColumn: "1 / -1",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      background: "#fffbeb",
+                      border: "1px solid #fcd34d",
+                      color: "#92400e",
+                      fontSize: "13px",
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>⚠️</span>
+                    <div>
+                      <strong style={{ display: "block", color: "#78350f", marginBottom: "2px" }}>
+                        Cảnh báo ngừng điểm danh:
+                      </strong>
+                      Học viên sẽ <strong>ngừng xuất hiện trong danh sách điểm danh</strong> kể từ ngày{" "}
+                      <strong>{studentActionForm.ngayHieuLuc}</strong>. Mọi lịch sử điểm và điểm danh trước ngày này vẫn được bảo lưu an toàn.
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="academic-form-actions">
                 <button
@@ -1915,6 +1985,38 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   + Tạo lớp
                 </button>
               )}
+              {canUpdateClasses && (
+                <button
+                  className="academic-secondary-button"
+                  type="button"
+                  style={{
+                    borderColor: "#f59e0b",
+                    background: "#fffbeb",
+                    color: "#b45309",
+                    fontWeight: 650,
+                  }}
+                  onClick={() => openReservationModal(null, null)}
+                  title="Mở form bảo lưu học viên (SCRUM-418)"
+                >
+                  📋 Bảo lưu học viên
+                </button>
+              )}
+              {canUpdateClasses && (
+                <button
+                  className="academic-secondary-button"
+                  type="button"
+                  style={{
+                    borderColor: "#818cf8",
+                    background: "#eef2ff",
+                    color: "#4338ca",
+                    fontWeight: 650,
+                  }}
+                  onClick={() => openTransferModal("ChuyenLop", null, null)}
+                  title="Mở form chuyển lớp và thôi học (SCRUM-419)"
+                >
+                  🔄 Chuyển lớp / Thôi học
+                </button>
+              )}
               {canCreateSubjects && (
                 <button
                   className="academic-secondary-button"
@@ -2126,15 +2228,79 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                                   : ""}
                               </span>
                                 {!listOnly && canUpdateClasses && (
-                                  <button
-                                    className="class-student-action-button"
-                                    type="button"
-                                    onClick={() =>
-                                      openStudentAction(record.lopHocId, student)
-                                    }
-                                  >
-                                    Xử lý học viên
-                                  </button>
+                                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                                    <button
+                                      className="class-student-action-button"
+                                      type="button"
+                                      onClick={() =>
+                                        openStudentAction(record.lopHocId, student)
+                                      }
+                                    >
+                                      Xử lý học viên
+                                    </button>
+                                    <button
+                                      className="class-student-action-button"
+                                      style={{
+                                        background: "#fffbeb",
+                                        borderColor: "#fcd34d",
+                                        color: "#b45309",
+                                        fontWeight: 600,
+                                      }}
+                                      type="button"
+                                      onClick={() =>
+                                        openReservationModal(
+                                          record.lopHocId,
+                                          student.nguoiDungId,
+                                          student.hoTen,
+                                        )
+                                      }
+                                      title={`Mở form bảo lưu cho học viên ${student.hoTen}`}
+                                    >
+                                      📋 Bảo lưu
+                                    </button>
+                                    <button
+                                      className="class-student-action-button"
+                                      style={{
+                                        background: "#eef2ff",
+                                        borderColor: "#a5b4fc",
+                                        color: "#3730a3",
+                                        fontWeight: 600,
+                                      }}
+                                      type="button"
+                                      onClick={() =>
+                                        openTransferModal(
+                                          "ChuyenLop",
+                                          record.lopHocId,
+                                          student.nguoiDungId,
+                                          student.hoTen,
+                                        )
+                                      }
+                                      title={`Mở form chuyển lớp cho học viên ${student.hoTen}`}
+                                    >
+                                      🔄 Chuyển lớp
+                                    </button>
+                                    <button
+                                      className="class-student-action-button"
+                                      style={{
+                                        background: "#fef2f2",
+                                        borderColor: "#fca5a5",
+                                        color: "#b91c1c",
+                                        fontWeight: 600,
+                                      }}
+                                      type="button"
+                                      onClick={() =>
+                                        openTransferModal(
+                                          "ThoiHoc",
+                                          record.lopHocId,
+                                          student.nguoiDungId,
+                                          student.hoTen,
+                                        )
+                                      }
+                                      title={`Mở form thôi học cho học viên ${student.hoTen}`}
+                                    >
+                                      🛑 Thôi học
+                                    </button>
+                                  </div>
                                 )}
                             </div>
                           ))
@@ -2355,6 +2521,61 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </div>,
           document.body,
         )}
+
+      <StudentReservationModal
+        isOpen={isReservationModalOpen}
+        onClose={() => setIsReservationModalOpen(false)}
+        onSuccess={(msg) => {
+          if (msg) setSuccessMessage(msg);
+          void loadData();
+        }}
+        initialClassId={reservationTarget.classId}
+        initialStudentId={reservationTarget.studentId}
+        initialStudentName={reservationTarget.studentName}
+        classes={classes.map((c) => ({
+          lopHocId: c.lopHocId,
+          maLop: c.maLop,
+          tenLop: c.tenLop,
+          trangThai: c.trangThai,
+          siSoHienTai: c.siSoHienTai,
+          hocViens: c.hocViens.map((h) => ({
+            nguoiDungId: h.nguoiDungId,
+            hoTen: h.hoTen,
+            ngayGhiDanh: h.ngayGhiDanh,
+            trangThaiGhiDanh: h.trangThaiGhiDanh,
+          })),
+        }))}
+      />
+
+      <StudentTransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        onSuccess={(msg) => {
+          if (msg) setSuccessMessage(msg);
+          void loadData();
+        }}
+        initialMode={transferModalMode}
+        initialClassId={transferTarget.classId}
+        initialStudentId={transferTarget.studentId}
+        initialStudentName={transferTarget.studentName}
+        classes={classes.map((c) => ({
+          lopHocId: c.lopHocId,
+          maLop: c.maLop,
+          tenLop: c.tenLop,
+          trangThai: c.trangThai,
+          giangVienTen: c.giangVienTen,
+          hinhThuc: c.hinhThuc,
+          maPhong: c.maPhong,
+          siSoHienTai: c.siSoHienTai,
+          siSoToiDa: c.siSoToiDa,
+          hocViens: c.hocViens.map((h) => ({
+            nguoiDungId: h.nguoiDungId,
+            hoTen: h.hoTen,
+            ngayGhiDanh: h.ngayGhiDanh,
+            trangThaiGhiDanh: h.trangThaiGhiDanh,
+          })),
+        }))}
+      />
     </section>
   );
 };

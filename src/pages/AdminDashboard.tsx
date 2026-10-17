@@ -95,8 +95,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setLoading(true);
       setError("");
       try {
-        const [usersResponse, classesResponse, subjectsResponse] =
-          await Promise.all([
+        const [usersResult, classesResult, subjectsResult] =
+          await Promise.allSettled([
             api.get<DashboardUserResponse>("/users/", {
               params: { page: 1, limit: 1 },
             }),
@@ -106,9 +106,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             }),
           ]);
         if (!active) return;
-        setUserCount(usersResponse.data.pagination.total);
-        setClasses(classesResponse.data);
-        setSubjectCount(subjectsResponse.data.length);
+
+        if (usersResult.status === "fulfilled") {
+          setUserCount(usersResult.value.data.pagination.total);
+        }
+        if (classesResult.status === "fulfilled") {
+          setClasses(classesResult.value.data);
+        }
+        if (subjectsResult.status === "fulfilled") {
+          setSubjectCount(subjectsResult.value.data.length);
+        }
+
+        if (
+          usersResult.status === "rejected" &&
+          classesResult.status === "rejected" &&
+          subjectsResult.status === "rejected"
+        ) {
+          setError(getErrorMessage(usersResult.reason));
+        }
       } catch (requestError: unknown) {
         console.error("Không thể tải dữ liệu trang chủ Admin:", requestError);
         if (active) setError(getErrorMessage(requestError));
