@@ -277,27 +277,7 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
   };
 
   useEffect(() => {
-    let isCurrent = true;
-    void fetchScheduleData()
-      .then(([optionsResponse, schedulesResponse, historyResponse]) => {
-        if (!isCurrent) return;
-        setOptions(optionsResponse.data);
-        setSchedules(schedulesResponse.data);
-        setHistory(historyResponse.data);
-        setPageError("");
-      })
-      .catch((error: unknown) => {
-        if (!isCurrent) return;
-        console.error("Không thể tải lịch học:", error);
-        setPageError(errorFromApi(error).message);
-      })
-      .finally(() => {
-        if (isCurrent) setLoading(false);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
+    void loadData();
   }, []);
 
   const filteredSchedules = useMemo(() => {

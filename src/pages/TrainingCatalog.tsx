@@ -57,6 +57,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const [notice, setNotice] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [openActionMenuSubjectId, setOpenActionMenuSubjectId] = useState<number | null>(null);
 
   const filteredSubjects = subjects.filter((subject) => {
     const query = searchQuery.trim().toLocaleLowerCase("vi");
@@ -121,6 +122,21 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      const target = event.target as Node;
+      const menu = document.querySelector(".academic-subject-action-menu.open");
+      const toggle = document.querySelector(".academic-subject-action-toggle.open");
+      if (!menu?.contains(target) && !toggle?.contains(target)) {
+        setOpenActionMenuSubjectId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const resetSubjectForm = () => {
@@ -436,62 +452,102 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
               </tr>
             </thead>
             <tbody>
-              {paginatedSubjects.map((subject) => (
-                <tr key={subject.monHocId}>
-                  <td>{subject.maMonHoc}</td>
-                  <td>
-                    <strong>{subject.tenMonHoc}</strong>
-                    {subject.moTaChuanDauRa && (
-                      <small className="academic-muted">
-                        {subject.moTaChuanDauRa}
-                      </small>
-                    )}
-                  </td>
-                  <td>{subject.soBuoi}</td>
-                  <td>{subject.trongSo}</td>
-                  <td>{subject.trangThai}</td>
-                  {(canUpdate || canDelete) && (
+              {paginatedSubjects.map((subject) => {
+                const isActive = subject.trangThai === "Đang hoạt động";
+                const isMenuOpen = openActionMenuSubjectId === subject.monHocId;
+
+                return (
+                  <tr
+                    key={subject.monHocId}
+                    className={isActive ? "subject-row-active" : "subject-row-inactive"}
+                  >
+                    <td>{subject.maMonHoc}</td>
                     <td>
-                      <div className="academic-subject-actions">
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            onClick={() => openEditForm(subject)}
-                          >
-                            Sửa
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className={
-                              subject.trangThai === "Đang hoạt động"
-                                ? undefined
-                                : "academic-subject-reactivate"
-                            }
-                            onClick={() =>
-                              void handleToggleSubjectStatus(subject)
-                            }
-                          >
-                            {subject.trangThai === "Đang hoạt động"
-                              ? "Ngừng"
-                              : "Áp dụng lại"}
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="academic-subject-delete"
-                            onClick={() => void handleDeleteSubject(subject)}
-                          >
-                            Xóa
-                          </button>
-                        )}
-                      </div>
+                      <strong>{subject.tenMonHoc}</strong>
+                      {subject.moTaChuanDauRa && (
+                        <small className="academic-muted">
+                          {subject.moTaChuanDauRa}
+                        </small>
+                      )}
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td>{subject.soBuoi}</td>
+                    <td>{subject.trongSo}</td>
+                    <td>
+                      <span
+                        className={
+                          isActive
+                            ? "subject-status-badge subject-status-active"
+                            : "subject-status-badge subject-status-inactive"
+                        }
+                      >
+                        {subject.trangThai}
+                      </span>
+                    </td>
+                    {(canUpdate || canDelete) && (
+                      <td>
+                        <div className="academic-subject-action-wrap">
+                          <button
+                            type="button"
+                            className={`academic-subject-action-toggle ${isMenuOpen ? "open" : ""}`}
+                            onClick={() =>
+                              setOpenActionMenuSubjectId((current) =>
+                                current === subject.monHocId ? null : subject.monHocId,
+                              )
+                            }
+                          >
+                            Thao tác <span aria-hidden="true">▾</span>
+                          </button>
+
+                          {isMenuOpen && (
+                            <div className="academic-subject-action-menu open">
+                              {canUpdate && (
+                                <button
+                                  type="button"
+                                  className="academic-subject-action-item academic-subject-edit"
+                                  onClick={() => {
+                                    openEditForm(subject);
+                                    setOpenActionMenuSubjectId(null);
+                                  }}
+                                >
+                                  Sửa
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className={
+                                    isActive
+                                      ? "academic-subject-action-item academic-subject-toggle"
+                                      : "academic-subject-action-item academic-subject-reactivate"
+                                  }
+                                  onClick={() => {
+                                    void handleToggleSubjectStatus(subject);
+                                    setOpenActionMenuSubjectId(null);
+                                  }}
+                                >
+                                  {isActive ? "Ngừng" : "Áp dụng lại"}
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="academic-subject-action-item academic-subject-delete"
+                                  onClick={() => {
+                                    void handleDeleteSubject(subject);
+                                    setOpenActionMenuSubjectId(null);
+                                  }}
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
               {paginatedSubjects.length === 0 && (
                 <tr>
                   <td colSpan={canUpdate || canDelete ? 6 : 5}>

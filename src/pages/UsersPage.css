@@ -765,16 +765,27 @@
    ========================================================= */
 
 .users-actions {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
-  white-space: nowrap;
+  justify-content: flex-start;
 }
 
-.users-actions button {
+.users-action-menu-wrap {
+  position: relative;
+}
+
+.users-action-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 34px;
-  padding: 0 11px;
+  padding: 0 12px;
+  border: 1px solid #d4ddea;
   border-radius: 8px;
+  background: #ffffff;
+  color: #4a5c75;
   font-family: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -785,17 +796,54 @@
     transform 0.15s ease;
 }
 
-.users-actions button:hover:not(:disabled) {
+.users-action-toggle:hover {
+  background: #f4f7fb;
+  border-color: #b9c6d8;
+}
+
+.users-action-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  padding: 8px;
+  border: 1px solid #e5eaf3;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+}
+
+.users-action-menu button {
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.users-action-menu button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-.users-actions button:disabled {
+.users-action-menu button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
 .action-edit {
-  border: 1px solid #d4ddea;
+  border-color: #d4ddea;
   background: #ffffff;
   color: #4a5c75;
 }
@@ -806,7 +854,7 @@
 }
 
 .action-lock {
-  border: 1px solid #ffd0d5;
+  border-color: #ffd0d5;
   background: #fff1f2;
   color: #d43850;
 }
@@ -816,7 +864,7 @@
 }
 
 .action-unlock {
-  border: 1px solid #bcebd4;
+  border-color: #bcebd4;
   background: #edfff5;
   color: #08845a;
 }
@@ -826,13 +874,23 @@
 }
 
 .action-delete {
-  border: 1px solid #e7b9bd;
+  border-color: #e7b9bd;
   background: #8f2027;
   color: #ffffff;
 }
 
 .action-delete:hover:not(:disabled) {
   background: #74191f;
+}
+
+.action-profile {
+  border-color: #cbdcff;
+  background: #f3f7ff;
+  color: #2459be;
+}
+
+.action-profile:hover:not(:disabled) {
+  background: #e8f0ff;
 }
 
 /* =========================================================

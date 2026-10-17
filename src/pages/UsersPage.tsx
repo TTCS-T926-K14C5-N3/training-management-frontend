@@ -105,6 +105,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+  const [openActionMenuUserId, setOpenActionMenuUserId] = useState<number | null>(null);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -294,6 +295,21 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      const target = event.target as Node;
+      const menu = document.querySelector(".users-action-menu.open");
+      const toggle = document.querySelector(".users-action-toggle.open");
+      if (!menu?.contains(target) && !toggle?.contains(target)) {
+        setOpenActionMenuUserId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Create Account
   const handleCreateAccount = async () => {
@@ -711,74 +727,111 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                       </td>
                       <td>
                         <div className="users-actions">
-                          {canViewAcademicProfile &&
-                            (user.vaiTroIds?.includes(2) ||
-                              user.vaiTroId === 2) && (
-                              <button
-                                className="action-profile"
-                                onClick={() => setStudentProfileUser(user)}
-                                title={
-                                  profileSection === "information"
-                                    ? "Xem thông tin học viên"
-                                    : profileSection === "history"
-                                      ? "Xem lịch sử lớp học"
-                                      : "Mở hồ sơ học tập của học viên"
-                                }
-                              >
-                                {profileSection === "information"
-                                  ? "Thông tin"
-                                  : profileSection === "history"
-                                    ? "Lịch sử lớp"
-                                    : "Hồ sơ học tập"}
-                              </button>
-                            )}
-                          {!profileSection && canUpdateUser && (
+                          <div className="users-action-menu-wrap">
                             <button
-                              className="action-edit"
-                              onClick={() => void openEditModal(user)}
-                              title="Chỉnh sửa thông tin người dùng"
-                            >
-                              Sửa
-                            </button>
-                          )}
-                          {!profileSection && (user.trangThai === "HoatDong"
-                            ? canLockUser && (
-                                <button
-                                  className="action-lock"
-                                  onClick={() => handleLock(user)}
-                                  disabled={user.nguoiDungId === currentUserId}
-                                  title={
-                                    user.nguoiDungId === currentUserId
-                                      ? "Không thể tự khóa tài khoản đang đăng nhập"
-                                      : "Khóa tài khoản"
-                                  }
-                                >
-                                  Khóa
-                                </button>
-                              )
-                            : canUnlockUser && (
-                                <button
-                                  className="action-unlock"
-                                  onClick={() => handleUnlock(user)}
-                                  title="Mở khóa tài khoản"
-                                >
-                                  Mở khóa
-                                </button>
-                              ))}
-                          {!profileSection && canDeleteUser && (
-                            <button
-                              className="action-delete"
-                              onClick={() => handleDelete(user)}
-                              disabled={user.nguoiDungId === currentUserId}
-                              title={
-                                user.nguoiDungId === currentUserId
-                                  ? "Không thể tự xóa tài khoản đang đăng nhập"
-                                  : "Xóa tài khoản"
+                              type="button"
+                              className={`users-action-toggle ${
+                                openActionMenuUserId === user.nguoiDungId ? "open" : ""
+                              }`}
+                              onClick={() =>
+                                setOpenActionMenuUserId((current) =>
+                                  current === user.nguoiDungId ? null : user.nguoiDungId,
+                                )
                               }
+                              aria-label={`Mở menu thao tác cho ${user.hoTen}`}
                             >
-                              Xóa
+                              Thao tác
+                              <span aria-hidden="true">▾</span>
                             </button>
-                          )}
+
+                            {openActionMenuUserId === user.nguoiDungId && (
+                              <div className="users-action-menu open">
+                                {canViewAcademicProfile &&
+                                  (user.vaiTroIds?.includes(2) ||
+                                    user.vaiTroId === 2) && (
+                                  <button
+                                    className="action-profile"
+                                    onClick={() => {
+                                      setStudentProfileUser(user);
+                                      setOpenActionMenuUserId(null);
+                                    }}
+                                    title={
+                                      profileSection === "information"
+                                        ? "Xem thông tin học viên"
+                                        : profileSection === "history"
+                                          ? "Xem lịch sử lớp học"
+                                          : "Mở hồ sơ học tập của học viên"
+                                    }
+                                  >
+                                    {profileSection === "information"
+                                      ? "Thông tin"
+                                      : profileSection === "history"
+                                        ? "Lịch sử lớp"
+                                        : "Hồ sơ học tập"}
+                                  </button>
+                                )}
+                                {!profileSection && canUpdateUser && (
+                                  <button
+                                    className="action-edit"
+                                    onClick={() => {
+                                      void openEditModal(user);
+                                      setOpenActionMenuUserId(null);
+                                    }}
+                                    title="Chỉnh sửa thông tin người dùng"
+                                  >
+                                    Sửa
+                                  </button>
+                                )}
+                                {!profileSection && (user.trangThai === "HoatDong"
+                                  ? canLockUser && (
+                                      <button
+                                        className="action-lock"
+                                        onClick={() => {
+                                          void handleLock(user);
+                                          setOpenActionMenuUserId(null);
+                                        }}
+                                        disabled={user.nguoiDungId === currentUserId}
+                                        title={
+                                          user.nguoiDungId === currentUserId
+                                            ? "Không thể tự khóa tài khoản đang đăng nhập"
+                                            : "Khóa tài khoản"
+                                        }
+                                      >
+                                        Khóa
+                                      </button>
+                                    )
+                                  : canUnlockUser && (
+                                      <button
+                                        className="action-unlock"
+                                        onClick={() => {
+                                          void handleUnlock(user);
+                                          setOpenActionMenuUserId(null);
+                                        }}
+                                        title="Mở khóa tài khoản"
+                                      >
+                                        Mở khóa
+                                      </button>
+                                    ))}
+                                {!profileSection && canDeleteUser && (
+                                  <button
+                                    className="action-delete"
+                                    onClick={() => {
+                                      void handleDelete(user);
+                                      setOpenActionMenuUserId(null);
+                                    }}
+                                    disabled={user.nguoiDungId === currentUserId}
+                                    title={
+                                      user.nguoiDungId === currentUserId
+                                        ? "Không thể tự xóa tài khoản đang đăng nhập"
+                                        : "Xóa tài khoản"
+                                    }
+                                  >
+                                    Xóa
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
