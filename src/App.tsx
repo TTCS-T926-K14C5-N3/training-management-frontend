@@ -17,8 +17,6 @@ import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
 import ScrumTaskBoard from "./pages/ScrumTaskBoard";
-import ScheduleManagement from "./pages/ScheduleManagement";
-import ScheduleHistory from "./pages/ScheduleHistory";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -240,8 +238,6 @@ const ROUTE_ACCESS_RULES: Record<
     anyOf: ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"],
   },
   "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
-  "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
-  "/quan-ly-lich-hoc/thong-bao": { allOf: ["SCHEDULE_VIEW"] },
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
@@ -1192,14 +1188,6 @@ function App() {
     navigate("/danh-muc-dao-tao");
   };
 
-  const handleScheduleManagement = () => {
-    if (!isAdminUser(user) && !hasPermission(user, "SCHEDULE_VIEW")) {
-      navigate("/");
-      return;
-    }
-    navigate("/quan-ly-lich-hoc");
-  };
-
   const handleAdmissionsLeads = () => {
     if (!hasPermission(user, "LEAD_VIEW")) {
       navigate("/");
@@ -1557,7 +1545,6 @@ function App() {
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
-            onScheduleManagement={handleScheduleManagement}
             onChangePassword={handleChangePassword}
             onProfile={handleProfile}
           >
@@ -1617,7 +1604,6 @@ function App() {
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
-            onScheduleManagement={handleScheduleManagement}
             onChangePassword={handleChangePassword}
             onProfile={handleProfile}
           >
@@ -1710,7 +1696,6 @@ function App() {
       onTrainingPrograms={handleTrainingPrograms}
       onTrainingCatalog={handleTrainingCatalog}
       onAdmissionsLeads={handleAdmissionsLeads}
-      onScheduleManagement={handleScheduleManagement}
       onChangePassword={handleChangePassword}
       onProfile={handleProfile}
     >
@@ -1811,26 +1796,6 @@ function App() {
     );
   }
 
-  if (
-    currentPath === "/quan-ly-lich-hoc" ||
-    currentPath === "/quan-ly-lich-hoc/thong-bao"
-  ) {
-    if (!hasPermission(user, "SCHEDULE_VIEW")) {
-      return <AppStatusPage status="forbidden" />;
-    }
-    return renderAdminLayout(
-      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
-        {currentPath === "/quan-ly-lich-hoc/thong-bao" ? (
-          <ScheduleHistory navigate={navigate} />
-        ) : (
-          <ScheduleManagement
-            permissions={currentPermissions}
-            navigate={navigate}
-          />
-        )}
-      </ProtectedRoute>,
-    );
-  }
   if (currentPath === "/quan-ly-lop") {
     return renderAcademicLayout(
       <ProtectedRoute
