@@ -27,6 +27,7 @@ interface MainLayoutProps {
   onAdmissionsLeads: () => void;
   onScheduleManagement?: () => void;
   onAbsenceRequest?: () => void;
+  onAbsenceRequestList?: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
 
@@ -51,6 +52,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onAdmissionsLeads,
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
   onAbsenceRequest = () => window.location.assign("/don-xin-phep"),
+  onAbsenceRequestList = () =>
+    window.location.assign("/don-xin-phep/theo-doi"),
   onProfile,
   onChangePassword,
 }) => {
@@ -244,16 +247,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                     <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
                   </button>
                   {isStudent && (
-                    <button
-                      type="button"
-                      className={`sidebar-item ${
-                        isActive("/don-xin-phep") ? "active" : ""
-                      }`}
-                      onClick={onAbsenceRequest}
-                    >
-                      <span className="sidebar-item-icon">✉</span>
-                      <span>Đơn xin phép</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className={`sidebar-item ${
+                          isActive("/don-xin-phep") ? "active" : ""
+                        }`}
+                        onClick={onAbsenceRequest}
+                      >
+                        <span className="sidebar-item-icon">✉</span>
+                        <span>Gửi đơn xin phép</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`sidebar-item ${
+                          isActive("/don-xin-phep/theo-doi") ? "active" : ""
+                        }`}
+                        onClick={onAbsenceRequestList}
+                      >
+                        <span className="sidebar-item-icon">▤</span>
+                        <span>Theo dõi đơn</span>
+                      </button>
+                    </>
                   )}
                 </>
               )}

@@ -21,6 +21,7 @@ import ScheduleManagement from "./pages/ScheduleManagement";
 import ScheduleArchive from "./pages/ScheduleArchive";
 import ScheduleHistory from "./pages/ScheduleHistory";
 import AbsenceRequest from "./pages/AbsenceRequest";
+import AbsenceRequestList from "./pages/AbsenceRequestList";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -246,6 +247,7 @@ const ROUTE_ACCESS_RULES: Record<
   "/quan-ly-lich-hoc/luu-tru": { allOf: ["SCHEDULE_VIEW"] },
   "/quan-ly-lich-hoc/thong-bao": { allOf: ["SCHEDULE_VIEW"] },
   "/don-xin-phep": { allOf: ["SCHEDULE_VIEW"] },
+  "/don-xin-phep/theo-doi": { allOf: ["SCHEDULE_VIEW"] },
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
@@ -258,6 +260,12 @@ function hasRouteAccess(path: string, user: User | null): boolean {
   }
   if (
     path === "/don-xin-phep" &&
+    !user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/don-xin-phep/theo-doi" &&
     !user?.vaiTro.some((role) => role.vaiTroId === 2)
   ) {
     return false;
@@ -1201,6 +1209,14 @@ function App() {
     navigate("/don-xin-phep");
   };
 
+  const handleAbsenceRequestList = () => {
+    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/don-xin-phep/theo-doi");
+  };
+
   const handleAdmissionsLeads = () => {
     if (!isAdminUser(user) && !hasPermission(user, "LEAD_VIEW")) {
       navigate("/");
@@ -1660,6 +1676,7 @@ function App() {
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onAbsenceRequest={handleAbsenceRequest}
+            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1722,6 +1739,7 @@ function App() {
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onAbsenceRequest={handleAbsenceRequest}
+            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1777,6 +1795,7 @@ function App() {
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onAbsenceRequest={handleAbsenceRequest}
+        onAbsenceRequestList={handleAbsenceRequestList}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
@@ -1949,6 +1968,15 @@ function App() {
     );
   }
 
+  if (currentPath === "/don-xin-phep/theo-doi") {
+    if (!isStudent) return <AppStatusPage status="forbidden" />;
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <AbsenceRequestList navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
   if (
     currentPath === "/thong-tin-hoc-vien" ||
     currentPath === "/lich-su-lop-hoc"
@@ -2073,6 +2101,7 @@ function App() {
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onAbsenceRequest={handleAbsenceRequest}
+        onAbsenceRequestList={handleAbsenceRequestList}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
