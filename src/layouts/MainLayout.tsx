@@ -26,6 +26,7 @@ interface MainLayoutProps {
   onTrainingPrograms?: () => void;
   onAdmissionsLeads: () => void;
   onScheduleManagement?: () => void;
+  onAbsenceRequest?: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
 
@@ -49,6 +50,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onTrainingPrograms = () => {},
   onAdmissionsLeads,
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
+  onAbsenceRequest = () => window.location.assign("/don-xin-phep"),
   onProfile,
   onChangePassword,
 }) => {
@@ -230,16 +232,30 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 </button>
               )}
               {canViewSchedule && (
-                <button
-                  type="button"
-                  className={`sidebar-item ${
-                    currentPath.startsWith("/quan-ly-lich-hoc") ? "active" : ""
-                  }`}
-                  onClick={onScheduleManagement}
-                >
-                  <span className="sidebar-item-icon">▦</span>
-                  <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`sidebar-item ${
+                      currentPath.startsWith("/quan-ly-lich-hoc") ? "active" : ""
+                    }`}
+                    onClick={onScheduleManagement}
+                  >
+                    <span className="sidebar-item-icon">▦</span>
+                    <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
+                  </button>
+                  {isStudent && (
+                    <button
+                      type="button"
+                      className={`sidebar-item ${
+                        isActive("/don-xin-phep") ? "active" : ""
+                      }`}
+                      onClick={onAbsenceRequest}
+                    >
+                      <span className="sidebar-item-icon">✉</span>
+                      <span>Đơn xin phép</span>
+                    </button>
+                  )}
+                </>
               )}
               {canManageTrainingPrograms && (
                 <button
