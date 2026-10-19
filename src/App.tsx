@@ -19,6 +19,7 @@ import AdmissionsLeads from "./pages/AdmissionsLeads";
 import AdminDashboard from "./pages/AdminDashboard";
 import ScheduleManagement from "./pages/ScheduleManagement";
 import AttendanceManagement from "./pages/AttendanceManagement";
+import AttendanceRoll from "./pages/AttendanceRoll";
 import Assignments from "./pages/Assignments";
 
 
@@ -1909,6 +1910,16 @@ function App() {
         requiredAnyPermission={["CLASS_VIEW", "ATTENDANCE_VIEW"]}
       >
         <AttendanceManagement />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/danh-sach-diem-danh") {
+    return renderAcademicLayout(
+      <ProtectedRoute
+        requiredAnyPermission={["CLASS_VIEW", "ATTENDANCE_VIEW"]}
+      >
+        <AttendanceRoll />
       </ProtectedRoute>,
     );
   }

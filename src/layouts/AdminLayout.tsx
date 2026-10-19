@@ -333,6 +333,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
+          {hasPermission("CLASS_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                currentPath === "/danh-sach-diem-danh" ? "admin-menu-active" : ""
+              }`}
+              onClick={() => window.location.assign("/danh-sach-diem-danh")}
+            >
+              <span className="admin-menu-symbol">📋</span>
+              <span>DS Điểm danh</span>
+            </button>
+          )}
+
           {(hasPermission("ASSIGNMENT_VIEW") ||
             hasPermission("ASSIGNMENT_CREATE") ||
             hasPermission("ASSIGNMENT_GRADE") ||

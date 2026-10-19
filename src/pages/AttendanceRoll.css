@@ -1,0 +1,656 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   AttendanceRoll.css  ·  Danh sách điểm danh – Premium UI
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page Layout ─────────────────────────────────────────────────────────────── */
+.roll-page {
+  display: grid;
+  gap: 20px;
+  width: min(100%, 1400px);
+  margin: 0 auto;
+  padding: 4px 0 80px;
+  color: #172033;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────────────── */
+.roll-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 32px 36px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+  color: #fff;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+}
+
+.roll-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% -20%, rgba(99, 102, 241, 0.4) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.roll-hero-text { position: relative; z-index: 1; }
+
+.roll-kicker {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #a5b4fc;
+  text-transform: uppercase;
+}
+
+.roll-hero h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #fff;
+  line-height: 1.15;
+}
+
+.roll-hero p {
+  max-width: 680px;
+  margin: 0;
+  color: #c7d2fe;
+  font-size: 0.93rem;
+  line-height: 1.6;
+}
+
+.roll-hero-deco {
+  flex-shrink: 0;
+  width: 130px;
+  height: 130px;
+  opacity: 0.4;
+}
+
+.roll-hero-deco svg { width: 100%; height: 100%; }
+
+/* ── Selector Card ────────────────────────────────────────────────────────────── */
+.roll-selector {
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+.roll-selector-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.roll-field-label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.roll-select-wrapper { position: relative; }
+
+.roll-field-select,
+.roll-field-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #1e293b;
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: auto;
+}
+
+.roll-field-select:focus,
+.roll-field-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  background: #fff;
+}
+
+.roll-selector-btns {
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ── Session Info Banner ─────────────────────────────────────────────────────── */
+.roll-session-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f4ff, #eef2ff);
+  border: 1px solid #c7d2fe;
+}
+
+.roll-session-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 14px;
+}
+
+.roll-session-key {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.roll-session-val {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.roll-session-threshold { color: #be123c !important; }
+
+.roll-session-divider {
+  width: 1px;
+  height: 36px;
+  background: #c7d2fe;
+  flex-shrink: 0;
+}
+
+/* ── Alerts ──────────────────────────────────────────────────────────────────── */
+.roll-alert {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.roll-alert--error { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+.roll-alert--success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.roll-alert--warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+/* ── Loading ─────────────────────────────────────────────────────────────────── */
+.roll-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 48px;
+  color: #6366f1;
+  font-weight: 600;
+}
+
+.roll-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e0e7ff;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: roll-spin 0.7s linear infinite;
+}
+
+@keyframes roll-spin { to { transform: rotate(360deg); } }
+
+/* ── Stats Grid ──────────────────────────────────────────────────────────────── */
+.roll-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.roll-stat-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  text-align: center;
+  transition: transform 0.15s;
+}
+
+.roll-stat-card:hover { transform: translateY(-2px); }
+
+.roll-stat-num {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.roll-stat-lbl {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.roll-stat--blue  { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.roll-stat--green { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.roll-stat--red   { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+.roll-stat--gray  { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+.roll-stat--purple{ background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+
+/* ── Progress Bar ────────────────────────────────────────────────────────────── */
+.roll-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.roll-progress-track {
+  flex: 1;
+  position: relative;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.roll-progress-seg {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.roll-seg--present { left: 0; background: #22c55e; z-index: 2; }
+.roll-seg--absent  { background: #f97316; z-index: 1; }
+
+.roll-progress-hint {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────────── */
+.roll-toolbar {
+  display: grid;
+  gap: 12px;
+}
+
+.roll-toolbar-search { width: 100%; }
+
+.roll-search {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 0.9rem;
+  color: #1e293b;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.roll-search:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: #fff;
+}
+
+.roll-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roll-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.roll-chip:hover {
+  border-color: #a5b4fc;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.roll-chip--on {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.roll-action-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+.roll-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 9px 18px;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.87rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.roll-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.roll-btn--primary {
+  background: #4f46e5;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+.roll-btn--primary:not(:disabled):hover {
+  background: #4338ca;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  transform: translateY(-1px);
+}
+
+.roll-btn--secondary {
+  background: #fff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+.roll-btn--secondary:not(:disabled):hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.roll-btn--ghost {
+  background: transparent;
+  color: #6366f1;
+  border-color: #c7d2fe;
+}
+.roll-btn--ghost:not(:disabled):hover {
+  background: #eef2ff;
+}
+
+.roll-btn-spin {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: roll-spin 0.7s linear infinite;
+}
+
+/* ── Student List ────────────────────────────────────────────────────────────── */
+.roll-list {
+  display: grid;
+  gap: 10px;
+}
+
+/* ── Student Card ────────────────────────────────────────────────────────────── */
+.roll-student-card {
+  display: grid;
+  grid-template-columns: 40px auto 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1.5px solid #e2e8f0;
+  border-left-width: 4px;
+  border-radius: 14px;
+  background: #fff;
+  transition: box-shadow 0.18s, transform 0.18s, background 0.18s;
+  position: relative;
+}
+
+.roll-student-card:hover {
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+.roll-card--marked { background: #fcfcff; }
+.roll-card--unmarked { background: #fafbfc; }
+
+.roll-card--highlight {
+  animation: roll-flash 0.6s ease;
+}
+
+@keyframes roll-flash {
+  0%   { background: #e0e7ff; }
+  100% { background: #fff; }
+}
+
+/* Card status variant left-borders applied inline via style prop */
+
+.roll-card-index {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.roll-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1.5px solid;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.roll-status-btn:not(:disabled):hover {
+  filter: brightness(0.9);
+  transform: scale(1.04);
+}
+
+.roll-status-icon { font-size: 1em; }
+.roll-status-text { font-size: 0.8rem; }
+
+.roll-card-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.roll-card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.roll-card-name strong {
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+}
+
+.roll-student-code {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f0f4ff;
+  color: #4338ca;
+  font-size: 0.75rem;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  border: 1px solid #c7d2fe;
+}
+
+.roll-card-email {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+
+.roll-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  font-size: 0.73rem;
+  font-weight: 750;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.roll-card-select {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #374151;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.roll-card-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ── Empty States ────────────────────────────────────────────────────────────── */
+.roll-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: #64748b;
+}
+
+.roll-empty span { font-size: 2.5rem; }
+.roll-empty p { margin-top: 8px; font-weight: 600; }
+
+.roll-empty-state {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.roll-empty-icon {
+  font-size: 4rem;
+  line-height: 1;
+  filter: grayscale(0.3);
+}
+
+.roll-empty-state h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #334155;
+}
+
+.roll-empty-state p {
+  margin: 0;
+  color: #94a3b8;
+  max-width: 380px;
+}
+
+/* ── Sticky Bottom Bar ───────────────────────────────────────────────────────── */
+.roll-sticky-bar {
+  position: sticky;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  border-radius: 16px;
+  background: #1e293b;
+  color: #f1f5f9;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.35);
+  z-index: 50;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.roll-sticky-bar strong { color: #fbbf24; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Responsive
+   ══════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .roll-stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .roll-stats-grid .roll-stat-card:last-child { grid-column: span 3; }
+  .roll-selector-row { grid-template-columns: 1fr 1fr; }
+  .roll-selector-btns { grid-column: span 2; }
+  .roll-student-card { grid-template-columns: 32px auto 1fr; }
+  .roll-pending-badge,
+  .roll-card-select { grid-column: 3; }
+  .roll-action-btns { flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  .roll-hero { padding: 24px 20px; }
+  .roll-hero-deco { display: none; }
+  .roll-selector { padding: 16px; }
+  .roll-selector-row { grid-template-columns: 1fr; }
+  .roll-selector-btns { grid-column: auto; }
+  .roll-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .roll-stats-grid .roll-stat-card:last-child { grid-column: span 2; }
+  .roll-session-info { flex-direction: column; align-items: flex-start; }
+  .roll-session-divider { display: none; }
+  .roll-student-card {
+    grid-template-columns: 32px 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .roll-status-btn { grid-column: 1 / -1; }
+  .roll-card-info { grid-column: 2; }
+  .roll-pending-badge,
+  .roll-card-select { grid-column: 1 / -1; }
+  .roll-action-btns { flex-direction: column; }
+  .roll-action-btns .roll-btn { width: 100%; justify-content: center; }
+  .roll-sticky-bar { flex-direction: column; gap: 10px; text-align: center; }
+  .roll-sticky-bar .roll-btn { width: 100%; justify-content: center; }
+}

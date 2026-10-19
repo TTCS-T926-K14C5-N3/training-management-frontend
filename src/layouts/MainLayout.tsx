@@ -262,6 +262,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                   <span>Điểm danh</span>
                 </button>
               )}
+              {canViewAttendance && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/danh-sach-diem-danh") ? "active" : ""
+                  }`}
+                  onClick={() => window.location.assign("/danh-sach-diem-danh")}
+                >
+                  <span className="sidebar-item-icon">📋</span>
+                  <span>DS Điểm danh</span>
+                </button>
+              )}
               {canViewAssignments && (
                 <button
                   type="button"
