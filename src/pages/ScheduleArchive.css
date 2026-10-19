@@ -1,0 +1,136 @@
+.schedule-archive-page .schedule-hero {
+  min-height: 170px;
+}
+
+.schedule-archive-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #dbeafe;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.schedule-archive-back:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.schedule-archive-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 18px 0;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.schedule-archive-tabs button {
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.schedule-archive-tabs button:hover {
+  color: #3730a3;
+}
+
+.schedule-archive-tabs button.is-active {
+  border-bottom-color: #4f46e5;
+  color: #3730a3;
+}
+
+.schedule-archive-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.schedule-archive-search label {
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.schedule-archive-search input {
+  min-width: 0;
+  min-height: 40px;
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  color: #172033;
+  font: inherit;
+}
+
+.schedule-archive-search input:focus {
+  border-color: #6366f1;
+  outline: 3px solid rgba(99, 102, 241, 0.14);
+}
+
+.schedule-archive-clear {
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.schedule-archive-clear:hover {
+  color: #1e3a8a;
+  text-decoration: underline;
+}
+
+.schedule-archive-note {
+  min-width: 150px;
+  max-width: 300px;
+  line-height: 1.45;
+}
+
+.schedule-archive-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 16px 20px;
+  border-top: 1px solid #edf1f7;
+  color: #475569;
+  font-size: 0.86rem;
+}
+
+.schedule-archive-pagination button {
+  min-height: 36px;
+}
+
+@media (max-width: 600px) {
+  .schedule-archive-tabs {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .schedule-archive-search {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .schedule-archive-pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+}

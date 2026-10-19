@@ -85,6 +85,73 @@
   background: #e0f2fe;
 }
 
+.schedule-hero-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.schedule-no-classes {
+  flex-basis: 100%;
+  margin: 0;
+  color: #dbeafe;
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.schedule-hero .schedule-secondary-button {
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.schedule-hero .schedule-secondary-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.student-schedule-hero {
+  position: relative;
+  min-height: 110px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 75% 110%, rgba(88, 116, 255, 0.5), transparent 16rem),
+    linear-gradient(110deg, #102b6d 0%, #1948a8 62%, #324fc1 100%);
+}
+
+.student-schedule-hero > div:first-child {
+  position: relative;
+  z-index: 1;
+}
+
+.student-schedule-hero h1 {
+  margin-top: 4px;
+  font-size: clamp(1.55rem, 2vw, 2rem);
+}
+
+.student-schedule-hero p {
+  max-width: 680px;
+  font-size: 0.9rem;
+}
+
+.student-hero-decoration {
+  position: absolute;
+  top: 50%;
+  right: 9%;
+  display: grid;
+  width: 84px;
+  height: 84px;
+  place-items: center;
+  transform: translateY(-50%) rotate(8deg);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #e7f2ff, #9fc3ff);
+  box-shadow: 0 12px 30px rgba(3, 20, 68, 0.3);
+  color: #2452bc;
+  font-size: 2.6rem;
+}
+
 .schedule-secondary-button {
   border-color: #cbd5e1;
   background: #fff;
@@ -130,6 +197,443 @@
   box-shadow: 0 7px 20px rgba(15, 23, 42, 0.045);
 }
 
+.student-schedule-dashboard {
+  display: grid;
+  gap: 14px;
+}
+
+.student-schedule-summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(180px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2eaf7;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(15, 35, 86, 0.04);
+}
+
+.student-schedule-stat {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border: 1px solid #edf1f8;
+  border-radius: 11px;
+}
+
+.student-schedule-stat-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf1ff;
+  color: #3468e8;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.student-schedule-stat-icon-blue {
+  background: #e9f0ff;
+  color: #2563eb;
+}
+
+.student-schedule-stat div,
+.student-schedule-filter {
+  display: grid;
+  gap: 4px;
+}
+
+.student-schedule-stat small {
+  color: #64748b;
+  font-size: 0.74rem;
+}
+
+.student-schedule-stat strong {
+  color: #172554;
+  font-size: 1.05rem;
+}
+
+.student-schedule-filter {
+  align-content: center;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.student-schedule-filter select {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid #d7e1f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-weight: 500;
+}
+
+.student-schedule-content {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.55fr);
+  align-items: stretch;
+  gap: 12px;
+}
+
+.student-calendar-panel,
+.student-agenda-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e2eaf7;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(15, 35, 86, 0.04);
+}
+
+.student-calendar-panel {
+  padding: 16px;
+}
+
+.student-calendar-heading,
+.student-calendar-heading > div,
+.student-agenda-heading,
+.student-agenda-actions,
+.student-week-navigation,
+.student-view-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.student-calendar-heading,
+.student-agenda-heading {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-calendar-heading {
+  margin-bottom: 12px;
+}
+
+.student-calendar-heading h2,
+.student-agenda-heading h2 {
+  margin: 0;
+  color: #18346d;
+  font-size: 0.98rem;
+}
+
+.student-calendar-heading > div,
+.student-week-navigation,
+.student-view-toggle {
+  gap: 6px;
+}
+
+.student-calendar-heading button,
+.student-week-navigation button,
+.student-view-toggle button {
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid #dce5f3;
+  border-radius: 8px;
+  background: #fff;
+  color: #36527f;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.student-calendar-heading button:hover,
+.student-week-navigation button:hover,
+.student-view-toggle button:hover {
+  background: #f1f5ff;
+}
+
+.student-calendar-heading .student-calendar-today {
+  color: #2459cb;
+  font-weight: 700;
+}
+
+.student-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.student-calendar-grid > strong {
+  padding: 7px 0;
+  color: #62728e;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.student-calendar-day {
+  position: relative;
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #29416e;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.student-calendar-day.outside-month {
+  color: #b4c0d3;
+}
+
+.student-calendar-day:hover {
+  background: #eef4ff;
+}
+
+.student-calendar-day.selected {
+  background: #316cf4;
+  color: #fff;
+  font-weight: 750;
+}
+
+.student-calendar-day.today:not(.selected) {
+  box-shadow: inset 0 0 0 1px #4f7ff0;
+  color: #2459cb;
+  font-weight: 750;
+}
+
+.student-calendar-day i,
+.student-calendar-legend i {
+  position: absolute;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3674f5;
+}
+
+.student-calendar-day i.completed,
+.student-calendar-legend i.completed {
+  background: #10b981;
+}
+
+.student-calendar-day i.cancelled,
+.student-calendar-legend i.cancelled {
+  background: #ef4444;
+}
+
+.student-calendar-day.selected i {
+  background: #fff;
+}
+
+.student-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px 14px;
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 0.69rem;
+}
+
+.student-calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.student-calendar-legend i {
+  position: static;
+}
+
+.student-calendar-note {
+  display: grid;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e3edff;
+  border-radius: 10px;
+  background: linear-gradient(110deg, #f3f7ff, #f7faff);
+  color: #39547e;
+  font-size: 0.75rem;
+}
+
+.student-calendar-note strong {
+  color: #1e3a8a;
+}
+
+.student-agenda-heading {
+  min-height: 66px;
+  padding: 12px 15px;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.student-agenda-heading p {
+  margin: 4px 0 0;
+  color: #71809a;
+  font-size: 0.75rem;
+}
+
+.student-agenda-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student-view-toggle {
+  padding: 3px;
+  border: 1px solid #e1e8f4;
+  border-radius: 9px;
+  background: #f8faff;
+}
+
+.student-view-toggle button {
+  border-color: transparent;
+  background: transparent;
+}
+
+.student-view-toggle button.active {
+  background: #2864e8;
+  color: #fff;
+  box-shadow: 0 2px 7px rgba(37, 99, 235, 0.2);
+}
+
+.student-agenda-list {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px 16px;
+}
+
+.student-agenda-day {
+  display: grid;
+  gap: 7px;
+}
+
+.student-agenda-day + .student-agenda-day {
+  margin-top: 6px;
+}
+
+.student-agenda-day h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0;
+  color: #233d70;
+  font-size: 0.78rem;
+}
+
+.student-agenda-day h3 span {
+  color: #3272f6;
+}
+
+.student-agenda-session {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.8fr) 34px minmax(100px, 1.6fr) minmax(92px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 66px;
+  padding: 8px 10px;
+  border: 1px solid #e8eef8;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.student-session-time,
+.student-session-details,
+.student-session-teacher {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.student-session-time strong,
+.student-session-details strong,
+.student-session-teacher strong {
+  overflow: hidden;
+  color: #263b61;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-session-time small,
+.student-session-details span,
+.student-session-details small,
+.student-session-teacher small {
+  overflow: hidden;
+  color: #71809a;
+  font-size: 0.67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-session-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: #eaf1ff;
+  color: #3269e5;
+  font-size: 1rem;
+}
+
+.student-session-status {
+  padding: 5px 8px;
+  border-radius: 20px;
+  background: #e8f1ff;
+  color: #2e61bb;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.student-session-status.completed {
+  background: #e2f8ee;
+  color: #07844e;
+}
+
+.student-session-status.cancelled {
+  background: #fff0f0;
+  color: #c43e3e;
+}
+
+.student-session-status.active {
+  background: #e3f8ee;
+  color: #0b8755;
+}
+
+.student-agenda-list.week-view {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 12px;
+}
+
+.student-agenda-list.week-view .student-agenda-day + .student-agenda-day {
+  margin-top: 0;
+}
+
+.student-agenda-list.week-view .student-agenda-session {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.student-agenda-list.week-view .student-session-time {
+  grid-column: 2 / -1;
+}
+
+.student-agenda-list.week-view .student-session-icon {
+  grid-row: 1 / span 2;
+}
+
+.student-agenda-list.week-view .student-session-teacher {
+  grid-column: 2;
+}
+
+.student-agenda-list.week-view .student-session-status {
+  grid-column: 3;
+  grid-row: 2;
+}
+
 .schedule-panel-heading {
   display: flex;
   align-items: center;
@@ -149,6 +653,17 @@
   margin: 0;
   color: #64748b;
   font-size: 0.84rem;
+}
+
+.schedule-panel-tools,
+.schedule-week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-week-navigation .schedule-secondary-button {
+  min-width: 42px;
 }
 
 .schedule-filter {
@@ -669,6 +1184,18 @@
   .schedule-table {
     min-width: 850px;
   }
+
+  .student-schedule-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-schedule-content {
+    grid-template-columns: 1fr;
+  }
+
+  .student-agenda-list {
+    max-height: none;
+  }
 }
 
 @media (max-width: 600px) {
@@ -686,6 +1213,15 @@
     width: 100%;
   }
 
+  .schedule-hero-actions {
+    width: 100%;
+  }
+
+  .schedule-hero-actions .schedule-primary-button,
+  .schedule-hero-actions .schedule-secondary-button {
+    width: 100%;
+  }
+
   .schedule-panel-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -698,8 +1234,90 @@
     flex-direction: column;
   }
 
+  .schedule-panel-tools,
+  .schedule-week-navigation {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .schedule-week-navigation .schedule-secondary-button {
+    flex: 1;
+  }
+
   .schedule-filter select {
     width: 100%;
+  }
+
+  .student-schedule-hero {
+    min-height: 0;
+  }
+
+  .student-schedule-hero .student-hero-decoration {
+    top: auto;
+    right: 14px;
+    bottom: 12px;
+    width: 48px;
+    height: 48px;
+    transform: none;
+    border-radius: 13px;
+    font-size: 1.5rem;
+  }
+
+  .student-schedule-summary {
+    grid-template-columns: 1fr 1fr;
+    padding: 9px;
+  }
+
+  .student-schedule-stat {
+    padding: 7px;
+  }
+
+  .student-schedule-stat-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .student-schedule-filter {
+    grid-column: span 1;
+  }
+
+  .student-calendar-panel {
+    padding: 12px;
+  }
+
+  .student-agenda-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .student-agenda-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .student-agenda-session {
+    grid-template-columns: 76px 30px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .student-session-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .student-session-teacher {
+    display: none;
+  }
+
+  .student-session-status {
+    grid-column: 4;
+    grid-row: 1;
+    font-size: 0.6rem;
+  }
+
+  .student-agenda-list.week-view {
+    grid-template-columns: 1fr;
   }
 
   .schedule-history-list {

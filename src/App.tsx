@@ -18,8 +18,8 @@ import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
 import AdminDashboard from "./pages/AdminDashboard";
 import ScheduleManagement from "./pages/ScheduleManagement";
+import ScheduleArchive from "./pages/ScheduleArchive";
 import ScheduleHistory from "./pages/ScheduleHistory";
-import ScrumTaskBoard from "./pages/ScrumTaskBoard";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -242,11 +242,18 @@ const ROUTE_ACCESS_RULES: Record<
   },
   "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
   "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-lich-hoc/luu-tru": { allOf: ["SCHEDULE_VIEW"] },
   "/quan-ly-lich-hoc/thong-bao": { allOf: ["SCHEDULE_VIEW"] },
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
   if (isAdminUser(user)) return true;
+  if (
+    path === "/quan-ly-lop" &&
+    user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
 
   const rule = ROUTE_ACCESS_RULES[path];
   if (!rule) return true;
@@ -281,6 +288,10 @@ function isAdminUser(user: User | null): boolean {
       role.vaiTroId === 8
     );
   });
+}
+
+function isStudentUser(user: User | null): boolean {
+  return user?.vaiTro.some((role) => role.vaiTroId === 2) ?? false;
 }
 
 // ===========================================================
@@ -1554,6 +1565,7 @@ function App() {
     user.vaiTro && user.vaiTro.length > 0
       ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
       : "Chưa có vai trò";
+  const isStudent = isStudentUser(user);
   const currentPermissions = user.quyen.map((permission) => permission.maQuyen);
   const isAdmin = isAdminUser(user);
   const effectivePermissions = isAdmin
@@ -1621,6 +1633,7 @@ function App() {
             roleName={roleName}
             avatarUrl={user.anhDaiDien}
             permissions={currentPermissions}
+            isStudent={isStudent}
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
@@ -1681,6 +1694,7 @@ function App() {
             roleName={roleName}
             avatarUrl={user.anhDaiDien}
             permissions={currentPermissions}
+            isStudent={isStudent}
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
@@ -1734,6 +1748,7 @@ function App() {
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
         permissions={currentPermissions}
+        isStudent={isStudent}
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
@@ -1776,6 +1791,9 @@ function App() {
     </AdminLayout>
   );
 
+  const renderScheduleLayout = (children: React.ReactNode) =>
+    isStudent ? renderAcademicLayout(children) : renderAdminLayout(children);
+
   if (currentPath === "/danh-muc-dao-tao") {
     if (!isAdmin && !hasPermission(user, "CURRICULUM_VIEW")) {
       return <AppStatusPage status="forbidden" />;
@@ -1804,10 +1822,6 @@ function App() {
         />
       </ProtectedRoute>,
     );
-  }
-
-  if (currentPath === "/scrum-board") {
-    return renderAcademicLayout(<ScrumTaskBoard />);
   }
 
   // =========================================================
@@ -1873,12 +1887,25 @@ function App() {
     if (!hasPermission(user, "SCHEDULE_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
-    return renderAdminLayout(
+    return renderScheduleLayout(
       <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
         <ScheduleManagement
           permissions={effectivePermissions}
+          isStudent={isStudent}
           onOpenHistory={() => navigate("/quan-ly-lich-hoc/thong-bao")}
+          onOpenArchive={() => navigate("/quan-ly-lich-hoc/luu-tru")}
         />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc/luu-tru") {
+    if (!hasPermission(user, "SCHEDULE_VIEW")) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    return renderScheduleLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleArchive navigate={navigate} />
       </ProtectedRoute>,
     );
   }
@@ -1887,7 +1914,7 @@ function App() {
     if (!hasPermission(user, "SCHEDULE_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
-    return renderAdminLayout(
+    return renderScheduleLayout(
       <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
         <ScheduleHistory navigate={navigate} />
       </ProtectedRoute>,
@@ -2007,6 +2034,7 @@ function App() {
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
         permissions={currentPermissions}
+        isStudent={isStudent}
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}

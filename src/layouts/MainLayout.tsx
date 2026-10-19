@@ -9,6 +9,7 @@ interface MainLayoutProps {
   roleName: string;
   avatarUrl?: string | null;
   permissions: string[];
+  isStudent?: boolean;
 
   onLogout: () => void;
 
@@ -36,6 +37,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   roleName,
   avatarUrl,
   permissions,
+  isStudent = false,
   onLogout,
 
   onHome,
@@ -66,7 +68,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const canViewGrades = permissions.includes("GRADE_VIEW");
   const canViewClasses = permissions.includes("CLASS_VIEW");
   const canManageClasses =
-    canViewClasses && permissions.includes("QUAN_LY_LOP");
+    !isStudent && canViewClasses && permissions.includes("QUAN_LY_LOP");
   const canManageTrainingPrograms =
     canViewClasses &&
     ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"].some((permission) =>
@@ -231,12 +233,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 <button
                   type="button"
                   className={`sidebar-item ${
-                    isActive("/quan-ly-lich-hoc") ? "active" : ""
+                    currentPath.startsWith("/quan-ly-lich-hoc") ? "active" : ""
                   }`}
                   onClick={onScheduleManagement}
                 >
                   <span className="sidebar-item-icon">▦</span>
-                  <span>Quản lý lịch học</span>
+                  <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
                 </button>
               )}
               {canManageTrainingPrograms && (
@@ -280,15 +282,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               </button>
             </>
           )}
-          <div className="sidebar-section-title">CÔNG VIỆC</div>
-          <a
-            className={`sidebar-item ${isActive("/scrum-board") ? "active" : ""}`}
-            href="/scrum-board"
-            aria-current={isActive("/scrum-board") ? "page" : undefined}
-          >
-            <span className="sidebar-item-icon">▤</span>
-            <span>Board Scrum</span>
-          </a>
         </nav>
 
         {/* ===================================================

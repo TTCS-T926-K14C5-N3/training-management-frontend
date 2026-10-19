@@ -290,12 +290,13 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = profileSection === "information"
+      const response = profileSection
         ? await api.get("/academic/students/statuses", {
             params: {
               search: search || undefined,
               classId: classFilter || undefined,
               enrollmentStatus: enrollmentStatusFilter || undefined,
+              hasHistory: profileSection === "history" || undefined,
               page,
               limit,
             },
@@ -314,7 +315,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
         setUsers(data);
         setTotal(data.length);
       } else {
-        if (profileSection === "information") {
+        if (profileSection) {
           setStudentStatusClasses(
             (data as UserResponse & { classes?: StudentStatusClass[] }).classes ?? [],
           );
@@ -717,11 +718,9 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
 
       <div
         className={`users-filter-card ${
-          profileSection === "information"
+          profileSection
             ? "users-filter-enrollment-status"
-            : profileSection
-              ? "users-filter-student-profile"
-              : ""
+            : ""
         }`}
       >
         <div className="users-search-wrapper">
@@ -735,7 +734,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             placeholder="Tìm mã học viên, ID, họ tên, email hoặc số điện thoại..."
           />
         </div>
-        {profileSection === "information" && (
+        {profileSection && (
           <>
             <select
               value={classFilter}
@@ -796,7 +795,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             ))}
           </select>
         )}
-        {profileSection !== "information" && (
+        {!profileSection && (
           <select
             value={status}
             onChange={(e) => {
@@ -846,8 +845,14 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                     <th>Họ tên</th>
                     <th>Email</th>
                     <th>Số điện thoại</th>
-                    <th>{profileSection === "information" ? "Lớp hiện tại" : "Vai trò"}</th>
-                    <th>{profileSection === "information" ? "Tình trạng ghi danh" : "Trạng thái"}</th>
+                    <th>
+                      {profileSection === "history"
+                        ? "Lớp đã ghi danh"
+                        : profileSection === "information"
+                          ? "Lớp hiện tại"
+                          : "Vai trò"}
+                    </th>
+                    <th>{profileSection ? "Tình trạng ghi danh" : "Trạng thái"}</th>
                     {profileSection === "information" && <th>Tài khoản</th>}
                     <th>{profileSection ? "Xem chi tiết" : "Thao tác"}</th>
                   </tr>
@@ -883,11 +888,17 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                         )}
                       </td>
                       <td>
-                        {profileSection === "information" ? (
-                          user.lopHienTai?.length ? (
+                        {profileSection ? (
+                          (profileSection === "history"
+                            ? user.lopHocs
+                            : user.lopHienTai
+                          )?.length ? (
                             <div className="student-current-classes">
-                              {user.lopHienTai.map((classItem) => (
-                                <span key={classItem.lopHocId}>
+                              {(profileSection === "history"
+                                ? user.lopHocs
+                                : user.lopHienTai
+                              )?.map((classItem) => (
+                                <span key={classItem.lopHocId} title={classItem.tenLop}>
                                   {classItem.maLop}
                                 </span>
                               ))}
@@ -900,7 +911,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                         )}
                       </td>
                       <td>
-                        {profileSection === "information" ? (
+                        {profileSection ? (
                           <div className="student-enrollment-status-cell">
                             <span className={`student-enrollment-badge ${
                               user.trangThaiGhiDanh === "Đang học"
@@ -982,7 +993,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                                   (user.vaiTroIds?.includes(2) ||
                                     user.vaiTroId === 2) && (
                                   <button
-                                    className="action-profile"
+                                  type="button"
+                                  className="action-profile"
                                     onClick={() => {
                                       setStudentProfileUser(user);
                                       setOpenActionMenuUserId(null);
