@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
+import ScheduleAttendancePage from "./ScheduleAttendancePage";
 import "./AttendanceManagement.css";
 
 type AttendanceStatus = "present" | "late" | "excused_absence" | "unexcused_absence" | "unmarked";
@@ -80,7 +81,7 @@ const messageOf = (error: unknown) => {
   return error instanceof Error ? error.message : "Không thể hoàn tất yêu cầu.";
 };
 
-export default function AttendanceManagement() {
+function AttendanceDashboard() {
   const studentMode = useMemo(() => getStudentMode(), []);
   const managerMode = useMemo(() => getManagerMode(), []);
   const [tab, setTab] = useState<Tab>(studentMode ? "history" : "attendance");
@@ -415,6 +416,18 @@ export default function AttendanceManagement() {
   );
 }
 
+export default function AttendanceManagement() {
+  const scheduleId = Number(
+    new URLSearchParams(window.location.search).get("scheduleId"),
+  );
+
+  return Number.isInteger(scheduleId) && scheduleId > 0 ? (
+    <ScheduleAttendancePage scheduleId={scheduleId} />
+  ) : (
+    <AttendanceDashboard />
+  );
+}
+
 function ThresholdRow({ threshold, onSave }: { threshold: Threshold; onSave: (programId: number, percentage: number) => Promise<void> }) {
   const [value, setValue] = useState<number | null>(null);
   return <form className="threshold-row" onSubmit={(event) => { event.preventDefault(); void onSave(threshold.programId, value ?? threshold.percentage).then(() => setValue(null)); }}>
@@ -423,4 +436,3 @@ function ThresholdRow({ threshold, onSave }: { threshold: Threshold; onSave: (pr
     <button className="attendance-button primary" type="submit">Lưu</button>
   </form>;
 }
-

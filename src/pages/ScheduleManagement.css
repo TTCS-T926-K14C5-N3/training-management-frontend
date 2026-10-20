@@ -309,7 +309,8 @@
   white-space: nowrap;
 }
 
-.schedule-row-actions button {
+.schedule-row-actions button,
+.schedule-row-actions a {
   padding: 5px 0;
   border: 0;
   background: transparent;
@@ -318,9 +319,11 @@
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
 }
 
-.schedule-row-actions button:hover {
+.schedule-row-actions button:hover,
+.schedule-row-actions a:hover {
   text-decoration: underline;
 }
 
@@ -331,6 +334,13 @@
 .schedule-read-only {
   color: #94a3b8;
   font-size: 0.79rem;
+}
+
+.schedule-attendance-complete {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: default;
 }
 
 .schedule-state {

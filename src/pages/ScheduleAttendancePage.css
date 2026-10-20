@@ -1,0 +1,148 @@
+.schedule-attendance-page {
+  min-width: 0;
+}
+
+.schedule-attendance-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.schedule-attendance-summary div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f4f7ff;
+}
+
+.schedule-attendance-summary span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.schedule-attendance-summary strong {
+  overflow-wrap: anywhere;
+  color: #172554;
+  font-size: 0.95rem;
+}
+
+.schedule-attendance-page .attendance-section-heading h2 {
+  margin: 0;
+  color: #14213d;
+  font-size: 1.15rem;
+}
+
+.schedule-attendance-heading-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.schedule-attendance-help,
+.schedule-attendance-empty {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.schedule-attendance-list {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-attendance-student {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 260px);
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e5eaf2;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.schedule-attendance-student-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.schedule-attendance-student-info strong,
+.schedule-attendance-student-info small {
+  overflow-wrap: anywhere;
+}
+
+.schedule-attendance-student-info strong {
+  color: #182442;
+}
+
+.schedule-attendance-student-info small {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.schedule-attendance-student select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+}
+
+.schedule-attendance-done {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.schedule-attendance-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e8edf4;
+}
+
+.schedule-attendance-footer > span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.schedule-attendance-error {
+  margin: 0 0 12px;
+  color: #9f1239;
+}
+
+@media (max-width: 900px) {
+  .schedule-attendance-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .schedule-attendance-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schedule-attendance-student {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .schedule-attendance-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

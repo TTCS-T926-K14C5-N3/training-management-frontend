@@ -70,6 +70,11 @@ interface ScheduleRecord {
   ngayHuy: string | null;
 }
 
+const isAttendanceComplete = (status: string | null) => {
+  const match = status?.match(/^Đã ghi nhận (\d+)\/(\d+)$/);
+  return Boolean(match && Number(match[2]) > 0 && Number(match[1]) >= Number(match[2]));
+};
+
 interface ScheduleHistory {
   lichHocLichSuId: number;
   lichHocId: number;
@@ -832,11 +837,24 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                             Chỉnh sửa
                           </button>
                         )}
-                        {canUpdate && schedule.trangThai !== "Đã hủy" && (
-                          <button type="button" onClick={() => void openAttendance(schedule)}>
-                            Điểm danh
-                          </button>
-                        )}
+                        {canUpdate &&
+                          schedule.trangThai !== "Đã hủy" &&
+                          (isAttendanceComplete(schedule.trangThaiDiemDanh) ? (
+                            <span className="schedule-attendance-complete">
+                              Đã điểm danh
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const path = `/quan-ly-diem-danh?scheduleId=${schedule.lichHocId}`;
+                                window.history.pushState({}, "", path);
+                                window.dispatchEvent(new PopStateEvent("popstate"));
+                              }}
+                            >
+                              Điểm danh
+                            </button>
+                          ))}
                         {canUpdate && schedule.coTheHuy && (
                           <button
                             className="schedule-danger-link"
@@ -846,9 +864,11 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                             Hủy buổi
                           </button>
                         )}
-                        {!schedule.coTheChinhSua && !schedule.coTheHuy && (
+                        {!canUpdate &&
+                          !schedule.coTheChinhSua &&
+                          !schedule.coTheHuy && (
                           <span className="schedule-read-only">
-                            {schedule.trangThaiDiemDanh?.startsWith("Đã ghi nhận")
+                            {isAttendanceComplete(schedule.trangThaiDiemDanh)
                               ? "Đã điểm danh · chỉ xem"
                               : "Chỉ xem"}
                           </span>

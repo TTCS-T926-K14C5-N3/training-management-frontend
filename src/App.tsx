@@ -242,7 +242,10 @@ const ROUTE_ACCESS_RULES: Record<
   },
   "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
   "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
-  "/quan-ly-diem-danh": { allOf: ["CLASS_VIEW"] },
+  "/quan-ly-diem-danh": {
+    allOf: [],
+    anyOf: ["CLASS_VIEW", "ATTENDANCE_VIEW", "SCHEDULE_VIEW"],
+  },
   "/quan-ly-bai-tap": { allOf: [], anyOf: ["ASSIGNMENT_VIEW", "ASSIGNMENT_CREATE", "ASSIGNMENT_SUBMIT", "ASSIGNMENT_GRADE"] },
 };
 
@@ -1906,7 +1909,11 @@ function App() {
   if (currentPath === "/quan-ly-diem-danh") {
     return renderAcademicLayout(
       <ProtectedRoute
-        requiredAnyPermission={["CLASS_VIEW", "ATTENDANCE_VIEW"]}
+        requiredAnyPermission={[
+          "CLASS_VIEW",
+          "ATTENDANCE_VIEW",
+          "SCHEDULE_VIEW",
+        ]}
       >
         <AttendanceManagement />
       </ProtectedRoute>,
