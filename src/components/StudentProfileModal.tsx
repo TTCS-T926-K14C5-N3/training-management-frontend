@@ -95,6 +95,9 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const [activeSection, setActiveSection] = useState<"information" | "history">(
+    section ?? "information",
+  );
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [isEditing, setIsEditing] = useState(false);
@@ -134,6 +137,12 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     // oxlint-disable-next-line react/set-state-in-effect
     void loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    if (section) {
+      setActiveSection(section);
+    }
+  }, [section]);
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -198,11 +207,9 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         <header className="users-modal-header student-profile-header">
           <div>
             <span className="student-profile-eyebrow">
-              {section === "information"
+              {activeSection === "information"
                 ? "THÔNG TIN HỌC VIÊN"
-                : section === "history"
-                  ? "LỊCH SỬ LỚP HỌC"
-                  : "HỒ SƠ HỌC TẬP"}
+                : "LỊCH SỬ LỚP HỌC"}
             </span>
             <h2 id="student-profile-title">{student.hoTen}</h2>
             <p>
@@ -221,6 +228,29 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </button>
         </header>
 
+        <div className="student-profile-tabs">
+          <button
+            type="button"
+            className={`student-profile-tab ${activeSection === "information" ? "active" : ""}`}
+            onClick={() => {
+              setIsEditing(false);
+              setActiveSection("information");
+            }}
+          >
+            Thông tin học viên
+          </button>
+          <button
+            type="button"
+            className={`student-profile-tab ${activeSection === "history" ? "active" : ""}`}
+            onClick={() => {
+              setIsEditing(false);
+              setActiveSection("history");
+            }}
+          >
+            Lịch sử lớp học
+          </button>
+        </div>
+
         {error && (
           <div className="student-profile-message error" role="alert">
             {error}
@@ -236,7 +266,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           <div className="student-profile-loading">Đang tải hồ sơ học viên...</div>
         ) : profile ? (
           <>
-            {section !== "information" && (
+            {activeSection !== "information" && (
               <div className="student-profile-summary">
                 <div>
                   <span>Trạng thái</span>
@@ -257,7 +287,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               </div>
             )}
 
-            {section !== "history" && (
+            {activeSection !== "history" && (
               <>
             <div className="student-profile-section-heading">
               <div>
@@ -392,7 +422,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               </>
             )}
 
-            {section !== "information" && (
+            {activeSection !== "information" && (
               <section className="student-profile-history">
               <h3>Lịch sử lớp học và bảng điểm</h3>
               <div className="student-profile-class-columns">

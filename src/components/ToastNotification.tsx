@@ -12,7 +12,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({
   type,
   text,
   onClose,
-  durationMs = 4000,
+  durationMs = 3000,
 }) => {
   const onCloseRef = useRef(onClose);
 

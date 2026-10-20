@@ -472,6 +472,39 @@
   margin-bottom: 14px;
 }
 
+
+.student-profile-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e5eaf3;
+  padding-bottom: 8px;
+}
+
+.student-profile-tab {
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.student-profile-tab:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+.student-profile-tab.active {
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
 .student-profile-eyebrow {
   display: block;
   margin-bottom: 6px;
@@ -809,12 +842,18 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 150px;
+  min-width: 165px;
   padding: 8px;
   border: 1px solid #e5eaf3;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+}
+
+.users-action-menu.users-action-menu-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+  box-shadow: 0 -14px 28px rgba(15, 23, 42, 0.12);
 }
 
 .users-action-menu button {
@@ -827,6 +866,7 @@
   font-weight: 650;
   cursor: pointer;
   text-align: left;
+  white-space: nowrap;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,

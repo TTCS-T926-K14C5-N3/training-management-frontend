@@ -19,7 +19,7 @@ interface MainLayoutProps {
   onHome: () => void;
   onGradeManagement: () => void;
   onStudentInformation: () => void;
-  onClassHistory: () => void;
+  onClassHistory?: () => void;
   onClassManagement: () => void;
   onTrainingCatalog: () => void;
   onTrainingPrograms?: () => void;
@@ -43,7 +43,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onHome,
   onGradeManagement,
   onStudentInformation,
-  onClassHistory,
   onClassManagement,
   onTrainingCatalog,
   onTrainingPrograms = () => {},
@@ -213,16 +212,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                     <span className="sidebar-item-icon">♙</span>
                     <span>Thông tin học viên</span>
                   </button>
-                  <button
-                    type="button"
-                    className={`sidebar-item ${
-                      isActive("/lich-su-lop-hoc") ? "active" : ""
-                    }`}
-                    onClick={onClassHistory}
-                  >
-                    <span className="sidebar-item-icon">▤</span>
-                    <span>Lịch sử lớp học</span>
-                  </button>
+
                 </>
               )}
 

@@ -162,6 +162,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [studentProfileUser, setStudentProfileUser] = useState<User | null>(
     null,
   );
+  const [studentProfileSection, setStudentProfileSection] =
+    useState<StudentProfileSection | null>(null);
   const [editForm, setEditForm] = useState({
     hoTen: "",
     email: "",
@@ -533,6 +535,14 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const openStudentProfile = (
+    user: User,
+    section: StudentProfileSection,
+  ) => {
+    setStudentProfileUser(user);
+    setStudentProfileSection(section);
+    setOpenActionMenuUserId(null);
+  };
 
   return (
     <div className="users-page">
@@ -550,18 +560,14 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             {profileSection ? "HỒ SƠ HỌC VIÊN" : "QUẢN LÝ HỆ THỐNG"}
           </div>
           <h2>
-            {profileSection === "information"
+            {profileSection
               ? "Thông tin học viên"
-              : profileSection === "history"
-                ? "Lịch sử lớp học"
-                : "Quản lý người dùng"}
+              : "Quản lý người dùng"}
           </h2>
           <p>
-            {profileSection === "information"
-              ? "Tra cứu thông tin cá nhân, liên hệ và trình độ đầu vào của học viên."
-              : profileSection === "history"
-                ? "Theo dõi lớp đang học, lịch sử lớp và bảng điểm của học viên."
-                : "Tra cứu học viên theo mã, ID, họ tên hoặc số điện thoại; mở hồ sơ để xem quá trình học và bảng điểm."}
+            {profileSection
+              ? "Tra cứu thông tin cá nhân và lịch sử lớp học của học viên."
+              : "Tra cứu học viên theo mã, ID, họ tên hoặc số điện thoại; mở hồ sơ để xem quá trình học và bảng điểm."}
           </p>
         </div>
 
@@ -675,7 +681,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {users.map((user, index) => (
                     <tr key={user.nguoiDungId}>
                       <td className="users-id">
                         {user.maHocVien || user.nguoiDungId}
@@ -745,31 +751,46 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                             </button>
 
                             {openActionMenuUserId === user.nguoiDungId && (
-                              <div className="users-action-menu open">
-                                {canViewAcademicProfile &&
+                              <div
+                                className={`users-action-menu open ${
+                                  index >= users.length - 2 && users.length >= 3
+                                    ? "users-action-menu-up"
+                                    : ""
+                                }`}
+                              >
+                                {Boolean(profileSection) &&
+                                  canViewAcademicProfile &&
                                   (user.vaiTroIds?.includes(2) ||
-                                    user.vaiTroId === 2) && (
-                                  <button
-                                    className="action-profile"
-                                    onClick={() => {
-                                      setStudentProfileUser(user);
-                                      setOpenActionMenuUserId(null);
-                                    }}
-                                    title={
-                                      profileSection === "information"
-                                        ? "Xem thông tin học viên"
-                                        : profileSection === "history"
-                                          ? "Xem lịch sử lớp học"
-                                          : "Mở hồ sơ học tập của học viên"
-                                    }
-                                  >
-                                    {profileSection === "information"
-                                      ? "Thông tin"
-                                      : profileSection === "history"
-                                        ? "Lịch sử lớp"
-                                        : "Hồ sơ học tập"}
-                                  </button>
-                                )}
+                                    user.vaiTroId === 2 ||
+                                    (typeof user.vaiTro === "string" &&
+                                      (user.vaiTro.toLowerCase().includes("student") ||
+                                       user.vaiTro.toLowerCase().includes("học viên")))) && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="action-profile"
+                                        onClick={() =>
+                                          openStudentProfile(
+                                            user,
+                                            "information",
+                                          )
+                                        }
+                                        title="Xem thông tin học viên"
+                                      >
+                                        Thông tin học viên
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="action-profile"
+                                        onClick={() =>
+                                          openStudentProfile(user, "history")
+                                        }
+                                        title="Xem lịch sử lớp học"
+                                      >
+                                        Lịch sử lớp học
+                                      </button>
+                                    </>
+                                  )}
                                 {!profileSection && canUpdateUser && (
                                   <button
                                     className="action-edit"
@@ -870,11 +891,12 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
       {studentProfileUser && (
         <StudentProfileModal
           student={studentProfileUser}
-          canEdit={
-            profileSection !== "history" && canEditStudentProfile
-          }
-          section={profileSection}
-          onClose={() => setStudentProfileUser(null)}
+          canEdit={canEditStudentProfile}
+          section={studentProfileSection ?? profileSection ?? "information"}
+          onClose={() => {
+            setStudentProfileUser(null);
+            setStudentProfileSection(null);
+          }}
           onSaved={() => void loadUsers()}
         />
       )}

@@ -1128,7 +1128,7 @@ function App() {
       navigate("/");
       return;
     }
-    navigate("/lich-su-lop-hoc");
+    navigate("/thong-tin-hoc-vien");
   };
 
   const handleClassManagement = () => {
@@ -1937,16 +1937,17 @@ function App() {
     );
   }
 
-  if (
-    currentPath === "/thong-tin-hoc-vien" ||
-    currentPath === "/lich-su-lop-hoc"
-  ) {
-    const profileSection =
-      currentPath === "/thong-tin-hoc-vien" ? "information" : "history";
+  if (currentPath === "/lich-su-lop-hoc") {
+    window.history.replaceState({}, "", "/thong-tin-hoc-vien");
+    setCurrentPath("/thong-tin-hoc-vien");
+    return null;
+  }
+
+  if (currentPath === "/thong-tin-hoc-vien") {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="USER_VIEW">
         <ProtectedRoute requiredPermission="GRADE_VIEW">
-          <UsersPage key={profileSection} profileSection={profileSection} />
+          <UsersPage key="thong-tin-hoc-vien" profileSection="information" />
         </ProtectedRoute>
       </ProtectedRoute>,
     );

@@ -2,6 +2,7 @@ import React from "react";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
 import "./Assignments.css";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -271,6 +272,16 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
 
   return (
     <main className="assignments-page">
+      {(error || notice) && (
+        <ToastNotification
+          type={error ? "error" : "success"}
+          text={error || notice}
+          onClose={() => {
+            setError("");
+            setNotice("");
+          }}
+        />
+      )}
       <header className="assignments-header">
         <div><p className="assignments-eyebrow">HỌC TẬP</p><h1>Bài tập</h1><p>Giao bài, nộp bài và theo dõi tiến độ lớp học.</p></div>
         <div className="assignments-tabs" role="tablist" aria-label="Chế độ bài tập">
@@ -278,8 +289,6 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
           {(studentOnly || canSubmit) && <button type="button" className={tab === "student" ? "active" : ""} onClick={() => { setTab("student"); setLoading(true); setRoster(null); }}>Học viên</button>}
         </div>
       </header>
-      {error && <div className="assignment-alert error" role="alert">{error}</div>}
-      {notice && <div className="assignment-alert success" role="status">{notice}<button type="button" aria-label="Đóng thông báo" onClick={() => setNotice("")}>×</button></div>}
       {loading ? <p className="assignment-loading">Đang tải bài tập…</p> : tab === "teacher" ? <>
         <section className="assignment-panel">
           <h2>Tạo bản nháp</h2>
@@ -320,7 +329,6 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
 };
 
 export default Assignments;
-
 
 
 
