@@ -29,6 +29,8 @@ interface AdminLayoutProps {
   onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
   onScheduleManagement?: () => void;
+  onAttendanceManagement?: () => void;
+  onAssignments?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -56,6 +58,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
+  onAttendanceManagement = () =>
+    window.location.assign("/quan-ly-diem-danh"),
+  onAssignments = () => window.location.assign("/quan-ly-bai-tap"),
   onChangePassword,
   onProfile,
 }) => {
@@ -140,6 +145,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isScheduleManagementActive =
     currentPath === "/quan-ly-lich-hoc" ||
     currentPath.startsWith("/quan-ly-lich-hoc/");
+  const isAttendanceManagementActive =
+    currentPath === "/quan-ly-diem-danh";
+  const isAssignmentsActive = currentPath === "/quan-ly-bai-tap";
 
   const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
 
@@ -313,6 +321,32 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <span className="admin-menu-symbol">▦</span>
               <span>Quản lý lịch học</span>
+            </button>
+          )}
+
+          {hasPermission("ATTENDANCE_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isAttendanceManagementActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onAttendanceManagement}
+            >
+              <span className="admin-menu-symbol">✓</span>
+              <span>Điểm danh</span>
+            </button>
+          )}
+
+          {hasPermission("ASSIGNMENT_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isAssignmentsActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onAssignments}
+            >
+              <span className="admin-menu-symbol">▤</span>
+              <span>Bài tập</span>
             </button>
           )}
 
