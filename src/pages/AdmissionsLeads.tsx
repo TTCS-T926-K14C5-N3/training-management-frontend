@@ -91,6 +91,7 @@ const LEAD_STATUS_COLUMNS = [
 ] as const;
 
 const LEAD_STATUS_PROGRESS = LEAD_STATUS_COLUMNS.slice(0, 5);
+const INTERACTION_FILTERS = ["Tất cả", "Gọi", "Nhắn tin", "Gặp"] as const;
 
 const LEAD_STATUS_TRANSITIONS: Record<string, string[]> = {
   "Mới": [...LEAD_STATUS_PROGRESS.slice(1), "Từ chối"],
@@ -208,6 +209,9 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     thoiDiem: LOCAL_DATE_TIME(),
     henGoiLaiLuc: "",
   });
+  const [interactionFilter, setInteractionFilter] = useState<
+    (typeof INTERACTION_FILTERS)[number]
+  >(INTERACTION_FILTERS[0]);
   const [statusForm, setStatusForm] = useState({
     trangThai: "",
     lyDoTuChoi: "",
@@ -215,6 +219,8 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   const [viewMode, setViewMode] = useState<"table" | "board">("table");
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+  const [rejectionLead, setRejectionLead] = useState<Lead | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const handleSearchSubmit = () => {
     const term = searchInput.trim();
@@ -532,7 +538,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
     lead: Lead,
     targetStatus: string,
     reason: string | null,
-  ) => {
+  ): Promise<boolean> => {
     setSaving(true);
     setError("");
     try {
@@ -545,11 +551,13 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
         `Đã cập nhật trạng thái mới cho học viên ${lead.hoTen}: ${targetStatus}.`,
       );
       await loadData();
+      return true;
     } catch (requestError: unknown) {
       console.error("Không thể cập nhật trạng thái lead:", requestError);
       setError(
         responseError(requestError, "Không thể cập nhật trạng thái lead."),
       );
+      return false;
     } finally {
       setSaving(false);
     }
@@ -566,20 +574,27 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
       await convertLead(lead);
       return;
     }
-    let reason: string | null = null;
     if (targetStatus === "Từ chối") {
-      const enteredReason = window.prompt(
-        `Nhập lý do từ chối ${lead.hoTen}:`,
-        lead.lyDoTuChoi ?? "",
-      );
-      if (enteredReason === null) return;
-      reason = enteredReason.trim();
-      if (!reason) {
-        setError("Vui lòng nhập lý do từ chối trước khi cập nhật trạng thái.");
-        return;
-      }
+      setRejectionLead(lead);
+      setRejectionReason(lead.lyDoTuChoi ?? "");
+      setError("");
+      return;
     }
-    await updateLeadStatus(lead, targetStatus, reason);
+    await updateLeadStatus(lead, targetStatus, null);
+  };
+
+  const submitRejection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!rejectionLead) return;
+    const reason = rejectionReason.trim();
+    if (!reason) {
+      setError("Vui lòng nhập lý do từ chối trước khi cập nhật trạng thái.");
+      return;
+    }
+    if (await updateLeadStatus(rejectionLead, "Từ chối", reason)) {
+      setRejectionLead(null);
+      setRejectionReason("");
+    }
   };
 
   const toggleSelectAll = () => {
@@ -645,6 +660,19 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
   );
   const availableStatusTransitions = historyLead
     ? LEAD_STATUS_TRANSITIONS[historyLead.trangThai] ?? []
+    : [];
+  const careEntries = historyLead
+    ? historyLead.tuongTacs
+        .filter(
+          (entry) =>
+            interactionFilter === "Tất cả" || entry.loai === interactionFilter,
+        )
+        .slice()
+        .sort(
+          (first, second) =>
+            new Date(second.thoiDiem).getTime() -
+            new Date(first.thoiDiem).getTime(),
+        )
     : [];
 
   return (
@@ -864,6 +892,75 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </div>
           </form>
         </section>
+        </div>
+      )}
+
+      {rejectionLead && (
+        <div
+          className="lead-rejection-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) {
+              setRejectionLead(null);
+              setRejectionReason("");
+            }
+          }}
+        >
+          <section
+            className="lead-rejection-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lead-rejection-title"
+          >
+            <header className="lead-form-modal-header">
+              <div>
+                <h2 id="lead-rejection-title">Từ chối lead</h2>
+                <p>
+                  Lead <strong>{rejectionLead.hoTen}</strong> sẽ được chuyển
+                  sang trạng thái Từ chối.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Đóng popup từ chối lead"
+                disabled={saving}
+                onClick={() => {
+                  setRejectionLead(null);
+                  setRejectionReason("");
+                }}
+              >
+                ×
+              </button>
+            </header>
+            <form className="lead-rejection-form" onSubmit={submitRejection}>
+              <label htmlFor="lead-rejection-reason">Lý do từ chối *</label>
+              <textarea
+                id="lead-rejection-reason"
+                autoFocus
+                required
+                maxLength={500}
+                rows={4}
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                placeholder="Nhập lý do để lưu vào lịch sử lead"
+              />
+              <small>{rejectionReason.length}/500 ký tự</small>
+              <div className="lead-rejection-actions">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    setRejectionLead(null);
+                    setRejectionReason("");
+                  }}
+                >
+                  Hủy
+                </button>
+                <button type="submit" disabled={saving || !rejectionReason.trim()}>
+                  {saving ? "Đang lưu..." : "Xác nhận từ chối"}
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
 
@@ -1370,35 +1467,88 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                     <p className="academic-muted">Chưa có lịch sử trạng thái.</p>
                   )}
                 </section>
-                <section>
-                  <h3>Nhật ký chăm sóc</h3>
-                  {historyLead.tuongTacs.length > 0 ? (
-                    <ul className="lead-history">
-                      {historyLead.tuongTacs.map((entry) => (
+                <section className="lead-care-section">
+                  <div className="lead-care-heading">
+                    <div>
+                      <h3>Nhật ký chăm sóc</h3>
+                      <p>{historyLead.tuongTacs.length} lần tương tác</p>
+                    </div>
+                    <span className="lead-care-latest-label">
+                      Mới nhất trước
+                    </span>
+                  </div>
+                  <div
+                    className="lead-care-filters"
+                    role="group"
+                    aria-label="Lọc nhật ký theo hình thức"
+                  >
+                    {INTERACTION_FILTERS.map((filter) => (
+                      <button
+                        type="button"
+                        key={filter}
+                        aria-pressed={interactionFilter === filter}
+                        onClick={() => setInteractionFilter(filter)}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                  {careEntries.length > 0 ? (
+                    <ol className="lead-care-timeline">
+                      {careEntries.map((entry) => (
                         <li
-                          className={
-                            entry.henGoiLaiQuaHan
-                              ? "lead-interaction-overdue"
-                              : undefined
-                          }
+                          className={`lead-care-entry${
+                            entry.henGoiLaiQuaHan ? " is-overdue" : ""
+                          }`}
                           key={entry.tuongTacId}
                         >
-                          <strong>{entry.loai}</strong> — {entry.noiDung}
-                          {" · "}
-                          {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
-                          {entry.nguoiThucHien ? ` · ${entry.nguoiThucHien}` : ""}
-                          {entry.henGoiLaiLuc && (
-                            <>
-                              {" · Gọi lại "}
-                              {new Date(entry.henGoiLaiLuc).toLocaleString("vi-VN")}
-                              {entry.henGoiLaiQuaHan && " (QUÁ HẠN)"}
-                            </>
-                          )}
+                          <div className="lead-care-entry-topline">
+                            <span
+                              className={`lead-care-type lead-care-type-${
+                                entry.loai === "Gọi"
+                                  ? "call"
+                                  : entry.loai === "Nhắn tin"
+                                    ? "message"
+                                    : "meeting"
+                              }`}
+                            >
+                              {entry.loai}
+                            </span>
+                            <time dateTime={entry.thoiDiem}>
+                              {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
+                            </time>
+                          </div>
+                          <p>{entry.noiDung}</p>
+                          <div className="lead-care-entry-meta">
+                            <span>
+                              {entry.nguoiThucHien ?? "Chưa xác định người thực hiện"}
+                            </span>
+                            {entry.henGoiLaiLuc && (
+                              <span
+                                className={
+                                  entry.henGoiLaiQuaHan
+                                    ? "lead-care-follow-up is-overdue"
+                                    : "lead-care-follow-up"
+                                }
+                              >
+                                {entry.henGoiLaiQuaHan
+                                  ? "Quá hạn gọi lại"
+                                  : "Gọi lại"}{" "}
+                                {new Date(entry.henGoiLaiLuc).toLocaleString(
+                                  "vi-VN",
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </li>
                       ))}
-                    </ul>
+                    </ol>
                   ) : (
-                    <p className="academic-muted">Chưa có tương tác.</p>
+                    <p className="lead-care-empty">
+                      {historyLead.tuongTacs.length === 0
+                        ? "Chưa có tương tác nào được ghi nhận."
+                        : "Không có tương tác phù hợp với bộ lọc."}
+                    </p>
                   )}
                 </section>
               </div>
@@ -1478,11 +1628,12 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                         <option value="Gặp">Gặp trực tiếp</option>
                       </select>
                     </label>
-                    <label>
-                      Nội dung
-                      <input
+                    <label className="lead-interaction-note">
+                      Nội dung chăm sóc
+                      <textarea
                         required
                         maxLength={2000}
+                        rows={3}
                         value={interactionForm.noiDung}
                         onChange={(event) =>
                           setInteractionForm({
@@ -1490,7 +1641,9 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                             noiDung: event.target.value,
                           })
                         }
+                        placeholder="Tóm tắt nội dung đã trao đổi và nhu cầu của lead"
                       />
+                      <small>{interactionForm.noiDung.length}/2000 ký tự</small>
                     </label>
                     <label>
                       Thời điểm

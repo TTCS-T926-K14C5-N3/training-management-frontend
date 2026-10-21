@@ -18,7 +18,12 @@ import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
 import AdminDashboard from "./pages/AdminDashboard";
 import ScheduleManagement from "./pages/ScheduleManagement";
+import ScheduleArchive from "./pages/ScheduleArchive";
+import ScheduleHistory from "./pages/ScheduleHistory";
+import AbsenceRequest from "./pages/AbsenceRequest";
+import AbsenceRequestList from "./pages/AbsenceRequestList";
 import AttendanceManagement from "./pages/AttendanceManagement";
+import ClassAttendanceManagement from "./pages/ClassAttendanceManagement";
 import Assignments from "./pages/Assignments";
 
 
@@ -242,12 +247,52 @@ const ROUTE_ACCESS_RULES: Record<
   },
   "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
   "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
-  "/quan-ly-diem-danh": { allOf: ["CLASS_VIEW"] },
-  "/quan-ly-bai-tap": { allOf: [], anyOf: ["ASSIGNMENT_VIEW", "ASSIGNMENT_CREATE", "ASSIGNMENT_SUBMIT", "ASSIGNMENT_GRADE"] },
+  "/quan-ly-lich-hoc/luu-tru": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-lich-hoc/thong-bao": { allOf: ["SCHEDULE_VIEW"] },
+  "/don-xin-phep": { allOf: ["SCHEDULE_VIEW"] },
+  "/don-xin-phep/theo-doi": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-diem-danh": { allOf: ["ATTENDANCE_VIEW"] },
+  "/quan-ly-diem-danh-lop": {
+    allOf: [],
+    anyOf: ["CLASS_VIEW", "ATTENDANCE_VIEW"],
+  },
+  "/quan-ly-bai-tap": {
+    allOf: [],
+    anyOf: [
+      "ASSIGNMENT_VIEW",
+      "ASSIGNMENT_CREATE",
+      "ASSIGNMENT_SUBMIT",
+      "ASSIGNMENT_GRADE",
+    ],
+  },
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
   if (isAdminUser(user)) return true;
+  if (
+    path === "/quan-ly-lop" &&
+    user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/don-xin-phep" &&
+    !user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/don-xin-phep/theo-doi" &&
+    !user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/quan-ly-diem-danh" &&
+    user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
 
   const rule = ROUTE_ACCESS_RULES[path];
   if (!rule) return true;
@@ -282,6 +327,10 @@ function isAdminUser(user: User | null): boolean {
       role.vaiTroId === 8
     );
   });
+}
+
+function isStudentUser(user: User | null): boolean {
+  return user?.vaiTro.some((role) => role.vaiTroId === 2) ?? false;
 }
 
 // ===========================================================
@@ -1175,15 +1224,42 @@ function App() {
     navigate("/quan-ly-lich-hoc");
   };
 
+  const handleAbsenceRequest = () => {
+    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/don-xin-phep");
+  };
+
+  const handleAbsenceRequestList = () => {
+    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/don-xin-phep/theo-doi");
+  };
+
   const handleAttendanceManagement = () => {
     if (
-      !isAdminUser(user) &&
-      !hasAnyPermission(user, ["CLASS_VIEW", "ATTENDANCE_VIEW"])
+      isStudentUser(user) ||
+      !hasPermission(user, "ATTENDANCE_VIEW")
     ) {
       navigate("/");
       return;
     }
     navigate("/quan-ly-diem-danh");
+  };
+
+  const handleClassAttendanceManagement = () => {
+    if (
+      isStudentUser(user) ||
+      !hasAnyPermission(user, ["CLASS_VIEW", "ATTENDANCE_VIEW"])
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-diem-danh-lop");
   };
 
   const handleAssignments = () => {
@@ -1193,7 +1269,7 @@ function App() {
       "ASSIGNMENT_SUBMIT",
       "ASSIGNMENT_GRADE",
     ];
-    if (!isAdminUser(user) && !hasAnyPermission(user, assignmentPermissions)) {
+    if (!hasAnyPermission(user, assignmentPermissions)) {
       navigate("/");
       return;
     }
@@ -1580,6 +1656,7 @@ function App() {
     user.vaiTro && user.vaiTro.length > 0
       ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
       : "Chưa có vai trò";
+  const isStudent = isStudentUser(user);
   const currentPermissions = user.quyen.map((permission) => permission.maQuyen);
   const isAdmin = isAdminUser(user);
   const effectivePermissions = isAdmin
@@ -1632,6 +1709,9 @@ function App() {
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onScheduleManagement={handleScheduleManagement}
+            onAttendanceManagement={handleAttendanceManagement}
+            onClassAttendanceManagement={handleClassAttendanceManagement}
+            onAssignments={handleAssignments}
             onChangePassword={handleChangePassword}
             onProfile={handleProfile}
           >
@@ -1647,6 +1727,7 @@ function App() {
             roleName={roleName}
             avatarUrl={user.anhDaiDien}
             permissions={currentPermissions}
+            isStudent={isStudent}
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
@@ -1656,6 +1737,8 @@ function App() {
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
+            onAbsenceRequest={handleAbsenceRequest}
+            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1696,6 +1779,9 @@ function App() {
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onScheduleManagement={handleScheduleManagement}
+            onAttendanceManagement={handleAttendanceManagement}
+            onClassAttendanceManagement={handleClassAttendanceManagement}
+            onAssignments={handleAssignments}
             onChangePassword={handleChangePassword}
             onProfile={handleProfile}
           >
@@ -1707,6 +1793,7 @@ function App() {
             roleName={roleName}
             avatarUrl={user.anhDaiDien}
             permissions={currentPermissions}
+            isStudent={isStudent}
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
@@ -1716,6 +1803,8 @@ function App() {
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
+            onAbsenceRequest={handleAbsenceRequest}
+            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1749,6 +1838,9 @@ function App() {
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
+        onAttendanceManagement={handleAttendanceManagement}
+        onClassAttendanceManagement={handleClassAttendanceManagement}
+        onAssignments={handleAssignments}
         onChangePassword={handleChangePassword}
         onProfile={handleProfile}
       >
@@ -1760,6 +1852,7 @@ function App() {
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
         permissions={currentPermissions}
+        isStudent={isStudent}
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
@@ -1769,6 +1862,11 @@ function App() {
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
+        onAbsenceRequest={handleAbsenceRequest}
+        onAbsenceRequestList={handleAbsenceRequestList}
+        onAttendanceManagement={handleAttendanceManagement}
+        onClassAttendanceManagement={handleClassAttendanceManagement}
+        onAssignments={handleAssignments}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
@@ -1801,6 +1899,9 @@ function App() {
       {children}
     </AdminLayout>
   );
+
+  const renderScheduleLayout = (children: React.ReactNode) =>
+    isStudent ? renderAcademicLayout(children) : renderAdminLayout(children);
 
   if (currentPath === "/danh-muc-dao-tao") {
     if (!isAdmin && !hasPermission(user, "CURRICULUM_VIEW")) {
@@ -1895,20 +1996,72 @@ function App() {
     if (!hasPermission(user, "SCHEDULE_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
-
-    return renderAdminLayout(
+    return renderScheduleLayout(
       <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
-        <ScheduleManagement permissions={effectivePermissions} />
+        <ScheduleManagement
+          permissions={effectivePermissions}
+          isStudent={isStudent}
+          onOpenHistory={() => navigate("/quan-ly-lich-hoc/thong-bao")}
+          onOpenArchive={() => navigate("/quan-ly-lich-hoc/luu-tru")}
+        />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc/luu-tru") {
+    if (!hasPermission(user, "SCHEDULE_VIEW")) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    return renderScheduleLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleArchive navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc/thong-bao") {
+    if (!hasPermission(user, "SCHEDULE_VIEW")) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    return renderScheduleLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleHistory navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/don-xin-phep") {
+    if (!isStudent) return <AppStatusPage status="forbidden" />;
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <AbsenceRequest navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/don-xin-phep/theo-doi") {
+    if (!isStudent) return <AppStatusPage status="forbidden" />;
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <AbsenceRequestList navigate={navigate} />
       </ProtectedRoute>,
     );
   }
 
   if (currentPath === "/quan-ly-diem-danh") {
     return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="ATTENDANCE_VIEW">
+        <AttendanceManagement />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-diem-danh-lop") {
+    return renderAcademicLayout(
       <ProtectedRoute
         requiredAnyPermission={["CLASS_VIEW", "ATTENDANCE_VIEW"]}
       >
-        <AttendanceManagement />
+        <ClassAttendanceManagement />
       </ProtectedRoute>,
     );
   }
@@ -1920,12 +2073,8 @@ function App() {
       "ASSIGNMENT_SUBMIT",
       "ASSIGNMENT_GRADE",
     ];
-    if (!isAdmin && !hasAnyPermission(user, assignmentPermissions)) {
-      return <AppStatusPage status="forbidden" />;
-    }
     const studentOnly =
-      !isAdminUser(user) &&
-      hasPermission(user, "ASSIGNMENT_SUBMIT") &&
+      isStudentUser(user) &&
       !hasAnyPermission(user, ["ASSIGNMENT_CREATE", "ASSIGNMENT_GRADE"]);
     return renderAcademicLayout(
       <ProtectedRoute requiredAnyPermission={assignmentPermissions}>
@@ -2025,6 +2174,7 @@ function App() {
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
           onAttendanceManagement={handleAttendanceManagement}
+          onClassAttendanceManagement={handleClassAttendanceManagement}
           onAssignments={handleAssignments}
 
           onChangePassword={handleChangePassword}
@@ -2052,6 +2202,7 @@ function App() {
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
         permissions={currentPermissions}
+        isStudent={isStudent}
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
@@ -2062,7 +2213,10 @@ function App() {
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
         onAttendanceManagement={handleAttendanceManagement}
+        onClassAttendanceManagement={handleClassAttendanceManagement}
         onAssignments={handleAssignments}
+        onAbsenceRequest={handleAbsenceRequest}
+        onAbsenceRequestList={handleAbsenceRequestList}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >

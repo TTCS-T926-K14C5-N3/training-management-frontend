@@ -113,6 +113,10 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
       if (code.startsWith("TUITION_") || code === "QUAN_LY_HOC_PHI") {
         return "Học phí";
       }
+      if (code.startsWith("ATTENDANCE_")) return "Điểm danh";
+      if (code.startsWith("SCHEDULE_")) return "Lịch học";
+      if (code.startsWith("CURRICULUM_")) return "Danh mục đào tạo";
+      if (code.startsWith("LEAD_")) return "Tuyển sinh";
       return "Lớp học";
     };
 
@@ -151,10 +155,17 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
       setSaving(true);
       setMessage("");
       setErrorMessage("");
+      const availableCodes = new Set(
+        catalog.map((permission) => permission.maQuyen),
+      );
+      const permissionCodes = Array.from(selectedPermissions).filter((code) =>
+        availableCodes.has(code),
+      );
+      setSelectedPermissions(new Set(permissionCodes));
       const response = await api.put(
         `/roles/${activeRoleId}/permissions`,
         {
-          permissionCodes: Array.from(selectedPermissions),
+          permissionCodes,
         },
       );
       const currentUser = JSON.parse(localStorage.getItem("user") || "null");

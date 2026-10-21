@@ -118,6 +118,9 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const selectedClass = classes.find(
     (item) => item.lopHocId === form.lopHocId,
   );
+  const selectedClassHasNoStudents = Boolean(
+    selectedClass && selectedClass.hocViens.length === 0,
+  );
 
   useEffect(() => {
     const closeStudentPickerOnOutsideClick = (event: MouseEvent) => {
@@ -202,6 +205,12 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
 
   const saveGrade = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (editingGradeId === null && selectedClassHasNoStudents) {
+      setErrorMessage(
+        "Lớp này chưa có học viên. Hãy ghi danh học viên trước khi nhập điểm.",
+      );
+      return;
+    }
     if (!form.lopHocId || !form.hocVienId || !form.monHocId) {
       setErrorMessage("Vui lòng chọn lớp, học viên và môn học.");
       return;
@@ -441,6 +450,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                   )}
                 </div>
               </details>
+              {selectedClassHasNoStudents && (
+                <small className="academic-empty-options" role="status">
+                  Ghi danh học viên vào lớp trước khi nhập điểm.
+                </small>
+              )}
             </div>
             <label>
               Môn học
@@ -536,6 +550,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
               disabled={
                 saving ||
                 (editingGradeId === null && !canCreate) ||
+                (editingGradeId === null && selectedClassHasNoStudents) ||
                 (editingGradeId !== null && !canUpdate)
               }
             >

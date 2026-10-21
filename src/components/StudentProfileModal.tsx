@@ -49,6 +49,16 @@ interface StudentProfile {
     ngayNhapHoc: string | null;
   };
   lopHocs: StudentProfileClass[];
+  thaoTacs: Array<{
+    actionId: number;
+    loaiThaoTac: "BaoLuu" | "ChuyenLop" | "ThoiHoc";
+    ngayHieuLuc: string;
+    lyDo: string;
+    maLop: string;
+    maLopDich: string | null;
+    nguoiThucHien: string | null;
+    ngayTao: string;
+  }>;
   diems: StudentGrade[];
 }
 
@@ -256,6 +266,43 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
               </div>
             )}
+
+            <section className="student-enrollment-history">
+              <div className="student-profile-section-heading">
+                <div>
+                  <h3>Lịch sử xử lý ghi danh</h3>
+                  <p>Bảo lưu, chuyển lớp và thôi học được lưu cùng lý do và ngày hiệu lực.</p>
+                </div>
+              </div>
+              {profile.thaoTacs.length ? (
+                <div className="student-enrollment-history-list">
+                  {profile.thaoTacs.map((action) => (
+                    <article key={action.actionId}>
+                      <div>
+                        <strong>
+                          {action.loaiThaoTac === "BaoLuu"
+                            ? "Bảo lưu"
+                            : action.loaiThaoTac === "ChuyenLop"
+                              ? "Chuyển lớp"
+                              : "Thôi học"}
+                        </strong>
+                        <span>
+                          {formatDate(action.ngayHieuLuc)} · {action.maLop}
+                          {action.maLopDich ? ` → ${action.maLopDich}` : ""}
+                        </span>
+                      </div>
+                      <p>{action.lyDo}</p>
+                      <small>
+                        {action.nguoiThucHien ?? "Không rõ người thực hiện"}
+                        {action.ngayTao ? ` · ${formatDate(action.ngayTao)}` : ""}
+                      </small>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="student-profile-empty">Chưa có quyết định xử lý ghi danh.</p>
+              )}
+            </section>
 
             {section !== "history" && (
               <>

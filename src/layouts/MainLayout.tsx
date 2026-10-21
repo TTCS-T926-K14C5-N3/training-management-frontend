@@ -9,6 +9,7 @@ interface MainLayoutProps {
   roleName: string;
   avatarUrl?: string | null;
   permissions: string[];
+  isStudent?: boolean;
 
   onLogout: () => void;
 
@@ -26,7 +27,10 @@ interface MainLayoutProps {
   onAdmissionsLeads: () => void;
   onScheduleManagement?: () => void;
   onAttendanceManagement?: () => void;
+  onClassAttendanceManagement?: () => void;
   onAssignments?: () => void;
+  onAbsenceRequest?: () => void;
+  onAbsenceRequestList?: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
 
@@ -38,6 +42,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   roleName,
   avatarUrl,
   permissions,
+  isStudent = false,
   onLogout,
 
   onHome,
@@ -51,6 +56,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
   onAttendanceManagement = () => window.location.assign("/quan-ly-diem-danh"),
   onAssignments = () => window.location.assign("/quan-ly-bai-tap"),
+  onClassAttendanceManagement = () =>
+    window.location.assign("/quan-ly-diem-danh-lop"),
+  onAbsenceRequest = () => window.location.assign("/don-xin-phep"),
+  onAbsenceRequestList = () =>
+    window.location.assign("/don-xin-phep/theo-doi"),
   onProfile,
   onChangePassword,
 }) => {
@@ -70,7 +80,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const canViewGrades = permissions.includes("GRADE_VIEW");
   const canViewClasses = permissions.includes("CLASS_VIEW");
   const canManageClasses =
-    canViewClasses && permissions.includes("QUAN_LY_LOP");
+    !isStudent && canViewClasses && permissions.includes("QUAN_LY_LOP");
   const canManageTrainingPrograms =
     canViewClasses &&
     ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"].some((permission) =>
@@ -79,7 +89,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const canViewCatalog = permissions.includes("CURRICULUM_VIEW");
   const canViewLeads = permissions.includes("LEAD_VIEW");
   const canViewSchedule = permissions.includes("SCHEDULE_VIEW");
-  const canViewAttendance = permissions.includes("CLASS_VIEW");
+  const canViewAttendance =
+    !isStudent &&
+    permissions.includes("ATTENDANCE_VIEW");
+  const canViewClassAttendance =
+    !isStudent && permissions.includes("CLASS_VIEW");
   const canViewAssignments = [
     "ASSIGNMENT_VIEW",
     "ASSIGNMENT_CREATE",
@@ -184,7 +198,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <span>Đổi mật khẩu</span>
           </button>
 
-          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms || canViewSchedule || canViewAttendance || canViewAssignments) && (
+          {(canViewGrades || canViewClasses || canViewCatalog || canManageTrainingPrograms || canViewSchedule || canViewAttendance || canViewClassAttendance || canViewAssignments) && (
             <>
               <div className="sidebar-section-title">ĐÀO TẠO</div>
 
@@ -239,16 +253,42 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 </button>
               )}
               {canViewSchedule && (
-                <button
-                  type="button"
-                  className={`sidebar-item ${
-                    isActive("/quan-ly-lich-hoc") ? "active" : ""
-                  }`}
-                  onClick={onScheduleManagement}
-                >
-                  <span className="sidebar-item-icon">▦</span>
-                  <span>Quản lý lịch học</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`sidebar-item ${
+                      currentPath.startsWith("/quan-ly-lich-hoc") ? "active" : ""
+                    }`}
+                    onClick={onScheduleManagement}
+                  >
+                    <span className="sidebar-item-icon">▦</span>
+                    <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
+                  </button>
+                  {isStudent && (
+                    <>
+                      <button
+                        type="button"
+                        className={`sidebar-item ${
+                          isActive("/don-xin-phep") ? "active" : ""
+                        }`}
+                        onClick={onAbsenceRequest}
+                      >
+                        <span className="sidebar-item-icon">✉</span>
+                        <span>Gửi đơn xin phép</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`sidebar-item ${
+                          isActive("/don-xin-phep/theo-doi") ? "active" : ""
+                        }`}
+                        onClick={onAbsenceRequestList}
+                      >
+                        <span className="sidebar-item-icon">▤</span>
+                        <span>Theo dõi đơn</span>
+                      </button>
+                    </>
+                  )}
+                </>
               )}
               {canViewAttendance && (
                 <button
@@ -259,7 +299,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                   onClick={onAttendanceManagement}
                 >
                   <span className="sidebar-item-icon">✓</span>
-                  <span>Điểm danh</span>
+                  <span>Điểm danh theo buổi</span>
+                </button>
+              )}
+              {canViewClassAttendance && (
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/quan-ly-diem-danh-lop") ? "active" : ""
+                  }`}
+                  onClick={onClassAttendanceManagement}
+                >
+                  <span className="sidebar-item-icon">✓</span>
+                  <span>Điểm danh lớp/ngày</span>
                 </button>
               )}
               {canViewAssignments && (

@@ -33,7 +33,26 @@ interface ScheduleOptions {
     tenPhong: string;
     trangThai: string;
   }>;
-  diemDanhDuocHoTro: boolean;
+}
+
+type AttendanceStatus = "Có mặt" | "Vắng" | "Muộn" | "Có phép";
+
+interface AttendanceStudent {
+  hocVienId: number;
+  hoTen: string;
+  email: string;
+  trangThai: AttendanceStatus | "";
+  ghiChu: string;
+  nguoiDiemDanh: string | null;
+  ngayCapNhat: string | null;
+}
+
+interface AttendanceResponse {
+  lichHocId: number;
+  maBuoiHoc: string;
+  ngayHoc: string;
+  hocViens: AttendanceStudent[];
+  trangThaiDiemDanh: string | null;
 }
 
 interface ScheduleRecord {
@@ -62,20 +81,6 @@ interface ScheduleRecord {
   ngayHuy: string | null;
 }
 
-interface ScheduleHistory {
-  lichHocLichSuId: number;
-  lichHocId: number;
-  maBuoiHoc: string;
-  maLop: string | null;
-  tenLop: string | null;
-  hanhDong: string;
-  duLieuCu: ScheduleRecord | null;
-  duLieuMoi: ScheduleRecord | null;
-  lyDo: string | null;
-  thoiDiem: string;
-  nguoiThucHien: string | null;
-}
-
 interface ScheduleForm {
   lopHocId: number | "";
   monHocId: number | "";
@@ -99,6 +104,12 @@ interface ScheduleConflict {
   tenLop: string | null;
 }
 
+interface ScheduleConflictCheck {
+  hasConflicts: boolean;
+  conflicts: ScheduleConflict[];
+  canOverride: boolean;
+}
+
 interface FormError {
   message: string;
   conflicts: ScheduleConflict[];
@@ -118,11 +129,65 @@ const EMPTY_FORM: ScheduleForm = {
   giangVienId: "",
 };
 
-const localDateValue = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const businessDateValue = (value = new Date()): string => {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
+const businessTimeValue = (value = new Date()): string => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.hour}:${values.minute}`;
+};
+
+const addDaysToDateValue = (value: string, days: number): string => {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
+};
+
+const startOfWeek = (value: string): string => {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  const daysFromMonday = (parsed.getUTCDay() + 6) % 7;
+  return addDaysToDateValue(value, -daysFromMonday);
+};
+
+const monthDateRange = (value: string): { start: string; end: string } => {
+  const [year, month] = value.split("-").map(Number);
+  return {
+    start: `${value}-01`,
+    end: new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10),
+  };
+};
+
+const shiftMonth = (value: string, amount: number): string => {
+  const [year, month] = value.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1 + amount, 1));
+  return `${shifted.getUTCFullYear()}-${String(
+    shifted.getUTCMonth() + 1,
+  ).padStart(2, "0")}`;
+};
+
+const isValidDateValue = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
+
+const minutesAfterMidnight = (value: string): number | null => {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 };
 
 const displayDate = (value: string): string => {
@@ -133,6 +198,18 @@ const displayDate = (value: string): string => {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(year, month - 1, day));
+};
+
+const displayDateWithWeekday = (value: string): string => {
+  if (!isValidDateValue(value)) return value;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return new Intl.DateTimeFormat("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
 };
 
 const displayTimestamp = (value: string): string => {
@@ -219,23 +296,346 @@ const sortSchedules = (items: ScheduleRecord[]): ScheduleRecord[] =>
     ),
   );
 
-const fetchScheduleData = () =>
-  Promise.all([
-    api.get<ScheduleOptions>("/academic/schedule-options"),
-    api.get<ScheduleRecord[]>("/academic/schedules"),
-    api.get<ScheduleHistory[]>("/academic/schedule-history"),
-  ]);
-
 interface ScheduleManagementProps {
   permissions: string[];
+  isStudent?: boolean;
+  onOpenHistory: () => void;
+  onOpenArchive: () => void;
 }
 
-function ScheduleManagement({ permissions }: ScheduleManagementProps) {
-  const canCreate = permissions.includes("SCHEDULE_CREATE");
-  const canUpdate = permissions.includes("SCHEDULE_UPDATE");
+interface StudentScheduleViewProps {
+  schedules: ScheduleRecord[];
+  loading: boolean;
+  error: string;
+  month: string;
+  weekStart: string;
+  onMonthChange: (month: string) => void;
+  onWeekChange: (weekStart: string) => void;
+  onRetry: () => void;
+}
+
+function StudentScheduleView({
+  schedules,
+  loading,
+  error,
+  month,
+  weekStart,
+  onMonthChange,
+  onWeekChange,
+  onRetry,
+}: StudentScheduleViewProps) {
+  const [selectedDate, setSelectedDate] = useState(businessDateValue());
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Tất cả");
+  const [viewMode, setViewMode] = useState<"list" | "week">("list");
+
+  useEffect(() => {
+    if (startOfWeek(selectedDate) !== weekStart) {
+      setSelectedDate(weekStart);
+    }
+  }, [selectedDate, weekStart]);
+
+  const weeklySchedules = useMemo(
+    () =>
+      schedules.filter(
+        (schedule) =>
+          schedule.ngayHoc >= weekStart &&
+          schedule.ngayHoc <= addDaysToDateValue(weekStart, 6),
+      ),
+    [schedules, weekStart],
+  );
+  const classOptions = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          schedules.map((schedule) => [
+            schedule.lopHocId,
+            {
+              lopHocId: schedule.lopHocId,
+              label: `${schedule.maLop ?? ""} · ${schedule.tenLop ?? ""}`,
+            },
+          ]),
+        ).values(),
+      ),
+    [schedules],
+  );
+  const filteredWeekSchedules = useMemo(
+    () =>
+      weeklySchedules.filter(
+        (schedule) =>
+          (!selectedClassId ||
+            schedule.lopHocId === Number(selectedClassId)) &&
+          (statusFilter === "Tất cả" ||
+            schedule.trangThai === statusFilter),
+      ),
+    [selectedClassId, statusFilter, weeklySchedules],
+  );
+  const groupedSchedules = useMemo(() => {
+    const groups = new Map<string, ScheduleRecord[]>();
+    filteredWeekSchedules.forEach((schedule) => {
+      const group = groups.get(schedule.ngayHoc) ?? [];
+      group.push(schedule);
+      groups.set(schedule.ngayHoc, group);
+    });
+    return Array.from(groups, ([day, items]) => [
+      day,
+      items.sort((left, right) =>
+        left.gioBatDau.localeCompare(right.gioBatDau),
+      ),
+    ] as const);
+  }, [filteredWeekSchedules]);
+  const calendarCells = useMemo(() => {
+    const { start } = monthDateRange(month);
+    const first = new Date(`${start}T00:00:00Z`);
+    const offset = (first.getUTCDay() + 6) % 7;
+    const [year, monthNumber] = month.split("-").map(Number);
+    const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const cellCount = Math.ceil((offset + daysInMonth) / 7) * 7;
+    return Array.from({ length: cellCount }, (_, index) =>
+      addDaysToDateValue(start, index - offset),
+    );
+  }, [month]);
+  const schedulesByDate = useMemo(() => {
+    const byDate = new Map<string, string[]>();
+    schedules.forEach((schedule) => {
+      const statuses = byDate.get(schedule.ngayHoc) ?? [];
+      statuses.push(schedule.trangThai);
+      byDate.set(schedule.ngayHoc, statuses);
+    });
+    return byDate;
+  }, [schedules]);
+  const weekLabel = `${displayDate(weekStart)} – ${displayDate(
+    addDaysToDateValue(weekStart, 6),
+  )}`;
+  const monthLabel = new Intl.DateTimeFormat("vi-VN", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${month}-01T00:00:00Z`));
+  const upcomingCount = weeklySchedules.filter((schedule) =>
+    ["Đã lên lịch", "Đang diễn ra"].includes(schedule.trangThai),
+  ).length;
+
+  const selectDate = (date: string) => {
+    setSelectedDate(date);
+    const nextMonth = date.slice(0, 7);
+    if (nextMonth !== month) onMonthChange(nextMonth);
+    onWeekChange(startOfWeek(date));
+  };
+
+  const changeMonth = (amount: number) => {
+    const nextMonth = shiftMonth(month, amount);
+    const nextDate = `${nextMonth}-01`;
+    setSelectedDate(nextDate);
+    onMonthChange(nextMonth);
+    onWeekChange(startOfWeek(nextDate));
+  };
+
+  const changeWeek = (amount: number) => {
+    const nextWeek = addDaysToDateValue(weekStart, amount * 7);
+    setSelectedDate(nextWeek);
+    const nextMonth = nextWeek.slice(0, 7);
+    if (nextMonth !== month) onMonthChange(nextMonth);
+    onWeekChange(nextWeek);
+  };
+
+  return (
+    <section className="student-schedule-dashboard">
+      <div className="student-schedule-summary">
+        <article className="student-schedule-stat">
+          <span className="student-schedule-stat-icon" aria-hidden="true">▦</span>
+          <div>
+            <small>Tổng số buổi học trong tuần</small>
+            <strong>{weeklySchedules.length} buổi</strong>
+          </div>
+        </article>
+        <article className="student-schedule-stat">
+          <span className="student-schedule-stat-icon student-schedule-stat-icon-blue" aria-hidden="true">✓</span>
+          <div>
+            <small>Sắp diễn ra / đang diễn ra</small>
+            <strong>{upcomingCount} buổi</strong>
+          </div>
+        </article>
+        <label className="student-schedule-filter">
+          <span>Lớp học</span>
+          <select
+            value={selectedClassId}
+            onChange={(event) => setSelectedClassId(event.target.value)}
+          >
+            <option value="">Tất cả lớp</option>
+            {classOptions.map((item) => (
+              <option key={item.lopHocId} value={item.lopHocId}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="student-schedule-filter">
+          <span>Trạng thái</span>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option>Tất cả</option>
+            <option>Đã lên lịch</option>
+            <option>Đang diễn ra</option>
+            <option>Đã diễn ra</option>
+            <option>Đã hủy</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="student-schedule-content">
+        <aside className="student-calendar-panel">
+          <div className="student-calendar-heading">
+            <h2>{monthLabel}</h2>
+            <div>
+              <button type="button" onClick={() => changeMonth(-1)} aria-label="Tháng trước">‹</button>
+              <button type="button" onClick={() => changeMonth(1)} aria-label="Tháng sau">›</button>
+              <button
+                type="button"
+                className="student-calendar-today"
+                onClick={() => selectDate(businessDateValue())}
+              >
+                Hôm nay
+              </button>
+            </div>
+          </div>
+          <div className="student-calendar-grid" role="grid" aria-label={monthLabel}>
+            {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day) => (
+              <strong key={day} role="columnheader">{day}</strong>
+            ))}
+            {calendarCells.map((day) => {
+              const statuses = schedulesByDate.get(day) ?? [];
+              const inMonth = day.startsWith(month);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  role="gridcell"
+                  aria-label={displayDateWithWeekday(day)}
+                  aria-pressed={day === selectedDate}
+                  className={[
+                    "student-calendar-day",
+                    inMonth ? "" : "outside-month",
+                    day === selectedDate ? "selected" : "",
+                    day === businessDateValue() ? "today" : "",
+                  ].filter(Boolean).join(" ")}
+                  onClick={() => selectDate(day)}
+                >
+                  <span>{Number(day.slice(-2))}</span>
+                  {statuses.length > 0 && (
+                    <i className={statuses.includes("Đã hủy") ? "cancelled" : statuses.includes("Đã diễn ra") ? "completed" : ""} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="student-calendar-legend">
+            <span><i /> Lịch học</span>
+            <span><i className="completed" /> Đã diễn ra</span>
+            <span><i className="cancelled" /> Đã hủy</span>
+          </div>
+          <div className="student-calendar-note">
+            <strong>{weeklySchedules.length} buổi học trong tuần</strong>
+            <span>Lịch được cập nhật tự động khi có thay đổi.</span>
+          </div>
+        </aside>
+
+        <section className="student-agenda-panel" aria-labelledby="student-agenda-title">
+          <header className="student-agenda-heading">
+            <div>
+              <h2 id="student-agenda-title">Danh sách lịch học</h2>
+              <p>{weekLabel} · {filteredWeekSchedules.length} buổi học</p>
+            </div>
+            <div className="student-agenda-actions">
+              <div className="student-week-navigation">
+                <button type="button" onClick={() => changeWeek(-1)} aria-label="Tuần trước">‹</button>
+                <button type="button" onClick={() => selectDate(businessDateValue())}>Tuần này</button>
+                <button type="button" onClick={() => changeWeek(1)} aria-label="Tuần sau">›</button>
+              </div>
+              <div className="student-view-toggle" aria-label="Kiểu hiển thị">
+                <button
+                  type="button"
+                  className={viewMode === "list" ? "active" : ""}
+                  onClick={() => setViewMode("list")}
+                >
+                  Danh sách
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === "week" ? "active" : ""}
+                  onClick={() => setViewMode("week")}
+                >
+                  Tuần
+                </button>
+              </div>
+            </div>
+          </header>
+          {loading ? (
+            <div className="schedule-state" role="status">Đang tải lịch học...</div>
+          ) : error ? (
+            <div className="schedule-state schedule-state-error" role="alert">
+              <span>{error}</span>
+              <button type="button" onClick={onRetry}>Thử lại</button>
+            </div>
+          ) : groupedSchedules.length === 0 ? (
+            <div className="schedule-state">Không có buổi học trong tuần đã chọn.</div>
+          ) : (
+            <div className={`student-agenda-list ${viewMode === "week" ? "week-view" : ""}`}>
+              {groupedSchedules.map(([day, daySchedules]) => (
+                <section className="student-agenda-day" key={day}>
+                  <h3>
+                    <span aria-hidden="true">▣</span>
+                    {displayDateWithWeekday(day)}
+                  </h3>
+                  {daySchedules.map((schedule) => (
+                    <article className="student-agenda-session" key={schedule.lichHocId}>
+                      <div className="student-session-time">
+                        <strong>{schedule.gioBatDau} – {schedule.gioKetThuc}</strong>
+                        <small>{schedule.gioBatDau && schedule.gioKetThuc ? "Buổi học" : ""}</small>
+                      </div>
+                      <div className="student-session-icon" aria-hidden="true">▤</div>
+                      <div className="student-session-details">
+                        <strong>{schedule.tenMonHoc ?? "Buổi học"}</strong>
+                        <span>{schedule.maLop} · {schedule.tenLop}</span>
+                        <small>{schedule.maPhong ? `${schedule.maPhong} · ${schedule.tenPhong}` : "Chưa gán phòng"}</small>
+                      </div>
+                      <div className="student-session-teacher">
+                        <strong>{schedule.giangVienTen ?? "Chưa phân công"}</strong>
+                        <small>Giảng viên</small>
+                      </div>
+                      <span className={`student-session-status ${schedule.trangThai === "Đã hủy" ? "cancelled" : schedule.trangThai === "Đã diễn ra" ? "completed" : schedule.trangThai === "Đang diễn ra" ? "active" : ""}`}>
+                        {schedule.trangThai}
+                      </span>
+                    </article>
+                  ))}
+                </section>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function ScheduleManagement({
+  permissions,
+  isStudent = false,
+  onOpenHistory,
+  onOpenArchive,
+}: ScheduleManagementProps) {
+  const canCreate = !isStudent && permissions.includes("SCHEDULE_CREATE");
+  const canUpdate = !isStudent && permissions.includes("SCHEDULE_UPDATE");
+  const canUpdateAttendance =
+    !isStudent && permissions.includes("ATTENDANCE_UPDATE");
   const [options, setOptions] = useState<ScheduleOptions | null>(null);
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
-  const [history, setHistory] = useState<ScheduleHistory[]>([]);
+  const [weekStart, setWeekStart] = useState(() =>
+    startOfWeek(businessDateValue()),
+  );
+  const [month, setMonth] = useState(() => businessDateValue().slice(0, 7));
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [filter, setFilter] = useState("Tất cả");
@@ -243,18 +643,29 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<ScheduleForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<FormError | null>(null);
+  const [conflictCheck, setConflictCheck] =
+    useState<ScheduleConflictCheck | null>(null);
+  const [conflictCheckError, setConflictCheckError] = useState("");
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState<ScheduleRecord | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState("");
   const [cancelSaving, setCancelSaving] = useState(false);
+  const [attendanceSession, setAttendanceSession] =
+    useState<ScheduleRecord | null>(null);
+  const [attendanceStudents, setAttendanceStudents] = useState<AttendanceStudent[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
+  const [attendanceError, setAttendanceError] = useState("");
   const [toast, setToast] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
   const saveInProgress = useRef(false);
   const cancelInProgress = useRef(false);
+  const currentWeekRef = useRef(startOfWeek(businessDateValue()));
 
   const loadData = async (showLoading = true) => {
     if (showLoading) {
@@ -262,11 +673,27 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
       setPageError("");
     }
     try {
-      const [optionsResponse, schedulesResponse, historyResponse] =
-        await fetchScheduleData();
-      setOptions(optionsResponse.data);
-      setSchedules(schedulesResponse.data);
-      setHistory(historyResponse.data);
+      const range = monthDateRange(month);
+      const schedulesRequest = api.get<ScheduleRecord[]>("/academic/schedules", {
+        params: isStudent
+          ? {
+              startDate: range.start,
+              endDate: range.end,
+            }
+          : undefined,
+      });
+      if (canCreate) {
+        const [optionsResponse, schedulesResponse] = await Promise.all([
+          api.get<ScheduleOptions>("/academic/schedule-options"),
+          schedulesRequest,
+        ]);
+        setOptions(optionsResponse.data);
+        setSchedules(schedulesResponse.data);
+      } else {
+        const schedulesResponse = await schedulesRequest;
+        setOptions({ lopHocs: [], giangViens: [], phongHocs: [] });
+        setSchedules(schedulesResponse.data);
+      }
       setPageError("");
     } catch (error) {
       console.error("Không thể tải lịch học:", error);
@@ -278,24 +705,136 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
 
   useEffect(() => {
     void loadData();
-  }, []);
+    if (!isStudent) return;
+
+    const refreshStudentSchedule = () => {
+      if (document.visibilityState !== "visible") return;
+      const currentWeek = startOfWeek(businessDateValue());
+      if (currentWeek !== currentWeekRef.current) {
+        currentWeekRef.current = currentWeek;
+        setWeekStart(currentWeek);
+        setMonth(businessDateValue().slice(0, 7));
+        return;
+      }
+      void loadData(false);
+    };
+    const interval = window.setInterval(refreshStudentSchedule, 60_000);
+    window.addEventListener("focus", refreshStudentSchedule);
+    document.addEventListener("visibilitychange", refreshStudentSchedule);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshStudentSchedule);
+      document.removeEventListener("visibilitychange", refreshStudentSchedule);
+    };
+  }, [isStudent, month]);
+
+  useEffect(() => {
+    setConflictCheck(null);
+    setConflictCheckError("");
+
+    if (!formOpen) {
+      setCheckingConflicts(false);
+      return;
+    }
+
+    const selectedClass = options?.lopHocs.find(
+      (item) => item.lopHocId === form.lopHocId,
+    );
+    const startMinutes = minutesAfterMidnight(form.gioBatDau);
+    const endMinutes = minutesAfterMidnight(form.gioKetThuc);
+    const now = businessDateValue();
+    const currentMinutes = minutesAfterMidnight(businessTimeValue());
+    const isCurrentTimePast =
+      form.ngayHoc === now &&
+      currentMinutes !== null &&
+      startMinutes !== null &&
+      startMinutes <= currentMinutes;
+    const isComplete =
+      !!selectedClass &&
+      selectedClass.monHocs.some(
+        (subject) => subject.monHocId === form.monHocId,
+      ) &&
+      !!form.phongHocId &&
+      options?.phongHocs.some(
+        (room) => room.phongHocId === form.phongHocId,
+      ) === true &&
+      !!options?.giangViens.some(
+        (teacher) => teacher.giangVienId === form.giangVienId,
+      ) &&
+      isValidDateValue(form.ngayHoc) &&
+      form.ngayHoc >= now &&
+      startMinutes !== null &&
+      endMinutes !== null &&
+      endMinutes > startMinutes &&
+      !isCurrentTimePast &&
+      (form.ngayHoc !== now ||
+        (currentMinutes !== null && endMinutes > currentMinutes));
+
+    if (!isComplete) {
+      setCheckingConflicts(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setCheckingConflicts(true);
+      void api
+        .post<ScheduleConflictCheck>(
+          "/academic/schedules/check-conflicts",
+          schedulePayload(form),
+          {
+            params: editing
+              ? { excludeScheduleId: editing.lichHocId }
+              : undefined,
+            signal: controller.signal,
+          },
+        )
+        .then((response) => setConflictCheck(response.data))
+        .catch((error: unknown) => {
+          if (axios.isCancel(error) || controller.signal.aborted) return;
+          console.error("Không thể kiểm tra lịch học bị trùng:", error);
+          setConflictCheckError(
+            "Chưa kiểm tra được lịch trùng. Hệ thống vẫn sẽ kiểm tra khi lưu.",
+          );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setCheckingConflicts(false);
+        });
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [editing, form, formOpen, options]);
 
   const filteredSchedules = useMemo(() => {
-    if (filter === "Tất cả") return schedules;
-    return schedules.filter((schedule) => schedule.trangThai === filter);
-  }, [filter, schedules]);
+    if (isStudent) {
+      if (filter === "Tất cả") return schedules;
+      return schedules.filter((schedule) => schedule.trangThai === filter);
+    }
+    const activeSchedules = schedules.filter(
+      (schedule) =>
+        schedule.trangThai !== "Đã diễn ra" &&
+        schedule.trangThai !== "Đã hủy",
+    );
+    if (filter === "Tất cả") return activeSchedules;
+    return activeSchedules.filter((schedule) => schedule.trangThai === filter);
+  }, [filter, isStudent, schedules]);
 
   const selectedClass = options?.lopHocs.find(
     (item) => item.lopHocId === form.lopHocId,
   );
 
   const openCreate = () => {
+    if (!options?.lopHocs.length) return;
     const defaultClass = options?.lopHocs[0];
     setEditing(null);
     setFormOpen(true);
     setForm({
       ...EMPTY_FORM,
-      ngayHoc: localDateValue(new Date()),
+      ngayHoc: businessDateValue(),
       gioBatDau: "08:00",
       gioKetThuc: "10:00",
       lopHocId: defaultClass?.lopHocId ?? "",
@@ -335,19 +874,52 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!form.lopHocId) errors.lopHocId = "Vui lòng chọn lớp học.";
-    if (!form.monHocId) errors.monHocId = "Vui lòng chọn môn học.";
-    if (!form.ngayHoc || Number.isNaN(Date.parse(`${form.ngayHoc}T00:00:00`))) {
+    const today = businessDateValue();
+    const selectedClass = options?.lopHocs.find(
+      (item) => item.lopHocId === form.lopHocId,
+    );
+    if (
+      !form.lopHocId ||
+      (!editing && !selectedClass)
+    ) {
+      errors.lopHocId = "Vui lòng chọn lớp học trong danh sách lớp.";
+    }
+    if (
+      !form.monHocId ||
+      (!editing &&
+        !selectedClass?.monHocs.some(
+          (subject) => subject.monHocId === form.monHocId,
+        ))
+    ) {
+      errors.monHocId = "Vui lòng chọn môn học đã được gán cho lớp.";
+    }
+    if (!isValidDateValue(form.ngayHoc)) {
       errors.ngayHoc = "Vui lòng chọn ngày học hợp lệ.";
+    } else if (form.ngayHoc < today) {
+      errors.ngayHoc = "Ngày học không được nằm trong quá khứ.";
     }
     if (!form.gioBatDau) errors.gioBatDau = "Vui lòng nhập giờ bắt đầu.";
     if (!form.gioKetThuc) errors.gioKetThuc = "Vui lòng nhập giờ kết thúc.";
-    if (
-      form.gioBatDau &&
-      form.gioKetThuc &&
-      form.gioKetThuc <= form.gioBatDau
-    ) {
+    const startMinutes = minutesAfterMidnight(form.gioBatDau);
+    const endMinutes = minutesAfterMidnight(form.gioKetThuc);
+    if (form.gioBatDau && startMinutes === null) {
+      errors.gioBatDau = "Vui lòng nhập giờ bắt đầu hợp lệ.";
+    }
+    if (form.gioKetThuc && endMinutes === null) {
+      errors.gioKetThuc = "Vui lòng nhập giờ kết thúc hợp lệ.";
+    }
+    if (startMinutes !== null && endMinutes !== null && endMinutes <= startMinutes) {
       errors.gioKetThuc = "Giờ kết thúc phải sau giờ bắt đầu.";
+    }
+    const currentBusinessMinutes = minutesAfterMidnight(businessTimeValue());
+    if (
+      isValidDateValue(form.ngayHoc) &&
+      form.ngayHoc === today &&
+      endMinutes !== null &&
+      currentBusinessMinutes !== null &&
+      endMinutes <= currentBusinessMinutes
+    ) {
+      errors.gioKetThuc = "Buổi học phải kết thúc sau thời điểm hiện tại.";
     }
     if (!form.giangVienId) errors.giangVienId = "Vui lòng chọn giảng viên.";
     setFieldErrors(errors);
@@ -443,53 +1015,204 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
     setCancelError("");
   };
 
+  const openAttendance = async (schedule: ScheduleRecord) => {
+    setAttendanceSession(schedule);
+    setAttendanceLoading(true);
+    setAttendanceError("");
+    try {
+      const response = await api.get<AttendanceResponse>(
+        `/academic/schedules/${schedule.lichHocId}/attendance`,
+      );
+      setAttendanceStudents(response.data.hocViens);
+      setSchedules((current) =>
+        current.map((item) =>
+          item.lichHocId === schedule.lichHocId
+            ? { ...item, trangThaiDiemDanh: response.data.trangThaiDiemDanh }
+            : item,
+        ),
+      );
+    } catch (error) {
+      setAttendanceError(errorFromApi(error).message);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const saveAttendance = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!attendanceSession || attendanceSaving) return;
+    if (attendanceStudents.some((student) => !student.trangThai)) {
+      setAttendanceError("Vui lòng chọn trạng thái cho từng học viên.");
+      return;
+    }
+
+    setAttendanceSaving(true);
+    setAttendanceError("");
+    try {
+      const response = await api.put<AttendanceResponse>(
+        `/academic/schedules/${attendanceSession.lichHocId}/attendance`,
+        {
+          hocViens: attendanceStudents.map((student) => ({
+            hocVienId: student.hocVienId,
+            trangThai: student.trangThai,
+            ghiChu: student.ghiChu || null,
+          })),
+        },
+      );
+      setSchedules((current) =>
+        current.map((item) =>
+          item.lichHocId === attendanceSession.lichHocId
+            ? { ...item, trangThaiDiemDanh: response.data.trangThaiDiemDanh }
+            : item,
+        ),
+      );
+      setAttendanceSession(null);
+      setToast({ type: "success", text: "Đã lưu điểm danh buổi học." });
+      await loadData(false);
+    } catch (error) {
+      setAttendanceError(errorFromApi(error).message);
+    } finally {
+      setAttendanceSaving(false);
+    }
+  };
+
+  if (isStudent) {
+    return (
+      <main className="schedule-page student-schedule-page">
+        <header className="schedule-hero student-schedule-hero">
+          <div>
+            <span className="schedule-eyebrow">LỊCH HỌC CÁ NHÂN</span>
+            <h1>Lịch học của tôi</h1>
+            <p>
+              Xem và theo dõi lịch học các lớp của bạn. Lịch sẽ tự cập nhật để
+              bạn không bỏ lỡ buổi học quan trọng.
+            </p>
+          </div>
+          <div className="student-hero-decoration" aria-hidden="true">▦</div>
+        </header>
+        <StudentScheduleView
+          schedules={schedules}
+          loading={loading}
+          error={pageError}
+          month={month}
+          weekStart={weekStart}
+          onMonthChange={setMonth}
+          onWeekChange={setWeekStart}
+          onRetry={() => void loadData()}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="schedule-page">
       <header className="schedule-hero">
         <div>
-          <span className="schedule-eyebrow">ĐIỀU PHỐI ĐÀO TẠO</span>
-          <h1>Quản lý lịch học</h1>
+          <span className="schedule-eyebrow">
+            {isStudent ? "LỊCH HỌC CÁ NHÂN" : "ĐIỀU PHỐI ĐÀO TẠO"}
+          </span>
+          <h1>{isStudent ? "Lịch học của tôi" : "Quản lý lịch học"}</h1>
           <p>
-            Theo dõi, cập nhật và lưu lịch sử thay đổi buổi học theo dữ liệu từ
-            hệ thống.
+            {isStudent
+              ? "Lịch các buổi học thuộc những lớp bạn đang được ghi danh."
+              : "Theo dõi, cập nhật và lưu lịch sử thay đổi buổi học theo dữ liệu từ hệ thống."}
           </p>
         </div>
-        {canCreate && (
-          <button
-            className="schedule-primary-button"
-            type="button"
-            onClick={openCreate}
-            disabled={!options || options.lopHocs.length === 0}
-          >
-            <span aria-hidden="true">＋</span> Tạo buổi học
-          </button>
-        )}
-      </header>
-
-      {!options?.diemDanhDuocHoTro && (
-        <div className="schedule-info-banner" role="status">
-          Backend hiện chưa có dữ liệu hoặc API điểm danh theo buổi học. Trạng
-          thái điểm danh chưa được ghi nhận; buổi đã bắt đầu/đã qua giờ được
-          khóa chỉnh sửa và hủy.
+        <div className="schedule-hero-actions">
+          {!isStudent && (
+            <button
+              className="schedule-secondary-button"
+              type="button"
+              onClick={onOpenArchive}
+            >
+              Buổi đã diễn ra / đã hủy
+            </button>
+          )}
+          {canCreate && (
+            <button
+              className="schedule-primary-button"
+              type="button"
+              onClick={openCreate}
+              disabled={!options || options.lopHocs.length === 0}
+              title={
+                options?.lopHocs.length === 0
+                  ? "Cần có ít nhất một lớp trong danh sách để tạo buổi học."
+                  : undefined
+              }
+            >
+              <span aria-hidden="true">＋</span> Tạo buổi học
+            </button>
+          )}
+          {canCreate && !loading && options?.lopHocs.length === 0 && (
+            <p className="schedule-no-classes" role="status">
+              Chưa có lớp học khả dụng. Hãy tạo lớp trước khi tạo buổi học.
+            </p>
+          )}
         </div>
-      )}
+      </header>
 
       <section className="schedule-panel" aria-labelledby="schedule-list-title">
         <div className="schedule-panel-heading">
           <div>
             <h2 id="schedule-list-title">Danh sách buổi học</h2>
-            <p>{schedules.length} buổi học trong phạm vi bạn được xem</p>
+            <p>
+              {isStudent
+                ? `${displayDate(weekStart)} – ${displayDate(
+                    addDaysToDateValue(weekStart, 6),
+                  )} · ${filteredSchedules.length} buổi học trong tuần`
+                : `${filteredSchedules.length} buổi học sắp tới hoặc đang diễn ra`}
+            </p>
           </div>
-          <label className="schedule-filter">
-            <span>Trạng thái</span>
-            <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-              <option>Tất cả</option>
-              <option>Đã lên lịch</option>
-              <option>Đang diễn ra</option>
-              <option>Đã diễn ra</option>
-              <option>Đã hủy</option>
-            </select>
-          </label>
+          <div className="schedule-panel-tools">
+            {isStudent && (
+              <div className="schedule-week-navigation" aria-label="Chọn tuần">
+                <button
+                  type="button"
+                  className="schedule-secondary-button"
+                  onClick={() =>
+                    setWeekStart((current) => addDaysToDateValue(current, -7))
+                  }
+                  aria-label="Tuần trước"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="schedule-secondary-button"
+                  onClick={() => setWeekStart(startOfWeek(businessDateValue()))}
+                >
+                  Tuần này
+                </button>
+                <button
+                  type="button"
+                  className="schedule-secondary-button"
+                  onClick={() =>
+                    setWeekStart((current) => addDaysToDateValue(current, 7))
+                  }
+                  aria-label="Tuần sau"
+                >
+                  ›
+                </button>
+              </div>
+            )}
+            <label className="schedule-filter">
+              <span>Trạng thái</span>
+              <select
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+              >
+                <option>Tất cả</option>
+                <option>Đã lên lịch</option>
+                <option>Đang diễn ra</option>
+                {isStudent && (
+                  <>
+                    <option>Đã diễn ra</option>
+                    <option>Đã hủy</option>
+                  </>
+                )}
+              </select>
+            </label>
+          </div>
         </div>
 
         {loading ? (
@@ -502,7 +1225,9 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
         ) : filteredSchedules.length === 0 ? (
           <div className="schedule-state">
             {filter === "Tất cả"
-              ? "Chưa có buổi học nào được xếp lịch."
+              ? isStudent
+                ? "Chưa có lịch học nào được xếp cho các lớp bạn đang tham gia."
+                : "Chưa có buổi học nào được xếp lịch."
               : "Không có buổi học phù hợp với trạng thái đã chọn."}
           </div>
         ) : (
@@ -516,6 +1241,7 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                   <th>Phòng học</th>
                   <th>Giảng viên</th>
                   <th>Trạng thái</th>
+                  <th>Điểm danh</th>
                   <th><span className="schedule-sr-only">Thao tác</span></th>
                 </tr>
               </thead>
@@ -527,7 +1253,11 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                       <span>{schedule.maLop} · {schedule.tenLop}</span>
                     </td>
                     <td>
-                      <strong>{displayDate(schedule.ngayHoc)}</strong>
+                      <strong>
+                        {isStudent
+                          ? displayDateWithWeekday(schedule.ngayHoc)
+                          : displayDate(schedule.ngayHoc)}
+                      </strong>
                       <span>{schedule.gioBatDau}–{schedule.gioKetThuc}</span>
                     </td>
                     <td>{schedule.tenMonHoc ?? "—"}</td>
@@ -538,8 +1268,17 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                         {schedule.trangThai}
                       </span>
                     </td>
+                    <td>{schedule.trangThaiDiemDanh ?? "—"}</td>
                     <td>
                       <div className="schedule-row-actions">
+                        {canUpdateAttendance && schedule.trangThai !== "Đã hủy" && (
+                          <button
+                            type="button"
+                            onClick={() => void openAttendance(schedule)}
+                          >
+                            Điểm danh
+                          </button>
+                        )}
                         {canUpdate && schedule.coTheChinhSua && (
                           <button type="button" onClick={() => openEdit(schedule)}>
                             Chỉnh sửa
@@ -567,65 +1306,23 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
         )}
       </section>
 
+      {!isStudent && (
       <section className="schedule-panel schedule-history-panel" aria-labelledby="schedule-history-title">
         <div className="schedule-panel-heading">
           <div>
             <h2 id="schedule-history-title">Thông báo và lịch sử thay đổi</h2>
-            <p>Các sự kiện đã được lưu xác nhận từ Backend</p>
+            <p>Xem các thay đổi lịch học và trạng thái thông báo đã được ghi nhận.</p>
           </div>
+          <button
+            className="schedule-secondary-button"
+            type="button"
+            onClick={onOpenHistory}
+          >
+            Xem tất cả thông báo và lịch sử
+          </button>
         </div>
-        {loading ? (
-          <div className="schedule-state">Đang tải lịch sử...</div>
-        ) : history.length === 0 ? (
-          <div className="schedule-state">Chưa có lịch sử cập nhật hoặc hủy buổi học.</div>
-        ) : (
-          <ol className="schedule-history-list">
-            {history.map((item) => (
-              <li className="schedule-history-item" key={item.lichHocLichSuId}>
-                <span className={`schedule-history-mark ${item.hanhDong === "Hủy" ? "is-cancelled" : ""}`} aria-hidden="true" />
-                <div className="schedule-history-content">
-                  <div className="schedule-history-title">
-                    <strong>
-                      {item.hanhDong === "Hủy"
-                        ? "Buổi học đã bị hủy"
-                        : item.hanhDong === "Tạo"
-                          ? "Buổi học đã được xếp lịch"
-                          : "Buổi học đã thay đổi lịch"}
-                    </strong>
-                    <span>{item.maBuoiHoc} · {item.maLop ?? item.tenLop ?? "Lớp học"}</span>
-                  </div>
-                  {item.duLieuCu && (
-                    <p>
-                      <b>Lịch cũ:</b> {displayDate(item.duLieuCu.ngayHoc)} ·{" "}
-                      {item.duLieuCu.gioBatDau}–{item.duLieuCu.gioKetThuc} ·{" "}
-                      {item.duLieuCu.tenPhong ?? "Chưa gán phòng"} ·{" "}
-                      {item.duLieuCu.giangVienTen ?? "Chưa có giảng viên"}
-                    </p>
-                  )}
-                  {item.duLieuMoi && (
-                    <p>
-                      <b>{item.hanhDong === "Hủy" ? "Trạng thái:" : item.hanhDong === "Tạo" ? "Lịch:" : "Lịch mới:"}</b>{" "}
-                      {item.hanhDong === "Hủy"
-                        ? item.duLieuMoi.trangThai
-                        : `${displayDate(item.duLieuMoi.ngayHoc)} · ${item.duLieuMoi.gioBatDau}–${item.duLieuMoi.gioKetThuc} · ${item.duLieuMoi.tenPhong ?? "Chưa gán phòng"} · ${item.duLieuMoi.giangVienTen ?? "Chưa có giảng viên"}`}
-                    </p>
-                  )}
-                  {item.lyDo && (
-                    <details className="schedule-history-reason">
-                      <summary>Lý do hủy</summary>
-                      <p>{item.lyDo}</p>
-                    </details>
-                  )}
-                  <small>
-                    {item.nguoiThucHien ? `${item.nguoiThucHien} · ` : ""}
-                    {displayTimestamp(item.thoiDiem)}
-                  </small>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
       </section>
+      )}
 
       {formOpen && (
         <div className="schedule-modal-backdrop" role="presentation">
@@ -667,13 +1364,43 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                   )}
                 </div>
               )}
+              {conflictCheck?.hasConflicts && (
+                <div className="schedule-form-error" role="alert">
+                  <strong>Lịch học bị trùng với buổi học đã được xếp.</strong>
+                  <ul>
+                    {conflictCheck.conflicts.map((conflict, index) => (
+                      <li key={`${conflict.lichHocId}-${conflict.loai}-${index}`}>
+                        {conflict.loai === "phongHoc" ? "Phòng học" : "Giảng viên"}{" "}
+                        <b>{conflict.ten ?? conflict.maPhong ?? "đã chọn"}</b> đã có lịch{" "}
+                        {conflict.gioBatDau}–{conflict.gioKetThuc} ngày{" "}
+                        {displayDate(conflict.ngay)}
+                        {conflict.tenLop
+                          ? ` tại lớp ${conflict.maLop} · ${conflict.tenLop}`
+                          : ""}{" "}
+                        ({conflict.maBuoiHoc}).
+                      </li>
+                    ))}
+                  </ul>
+                  <span>Vui lòng chọn thời gian hoặc phòng học khác.</span>
+                </div>
+              )}
+              {checkingConflicts && (
+                <p className="schedule-readonly-note" role="status">
+                  Đang kiểm tra trùng lịch...
+                </p>
+              )}
+              {conflictCheckError && (
+                <p className="schedule-form-error" role="status">
+                  {conflictCheckError}
+                </p>
+              )}
               <div className="schedule-form-grid">
                 {editing && (
                   <div className="schedule-current-summary schedule-field-full">
                     <span><b>Trạng thái:</b> {editing.trangThai}</span>
                     <span>
                       <b>Điểm danh:</b>{" "}
-                      {editing.trangThaiDiemDanh ?? "Backend chưa có dữ liệu điểm danh"}
+                      {editing.trangThaiDiemDanh ?? "Chưa ghi nhận"}
                     </span>
                   </div>
                 )}
@@ -744,11 +1471,17 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                   <span>Ngày học <i>*</i></span>
                   <input
                     type="date"
+                    min={businessDateValue()}
                     value={form.ngayHoc}
                     onChange={(event) => setForm((current) => ({ ...current, ngayHoc: event.target.value }))}
                     aria-invalid={!!fieldErrors.ngayHoc}
                   />
                   {fieldErrors.ngayHoc && <small>{fieldErrors.ngayHoc}</small>}
+                  {isValidDateValue(form.ngayHoc) && (
+                    <small className="schedule-hint">
+                      {displayDateWithWeekday(form.ngayHoc)}
+                    </small>
+                  )}
                 </label>
                 <label className="schedule-field">
                   <span>Giảng viên dạy <i>*</i></span>
@@ -809,14 +1542,26 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                 </label>
               </div>
               <p className="schedule-readonly-note">
-                Lớp và môn học là thông tin chỉ đọc khi chỉnh sửa. Trạng thái điểm danh chưa được Backend hỗ trợ.
+                Lớp và môn học là thông tin chỉ đọc khi chỉnh sửa. Điểm danh được quản lý riêng theo từng buổi học.
               </p>
               <div className="schedule-modal-actions">
                 <button type="button" className="schedule-secondary-button" onClick={() => setFormOpen(false)} disabled={saving}>
                   Đóng
                 </button>
-                <button type="submit" className="schedule-primary-button" disabled={saving}>
-                  {saving ? "Đang lưu..." : editing ? "Lưu thay đổi" : "Tạo buổi học"}
+                <button
+                  type="submit"
+                  className="schedule-primary-button"
+                  disabled={
+                    saving || checkingConflicts || !!conflictCheck?.hasConflicts
+                  }
+                >
+                  {saving
+                    ? "Đang lưu..."
+                    : checkingConflicts
+                      ? "Đang kiểm tra lịch..."
+                      : editing
+                        ? "Lưu thay đổi"
+                        : "Tạo buổi học"}
                 </button>
               </div>
             </form>
@@ -873,6 +1618,129 @@ function ScheduleManagement({ permissions }: ScheduleManagementProps) {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {attendanceSession && (
+        <div className="schedule-modal-backdrop" role="presentation">
+          <section
+            className="schedule-modal schedule-attendance-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="schedule-attendance-title"
+          >
+            <div className="schedule-modal-heading">
+              <div>
+                <span className="schedule-eyebrow">
+                  {attendanceSession.maBuoiHoc} · {attendanceSession.maLop}
+                </span>
+                <h2 id="schedule-attendance-title">Điểm danh học viên</h2>
+                <p>
+                  {displayDate(attendanceSession.ngayHoc)} · {attendanceSession.gioBatDau}–{attendanceSession.gioKetThuc} · {attendanceSession.tenMonHoc}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={() => setAttendanceSession(null)}
+                aria-label="Đóng"
+                disabled={attendanceSaving}
+              >
+                ×
+              </button>
+            </div>
+            {attendanceError && (
+              <div className="schedule-form-error" role="alert">
+                {attendanceError}
+              </div>
+            )}
+            {attendanceLoading ? (
+              <div className="schedule-state" role="status">
+                Đang tải danh sách học viên...
+              </div>
+            ) : attendanceStudents.length === 0 ? (
+              <div className="schedule-state">
+                Không có học viên thuộc lớp vào ngày diễn ra buổi học.
+              </div>
+            ) : (
+              <form onSubmit={(event) => void saveAttendance(event)}>
+                <div className="schedule-attendance-list">
+                  {attendanceStudents.map((student, index) => (
+                    <div className="schedule-attendance-row" key={student.hocVienId}>
+                      <div className="schedule-attendance-student">
+                        <strong>{student.hoTen}</strong>
+                        <small>{student.email}</small>
+                        {student.nguoiDiemDanh && student.ngayCapNhat && (
+                          <small>
+                            Cập nhật bởi {student.nguoiDiemDanh} · {displayTimestamp(student.ngayCapNhat)}
+                          </small>
+                        )}
+                      </div>
+                      <label className="schedule-field">
+                        <span>Trạng thái</span>
+                        <select
+                          required
+                          value={student.trangThai}
+                          onChange={(event) =>
+                            setAttendanceStudents((current) =>
+                              current.map((item) =>
+                                item.hocVienId === student.hocVienId
+                                  ? { ...item, trangThai: event.target.value as AttendanceStatus }
+                                  : item,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="">Chọn trạng thái</option>
+                          <option value="Có mặt">Có mặt</option>
+                          <option value="Vắng">Vắng</option>
+                          <option value="Muộn">Muộn</option>
+                          <option value="Có phép">Có phép</option>
+                        </select>
+                      </label>
+                      <label className="schedule-field schedule-attendance-note">
+                        <span>Ghi chú</span>
+                        <input
+                          maxLength={1000}
+                          value={student.ghiChu}
+                          onChange={(event) =>
+                            setAttendanceStudents((current) =>
+                              current.map((item) =>
+                                item.hocVienId === student.hocVienId
+                                  ? { ...item, ghiChu: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          aria-label={`Ghi chú điểm danh ${student.hoTen}`}
+                        />
+                      </label>
+                      <span className="schedule-attendance-index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="schedule-modal-actions">
+                  <button
+                    type="button"
+                    className="schedule-secondary-button"
+                    onClick={() => setAttendanceSession(null)}
+                    disabled={attendanceSaving}
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="submit"
+                    className="schedule-primary-button"
+                    disabled={attendanceSaving || attendanceLoading}
+                  >
+                    {attendanceSaving ? "Đang lưu..." : "Lưu điểm danh"}
+                  </button>
+                </div>
+              </form>
+            )}
           </section>
         </div>
       )}

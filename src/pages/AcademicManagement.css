@@ -1242,6 +1242,53 @@
   background: #15803d;
 }
 
+.class-student-roster > div {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e7ebf0;
+}
+
+.class-student-action-button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #145ca8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.class-student-action-button:hover {
+  color: #0b3e73;
+  text-decoration: underline;
+}
+
+.student-enrollment-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.student-enrollment-status.active {
+  background: #e8f5ee;
+  color: #176a3a;
+}
+
+.student-enrollment-status.pending {
+  background: #fff3d6;
+  color: #8a5600;
+}
+
+.student-action-modal {
+  width: min(100%, 600px);
+}
+
 @media (max-width: 760px) {
   .grade-entry-modal .academic-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

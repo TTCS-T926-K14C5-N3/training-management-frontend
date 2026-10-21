@@ -30,6 +30,7 @@ interface AdminLayoutProps {
   onAdmissionsLeads?: () => void;
   onScheduleManagement?: () => void;
   onAttendanceManagement?: () => void;
+  onClassAttendanceManagement?: () => void;
   onAssignments?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
@@ -59,6 +60,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onAdmissionsLeads = () => {},
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
   onAttendanceManagement = () => window.location.assign("/quan-ly-diem-danh"),
+  onClassAttendanceManagement = () =>
+    window.location.assign("/quan-ly-diem-danh-lop"),
   onAssignments = () => window.location.assign("/quan-ly-bai-tap"),
   onChangePassword,
   onProfile,
@@ -102,20 +105,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
      * bị thiếu permission trong JWT nhưng vẫn phải có
      * quyền truy cập toàn bộ chức năng quản trị.
      */
-    if (
-      isAdminRole() &&
-      (
-        maQuyen === "USER_VIEW" ||
-        maQuyen === "ROLE_VIEW" ||
-        maQuyen === "CURRICULUM_VIEW" ||
-        maQuyen === "LEAD_VIEW" ||
-        maQuyen === "SCHEDULE_VIEW" ||
-        maQuyen === "SCHEDULE_CREATE" ||
-        maQuyen === "SCHEDULE_UPDATE"
-      )
-    ) {
-      return true;
-    }
+    if (isAdminRole()) return true;
 
     return permissions.includes(maQuyen);
   };
@@ -141,8 +131,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const isClassManagementActive = currentPath === "/quan-ly-lop";
 
-  const isScheduleManagementActive = currentPath === "/quan-ly-lich-hoc";
+  const isScheduleManagementActive =
+    currentPath === "/quan-ly-lich-hoc" ||
+    currentPath.startsWith("/quan-ly-lich-hoc/");
   const isAttendanceManagementActive = currentPath === "/quan-ly-diem-danh";
+  const isClassAttendanceActive =
+    currentPath === "/quan-ly-diem-danh-lop";
   const isAssignmentsActive = currentPath === "/quan-ly-bai-tap";
 
   const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
@@ -320,7 +314,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
-          {hasPermission("CLASS_VIEW") && (
+          {hasPermission("ATTENDANCE_VIEW") && (
             <button
               type="button"
               className={`admin-menu-item ${
@@ -346,6 +340,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <span className="admin-menu-symbol">▤</span>
               <span>Bài tập</span>
+            </button>
+          )}
+
+          {hasPermission("CLASS_VIEW") && (
+            <button
+              type="button"
+              className={`admin-menu-item ${
+                isClassAttendanceActive ? "admin-menu-active" : ""
+              }`}
+              onClick={onClassAttendanceManagement}
+            >
+              <span className="admin-menu-symbol">✓</span>
+              <span>Điểm danh theo lớp/ngày</span>
             </button>
           )}
 
@@ -387,7 +394,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span>Lead tư vấn</span>
             </button>
           )}
-
 
           {/* =================================================
               HỆ THỐNG
