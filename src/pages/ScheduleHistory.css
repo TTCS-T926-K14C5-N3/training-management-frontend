@@ -19,7 +19,9 @@
 }
 
 .schedule-history-back {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   gap: 7px;
   margin: 0 0 22px;
@@ -43,6 +45,7 @@
 }
 
 .schedule-history-eyebrow {
+  display: block;
   color: #9eeaf4;
   font-size: 0.7rem;
   font-weight: 800;

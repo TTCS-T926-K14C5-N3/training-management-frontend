@@ -33,7 +33,18 @@ interface AttendanceSession {
   lichHocId: number;
   maBuoiHoc: string;
   ngayHoc: string;
-  hocViens: AttendanceStudent[];
+  records: AttendanceStudent[];
+  coTheCapNhat: boolean;
+}
+
+interface AttendanceAuditEntry {
+  id: number;
+  hocVienId: number;
+  trangThaiCu: AttendanceStatus | null;
+  trangThaiMoi: AttendanceStatus | null;
+  lyDo: string;
+  nguoiThucHien: string;
+  thoiDiem: string;
 }
 
 const STATUSES: AttendanceStatus[] = [
@@ -61,6 +72,7 @@ function AttendanceManagement() {
   const [schedules, setSchedules] = useState<ScheduleOption[]>([]);
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
   const [attendance, setAttendance] = useState<AttendanceSession | null>(null);
+  const [audit, setAudit] = useState<AttendanceAuditEntry[]>([]);
   const [statuses, setStatuses] = useState<Record<number, AttendanceStatus | "">>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [reason, setReason] = useState("");
@@ -111,20 +123,25 @@ function AttendanceManagement() {
         setAttendance(response.data);
         setStatuses(
           Object.fromEntries(
-            response.data.hocViens.map((student) => [
+            response.data.records.map((student) => [
               student.hocVienId,
-              student.trangThai ?? "",
+              student.trangThai ?? "Có mặt",
             ]),
           ),
         );
         setNotes(
           Object.fromEntries(
-            response.data.hocViens.map((student) => [
+            response.data.records.map((student) => [
               student.hocVienId,
               student.ghiChu ?? "",
             ]),
           ),
         );
+        const auditResponse = await api.get<AttendanceAuditEntry[]>(
+          `/academic/schedules/${activeScheduleId}/attendance/audit`,
+          { signal: controller.signal },
+        );
+        setAudit(auditResponse.data);
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setAttendance(null);
@@ -140,11 +157,9 @@ function AttendanceManagement() {
 
   const saveAttendance = async () => {
     if (!attendance) return;
-    const entries = attendance.hocViens
-      .filter((student) => statuses[student.hocVienId])
-      .map((student) => ({
+    const entries = attendance.records.map((student) => ({
         hocVienId: student.hocVienId,
-        trangThai: statuses[student.hocVienId] as AttendanceStatus,
+        trangThai: statuses[student.hocVienId] || "Có mặt",
         ghiChu: notes[student.hocVienId]?.trim() || null,
       }));
     if (entries.length === 0) {
@@ -158,25 +173,29 @@ function AttendanceManagement() {
     try {
       const response = await api.put<AttendanceSession>(
         `/academic/schedules/${attendance.lichHocId}/attendance`,
-        { hocViens: entries, lyDo: reason.trim() || null },
+        { records: entries, lyDo: reason.trim() || null },
       );
       setAttendance(response.data);
       setStatuses(
         Object.fromEntries(
-          response.data.hocViens.map((student) => [
+          response.data.records.map((student) => [
             student.hocVienId,
-            student.trangThai ?? "",
+            student.trangThai ?? "Có mặt",
           ]),
         ),
       );
       setNotes(
         Object.fromEntries(
-          response.data.hocViens.map((student) => [
+          response.data.records.map((student) => [
             student.hocVienId,
             student.ghiChu ?? "",
           ]),
         ),
       );
+      const auditResponse = await api.get<AttendanceAuditEntry[]>(
+        `/academic/schedules/${attendance.lichHocId}/attendance/audit`,
+      );
+      setAudit(auditResponse.data);
       setNotice("Đã lưu điểm danh.");
       setReason("");
     } catch (saveError) {
@@ -267,7 +286,7 @@ function AttendanceManagement() {
 
         {loadingAttendance ? (
           <p className="attendance-page-empty" role="status">Đang tải danh sách học viên...</p>
-        ) : attendance?.hocViens.length ? (
+        ) : attendance?.records.length ? (
           <>
             <div className="attendance-page-table-wrap">
               <table className="attendance-page-table">
@@ -280,13 +299,13 @@ function AttendanceManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {attendance.hocViens.map((student) => (
+                  {attendance.records.map((student) => (
                     <tr key={student.hocVienId}>
                       <td data-label="Học viên">{student.hoTen}</td>
                       <td data-label="Email">{student.email}</td>
                       <td data-label="Trạng thái điểm danh">
                         <select
-                          value={statuses[student.hocVienId] ?? ""}
+                          value={statuses[student.hocVienId] ?? "Có mặt"}
                           onChange={(event) => {
                             const value = event.target.value;
                             if (
@@ -299,7 +318,7 @@ function AttendanceManagement() {
                               }));
                             }
                           }}
-                          disabled={saving}
+                          disabled={saving || !attendance.coTheCapNhat}
                           aria-label={`Trạng thái điểm danh của ${student.hoTen}`}
                         >
                           <option value="">Chưa điểm danh</option>
@@ -319,7 +338,7 @@ function AttendanceManagement() {
                           }
                           maxLength={1000}
                           placeholder="Ghi chú (không bắt buộc)"
-                          disabled={saving}
+                          disabled={saving || !attendance.coTheCapNhat}
                           aria-label={`Ghi chú cho ${student.hoTen}`}
                         />
                       </td>
@@ -328,24 +347,42 @@ function AttendanceManagement() {
                 </tbody>
               </table>
             </div>
-            <label className="attendance-page-field attendance-page-reason">
-              <span>Lý do điều chỉnh (bắt buộc nếu sửa buổi đã kết thúc)</span>
-              <textarea
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                rows={3}
-                maxLength={1000}
-                disabled={saving}
-              />
-            </label>
-            <button
-              className="attendance-page-save"
-              type="button"
-              onClick={() => void saveAttendance()}
-              disabled={saving || loadingAttendance}
-            >
-              {saving ? "Đang lưu..." : "Lưu điểm danh"}
-            </button>
+            {attendance.coTheCapNhat && (
+              <>
+                <label className="attendance-page-field attendance-page-reason">
+                  <span>Lý do điều chỉnh (bắt buộc khi thay đổi dữ liệu đã lưu)</span>
+                  <textarea
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    rows={3}
+                    maxLength={1000}
+                    disabled={saving}
+                  />
+                </label>
+                <button
+                  className="attendance-page-save"
+                  type="button"
+                  onClick={() => void saveAttendance()}
+                  disabled={saving || loadingAttendance}
+                >
+                  {saving ? "Đang lưu..." : "Lưu điểm danh"}
+                </button>
+              </>
+            )}
+            {!!audit.length && (
+              <section className="attendance-page-audit" aria-label="Lịch sử chỉnh sửa điểm danh">
+                <h2>Lịch sử chỉnh sửa điểm danh (360 ngày)</h2>
+                <ul>
+                  {audit.map((entry) => (
+                    <li key={entry.id}>
+                      Học viên #{entry.hocVienId}: {entry.trangThaiCu ?? "Chưa điểm danh"} →{" "}
+                      {entry.trangThaiMoi ?? "Đã xóa"} · {entry.lyDo} · {entry.nguoiThucHien} ·{" "}
+                      {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         ) : !loadingAttendance && !error ? (
           <p className="attendance-page-empty">

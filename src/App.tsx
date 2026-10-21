@@ -1177,7 +1177,7 @@ function App() {
       navigate("/");
       return;
     }
-    navigate("/lich-su-lop-hoc");
+    navigate("/thong-tin-hoc-vien");
   };
 
   const handleClassManagement = () => {
@@ -2090,12 +2090,10 @@ function App() {
     currentPath === "/thong-tin-hoc-vien" ||
     currentPath === "/lich-su-lop-hoc"
   ) {
-    const profileSection =
-      currentPath === "/thong-tin-hoc-vien" ? "information" : "history";
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="USER_VIEW">
         <ProtectedRoute requiredPermission="GRADE_VIEW">
-          <UsersPage key={profileSection} profileSection={profileSection} />
+          <UsersPage profileSection="information" />
         </ProtectedRoute>
       </ProtectedRoute>,
     );

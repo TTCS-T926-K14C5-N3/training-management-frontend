@@ -256,34 +256,44 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
       ) : (
         <div className="role-permissions-groups">
           {Object.entries(groupedPermissions).map(([group, permissions]) => (
-            <fieldset key={group} className="role-permissions-group">
-              <legend>{group}</legend>
-              {permissions.map((permission) => {
-                const lockedAdminPermission =
-                  activeRoleId === 8 &&
-                  ["ROLE_VIEW", "ROLE_UPDATE"].includes(permission.maQuyen);
-                return (
-                  <label
-                    key={permission.maQuyen}
-                    className="role-permission-item"
-                    title={permission.moTa}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedPermissions.has(permission.maQuyen)}
-                      disabled={
-                        loadingPermissions || saving || lockedAdminPermission
-                      }
-                      onChange={() => togglePermission(permission.maQuyen)}
-                    />
-                    <span>
-                      <strong>{permission.tenQuyen}</strong>
-                      <small>{permission.maQuyen}</small>
-                    </span>
-                  </label>
-                );
-              })}
-            </fieldset>
+            <details key={group} className="role-permissions-group">
+              <summary>
+                <span>{group}</span>
+                <small>
+                  {permissions.filter((permission) =>
+                    selectedPermissions.has(permission.maQuyen),
+                  ).length}
+                  /{permissions.length} quyền được bật
+                </small>
+              </summary>
+              <div className="role-permissions-group-items">
+                {permissions.map((permission) => {
+                  const lockedAdminPermission =
+                    activeRoleId === 8 &&
+                    ["ROLE_VIEW", "ROLE_UPDATE"].includes(permission.maQuyen);
+                  return (
+                    <label
+                      key={permission.maQuyen}
+                      className="role-permission-item"
+                      title={permission.moTa}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPermissions.has(permission.maQuyen)}
+                        disabled={
+                          loadingPermissions || saving || lockedAdminPermission
+                        }
+                        onChange={() => togglePermission(permission.maQuyen)}
+                      />
+                      <span>
+                        <strong>{permission.tenQuyen}</strong>
+                        <small>{permission.maQuyen}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </details>
           ))}
         </div>
       )}

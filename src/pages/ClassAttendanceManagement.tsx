@@ -7,7 +7,7 @@ type AttendanceStatus = "present" | "late" | "excused_absence" | "unexcused_abse
 type Tab = "attendance" | "requests" | "history" | "thresholds";
 interface AttendanceClass { classId: number; classCode: string; className: string; programId: number | null; absenceThreshold: number }
 interface StudentRow { studentId: number; studentName: string; email: string; status: AttendanceStatus; reason: string | null; requestId: number | null }
-interface Matrix { classId: number; classCode: string; className: string; date: string; students: StudentRow[]; flaggedStudents: Array<{ studentId: number; studentName: string; absencePercent: number }>; counts: { present: number; absent: number; unexcused: number; total: number }; attendancePercent: number; absencePercent: number; absenceThreshold: number; aboveThreshold: boolean }
+interface Matrix { classId: number; classCode: string; className: string; date: string; students: StudentRow[]; flaggedStudents: Array<{ studentId: number; studentName: string; absencePercent: number }>; counts: { present: number; late: number; excused: number; unexcused: number; absent: number; unmarked: number; total: number }; attendancePercent: number; absencePercent: number; absenceThreshold: number; aboveThreshold: boolean }
 interface AbsenceRequest { requestId: number; classId: number; classCode: string; studentId: number; studentName: string; date: string; reason: string; evidence: string | null; status: string; reviewReason: string | null }
 interface HistoryRecord { classId: number; classCode: string; className: string; date: string; status: AttendanceStatus; reason: string | null }
 interface Threshold { programId: number; programCode: string; programName: string; percentage: number }
@@ -165,7 +165,7 @@ export default function ClassAttendanceManagement() {
       const response = await api.get(`/attendance/classes/${classId}/export`, { params: { date: day }, responseType: "blob" });
       const blobUrl = URL.createObjectURL(response.data);
       const link = document.createElement("a");
-      link.href = blobUrl; link.download = `${matrix?.classCode || "class"}-${day}.xls`; link.click();
+      link.href = blobUrl; link.download = `${matrix?.classCode || "class"}-${day}.xlsx`; link.click();
       URL.revokeObjectURL(blobUrl);
     } catch (exportError) { setError(messageOf(exportError)); }
   };
@@ -211,8 +211,10 @@ export default function ClassAttendanceManagement() {
         </div>
         {matrix && <>
           <div className="attendance-summary">
-            <div><span>Students</span><strong>{matrix.counts.total}</strong></div><div><span>Present / late</span><strong>{matrix.counts.present}</strong></div>
-            <div><span>Absent</span><strong>{matrix.counts.absent}</strong></div><div><span>Attendance</span><strong>{matrix.attendancePercent}%</strong></div>
+            <div><span>Students</span><strong>{matrix.counts.total}</strong></div><div><span>Present</span><strong>{matrix.counts.present}</strong></div>
+            <div><span>Late</span><strong>{matrix.counts.late}</strong></div><div><span>Excused</span><strong>{matrix.counts.excused}</strong></div>
+            <div><span>Unexcused</span><strong>{matrix.counts.unexcused}</strong></div><div><span>Not marked</span><strong>{matrix.counts.unmarked}</strong></div>
+            <div><span>Attendance</span><strong>{matrix.attendancePercent}%</strong></div>
             <div><span>Unexcused</span><strong>{matrix.absencePercent}% / {matrix.absenceThreshold}%</strong></div>
           </div>
           {matrix.aboveThreshold && <div className="attendance-alert warning">Program threshold reached: {matrix.flaggedStudents.map((student) => `${student.studentName} (${student.absencePercent}%)`).join(", ")}.</div>}

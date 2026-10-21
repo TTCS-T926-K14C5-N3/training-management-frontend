@@ -35,7 +35,11 @@ interface ScheduleOptions {
   }>;
 }
 
-type AttendanceStatus = "Có mặt" | "Vắng" | "Muộn" | "Có phép";
+type AttendanceStatus =
+  | "Có mặt"
+  | "Đi muộn"
+  | "Vắng có phép"
+  | "Vắng không phép";
 
 interface AttendanceStudent {
   hocVienId: number;
@@ -51,8 +55,14 @@ interface AttendanceResponse {
   lichHocId: number;
   maBuoiHoc: string;
   ngayHoc: string;
-  hocViens: AttendanceStudent[];
-  trangThaiDiemDanh: string | null;
+  records: Array<{
+    hocVienId: number;
+    hoTen: string;
+    email: string;
+    trangThai: AttendanceStatus | null;
+    ghiChu: string | null;
+  }>;
+  coTheCapNhat: boolean;
 }
 
 interface ScheduleRecord {
@@ -80,6 +90,9 @@ interface ScheduleRecord {
   ngayCapNhat: string;
   ngayHuy: string | null;
 }
+
+const hasAttendanceRecords = (schedule: ScheduleRecord): boolean =>
+  schedule.trangThaiDiemDanh?.startsWith("Đã ghi nhận") ?? false;
 
 interface ScheduleForm {
   lopHocId: number | "";
@@ -138,17 +151,6 @@ const businessDateValue = (value = new Date()): string => {
   }).formatToParts(value);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
-};
-
-const businessTimeValue = (value = new Date()): string => {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(value);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.hour}:${values.minute}`;
 };
 
 const addDaysToDateValue = (value: string, days: number): string => {
@@ -639,6 +641,10 @@ function ScheduleManagement({
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [filter, setFilter] = useState("Tất cả");
+  const [classFilter, setClassFilter] = useState("");
+  const [teacherFilter, setTeacherFilter] = useState("");
+  const [roomFilter, setRoomFilter] = useState("");
+  const [calendarMode, setCalendarMode] = useState<"list" | "month">("list");
   const [editing, setEditing] = useState<ScheduleRecord | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<ScheduleForm>(EMPTY_FORM);
@@ -656,6 +662,8 @@ function ScheduleManagement({
   const [attendanceSession, setAttendanceSession] =
     useState<ScheduleRecord | null>(null);
   const [attendanceStudents, setAttendanceStudents] = useState<AttendanceStudent[]>([]);
+  const [attendanceReason, setAttendanceReason] = useState("");
+  const [attendanceCanUpdate, setAttendanceCanUpdate] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [attendanceError, setAttendanceError] = useState("");
@@ -682,7 +690,7 @@ function ScheduleManagement({
             }
           : undefined,
       });
-      if (canCreate) {
+      if (canCreate || canUpdate) {
         const [optionsResponse, schedulesResponse] = await Promise.all([
           api.get<ScheduleOptions>("/academic/schedule-options"),
           schedulesRequest,
@@ -744,12 +752,6 @@ function ScheduleManagement({
     const startMinutes = minutesAfterMidnight(form.gioBatDau);
     const endMinutes = minutesAfterMidnight(form.gioKetThuc);
     const now = businessDateValue();
-    const currentMinutes = minutesAfterMidnight(businessTimeValue());
-    const isCurrentTimePast =
-      form.ngayHoc === now &&
-      currentMinutes !== null &&
-      startMinutes !== null &&
-      startMinutes <= currentMinutes;
     const isComplete =
       !!selectedClass &&
       selectedClass.monHocs.some(
@@ -766,10 +768,7 @@ function ScheduleManagement({
       form.ngayHoc >= now &&
       startMinutes !== null &&
       endMinutes !== null &&
-      endMinutes > startMinutes &&
-      !isCurrentTimePast &&
-      (form.ngayHoc !== now ||
-        (currentMinutes !== null && endMinutes > currentMinutes));
+      endMinutes > startMinutes;
 
     if (!isComplete) {
       setCheckingConflicts(false);
@@ -816,12 +815,23 @@ function ScheduleManagement({
     }
     const activeSchedules = schedules.filter(
       (schedule) =>
-        schedule.trangThai !== "Đã diễn ra" &&
-        schedule.trangThai !== "Đã hủy",
+        schedule.ngayHoc.startsWith(month) &&
+        (!classFilter || String(schedule.lopHocId) === classFilter) &&
+        (!teacherFilter || String(schedule.giangVienId) === teacherFilter) &&
+        (!roomFilter || String(schedule.phongHocId ?? "") === roomFilter),
     );
     if (filter === "Tất cả") return activeSchedules;
     return activeSchedules.filter((schedule) => schedule.trangThai === filter);
-  }, [filter, isStudent, schedules]);
+  }, [classFilter, filter, isStudent, month, roomFilter, schedules, teacherFilter]);
+
+  const managerCalendarDays = useMemo(() => {
+    const { start, end } = monthDateRange(month);
+    const days: string[] = [];
+    for (let current = start; current <= end; current = addDaysToDateValue(current, 1)) {
+      days.push(current);
+    }
+    return days;
+  }, [month]);
 
   const selectedClass = options?.lopHocs.find(
     (item) => item.lopHocId === form.lopHocId,
@@ -910,16 +920,6 @@ function ScheduleManagement({
     }
     if (startMinutes !== null && endMinutes !== null && endMinutes <= startMinutes) {
       errors.gioKetThuc = "Giờ kết thúc phải sau giờ bắt đầu.";
-    }
-    const currentBusinessMinutes = minutesAfterMidnight(businessTimeValue());
-    if (
-      isValidDateValue(form.ngayHoc) &&
-      form.ngayHoc === today &&
-      endMinutes !== null &&
-      currentBusinessMinutes !== null &&
-      endMinutes <= currentBusinessMinutes
-    ) {
-      errors.gioKetThuc = "Buổi học phải kết thúc sau thời điểm hiện tại.";
     }
     if (!form.giangVienId) errors.giangVienId = "Vui lòng chọn giảng viên.";
     setFieldErrors(errors);
@@ -1023,14 +1023,15 @@ function ScheduleManagement({
       const response = await api.get<AttendanceResponse>(
         `/academic/schedules/${schedule.lichHocId}/attendance`,
       );
-      setAttendanceStudents(response.data.hocViens);
-      setSchedules((current) =>
-        current.map((item) =>
-          item.lichHocId === schedule.lichHocId
-            ? { ...item, trangThaiDiemDanh: response.data.trangThaiDiemDanh }
-            : item,
-        ),
-      );
+      setAttendanceStudents(response.data.records.map((student) => ({
+        ...student,
+        trangThai: student.trangThai ?? "Có mặt",
+        ghiChu: student.ghiChu ?? "",
+        nguoiDiemDanh: null,
+        ngayCapNhat: null,
+      })));
+      setAttendanceCanUpdate(response.data.coTheCapNhat);
+      setAttendanceReason("");
     } catch (error) {
       setAttendanceError(errorFromApi(error).message);
     } finally {
@@ -1052,20 +1053,22 @@ function ScheduleManagement({
       const response = await api.put<AttendanceResponse>(
         `/academic/schedules/${attendanceSession.lichHocId}/attendance`,
         {
-          hocViens: attendanceStudents.map((student) => ({
+          records: attendanceStudents.map((student) => ({
             hocVienId: student.hocVienId,
             trangThai: student.trangThai,
             ghiChu: student.ghiChu || null,
           })),
+          lyDo: attendanceReason.trim() || null,
         },
       );
-      setSchedules((current) =>
-        current.map((item) =>
-          item.lichHocId === attendanceSession.lichHocId
-            ? { ...item, trangThaiDiemDanh: response.data.trangThaiDiemDanh }
-            : item,
-        ),
-      );
+      setAttendanceStudents(response.data.records.map((student) => ({
+        ...student,
+        trangThai: student.trangThai ?? "Có mặt",
+        ghiChu: student.ghiChu ?? "",
+        nguoiDiemDanh: null,
+        ngayCapNhat: null,
+      })));
+      setAttendanceReason("");
       setAttendanceSession(null);
       setToast({ type: "success", text: "Đã lưu điểm danh buổi học." });
       await loadData(false);
@@ -1151,7 +1154,10 @@ function ScheduleManagement({
         </div>
       </header>
 
-      <section className="schedule-panel" aria-labelledby="schedule-list-title">
+      <section
+        className={`schedule-panel${isStudent ? "" : " manager-schedule-panel"}`}
+        aria-labelledby="schedule-list-title"
+      >
         <div className="schedule-panel-heading">
           <div>
             <h2 id="schedule-list-title">Danh sách buổi học</h2>
@@ -1160,7 +1166,7 @@ function ScheduleManagement({
                 ? `${displayDate(weekStart)} – ${displayDate(
                     addDaysToDateValue(weekStart, 6),
                   )} · ${filteredSchedules.length} buổi học trong tuần`
-                : `${filteredSchedules.length} buổi học sắp tới hoặc đang diễn ra`}
+                : `${filteredSchedules.length} buổi học trong tháng`}
             </p>
           </div>
           <div className="schedule-panel-tools">
@@ -1195,6 +1201,48 @@ function ScheduleManagement({
                 </button>
               </div>
             )}
+            {!isStudent && (
+              <>
+                <div
+                  className="schedule-week-navigation manager-month-navigation"
+                  aria-label="Chọn tháng"
+                >
+                  <button
+                    type="button"
+                    className="schedule-secondary-button"
+                    onClick={() => setMonth((current) => shiftMonth(current, -1))}
+                    aria-label="Tháng trước"
+                  >
+                    ‹
+                  </button>
+                  <input
+                    aria-label="Tháng lịch học"
+                    type="month"
+                    value={month}
+                    onChange={(event) => setMonth(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="schedule-secondary-button"
+                    onClick={() => setMonth(businessDateValue().slice(0, 7))}
+                  >
+                    Tháng này
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-secondary-button"
+                    onClick={() => setMonth((current) => shiftMonth(current, 1))}
+                    aria-label="Tháng sau"
+                  >
+                    ›
+                  </button>
+                </div>
+                <div className="schedule-view-toggle" aria-label="Chế độ xem lịch">
+                  <button type="button" aria-pressed={calendarMode === "list"} onClick={() => setCalendarMode("list")}>Danh sách</button>
+                  <button type="button" aria-pressed={calendarMode === "month"} onClick={() => setCalendarMode("month")}>Lịch tháng</button>
+                </div>
+              </>
+            )}
             <label className="schedule-filter">
               <span>Trạng thái</span>
               <select
@@ -1204,34 +1252,89 @@ function ScheduleManagement({
                 <option>Tất cả</option>
                 <option>Đã lên lịch</option>
                 <option>Đang diễn ra</option>
-                {isStudent && (
-                  <>
-                    <option>Đã diễn ra</option>
-                    <option>Đã hủy</option>
-                  </>
-                )}
+                <option>Đã diễn ra</option>
+                <option>Đã hủy</option>
               </select>
             </label>
+            {!isStudent && (
+              <>
+                <label className="schedule-filter">
+                  <span>Lớp</span>
+                  <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
+                    <option value="">Tất cả lớp</option>
+                    {Array.from(new Map(schedules.map((item) => [item.lopHocId, item.maLop ?? String(item.lopHocId)])).entries()).map(([id, code]) => (
+                      <option key={id} value={id}>{code}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="schedule-filter">
+                  <span>Giảng viên</span>
+                  <select value={teacherFilter} onChange={(event) => setTeacherFilter(event.target.value)}>
+                    <option value="">Tất cả giảng viên</option>
+                    {Array.from(new Map(schedules.map((item) => [item.giangVienId, item.giangVienTen ?? String(item.giangVienId)])).entries()).map(([id, name]) => (
+                      <option key={id} value={id}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="schedule-filter">
+                  <span>Phòng</span>
+                  <select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)}>
+                    <option value="">Tất cả phòng</option>
+                    {Array.from(new Map(schedules.filter((item) => item.phongHocId !== null).map((item) => [item.phongHocId!, item.maPhong ?? String(item.phongHocId)])).entries()).map(([id, room]) => (
+                      <option key={id} value={id}>{room}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            )}
           </div>
         </div>
 
-        {loading ? (
-          <div className="schedule-state" role="status">Đang tải lịch học...</div>
-        ) : pageError ? (
-          <div className="schedule-state schedule-state-error" role="alert">
-            <span>{pageError}</span>
-            <button type="button" onClick={() => void loadData()}>Thử lại</button>
+        {!isStudent && calendarMode === "month" && !loading && !pageError && (
+          <div className="schedule-manager-calendar" role="grid" aria-label={`Lịch học tháng ${month}`}>
+            {["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"].map((label) => (
+              <strong className="schedule-manager-calendar-weekday" key={label}>{label}</strong>
+            ))}
+            {managerCalendarDays.map((day) => (
+              <section className="schedule-manager-calendar-day" role="gridcell" key={day}>
+                <strong>{Number(day.slice(-2))}</strong>
+                {filteredSchedules.filter((item) => item.ngayHoc === day).map((item) => (
+                  <div className="schedule-manager-calendar-event" key={item.lichHocId}>
+                    <span>{item.gioBatDau} · {item.maLop ?? "Lớp"} · {item.tenMonHoc ?? "Buổi học"}</span>
+                    {canUpdateAttendance && item.trangThai !== "Đã hủy" && (
+                      <button
+                        type="button"
+                        className={hasAttendanceRecords(item) ? "schedule-attendance-recorded" : ""}
+                        onClick={() => void openAttendance(item)}
+                      >
+                        {hasAttendanceRecords(item) ? "Đã điểm danh" : "Điểm danh"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </section>
+            ))}
           </div>
-        ) : filteredSchedules.length === 0 ? (
-          <div className="schedule-state">
-            {filter === "Tất cả"
-              ? isStudent
-                ? "Chưa có lịch học nào được xếp cho các lớp bạn đang tham gia."
-                : "Chưa có buổi học nào được xếp lịch."
-              : "Không có buổi học phù hợp với trạng thái đã chọn."}
-          </div>
-        ) : (
-          <div className="schedule-table-wrap">
+        )}
+
+        {(isStudent || calendarMode === "list") && (
+          loading ? (
+            <div className="schedule-state" role="status">Đang tải lịch học...</div>
+          ) : pageError ? (
+            <div className="schedule-state schedule-state-error" role="alert">
+              <span>{pageError}</span>
+              <button type="button" onClick={() => void loadData()}>Thử lại</button>
+            </div>
+          ) : filteredSchedules.length === 0 ? (
+            <div className="schedule-state">
+              {filter === "Tất cả"
+                ? isStudent
+                  ? "Chưa có lịch học nào được xếp cho các lớp bạn đang tham gia."
+                  : "Chưa có buổi học nào được xếp lịch."
+                : "Không có buổi học phù hợp với trạng thái đã chọn."}
+            </div>
+          ) : (
+            <div className="schedule-table-wrap">
             <table className="schedule-table">
               <thead>
                 <tr>
@@ -1274,9 +1377,11 @@ function ScheduleManagement({
                         {canUpdateAttendance && schedule.trangThai !== "Đã hủy" && (
                           <button
                             type="button"
+                            className={hasAttendanceRecords(schedule) ? "schedule-attendance-recorded" : ""}
                             onClick={() => void openAttendance(schedule)}
+                            title={hasAttendanceRecords(schedule) ? "Mở để xem hoặc chỉnh sửa điểm danh" : undefined}
                           >
-                            Điểm danh
+                            {hasAttendanceRecords(schedule) ? "Đã điểm danh" : "Điểm danh"}
                           </button>
                         )}
                         {canUpdate && schedule.coTheChinhSua && (
@@ -1302,7 +1407,18 @@ function ScheduleManagement({
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          )
+        )}
+        {!isStudent && calendarMode === "month" && (loading || pageError) && (
+          loading ? (
+            <div className="schedule-state" role="status">Đang tải lịch học...</div>
+          ) : (
+            <div className="schedule-state schedule-state-error" role="alert">
+              <span>{pageError}</span>
+              <button type="button" onClick={() => void loadData()}>Thử lại</button>
+            </div>
+          )
         )}
       </section>
 
@@ -1665,6 +1781,25 @@ function ScheduleManagement({
               </div>
             ) : (
               <form onSubmit={(event) => void saveAttendance(event)}>
+                {attendanceCanUpdate && (
+                  <div className="schedule-attendance-toolbar">
+                    <button
+                      type="button"
+                      className="schedule-secondary-button"
+                      disabled={attendanceSaving}
+                      onClick={() =>
+                        setAttendanceStudents((current) =>
+                          current.map((student) => ({
+                            ...student,
+                            trangThai: "Có mặt",
+                          })),
+                        )
+                      }
+                    >
+                      Đánh dấu tất cả có mặt
+                    </button>
+                  </div>
+                )}
                 <div className="schedule-attendance-list">
                   {attendanceStudents.map((student, index) => (
                     <div className="schedule-attendance-row" key={student.hocVienId}>
@@ -1682,6 +1817,7 @@ function ScheduleManagement({
                         <select
                           required
                           value={student.trangThai}
+                          disabled={!attendanceCanUpdate || attendanceSaving}
                           onChange={(event) =>
                             setAttendanceStudents((current) =>
                               current.map((item) =>
@@ -1692,11 +1828,10 @@ function ScheduleManagement({
                             )
                           }
                         >
-                          <option value="">Chọn trạng thái</option>
                           <option value="Có mặt">Có mặt</option>
-                          <option value="Vắng">Vắng</option>
-                          <option value="Muộn">Muộn</option>
-                          <option value="Có phép">Có phép</option>
+                          <option value="Đi muộn">Đi muộn</option>
+                          <option value="Vắng có phép">Vắng có phép</option>
+                          <option value="Vắng không phép">Vắng không phép</option>
                         </select>
                       </label>
                       <label className="schedule-field schedule-attendance-note">
@@ -1704,6 +1839,7 @@ function ScheduleManagement({
                         <input
                           maxLength={1000}
                           value={student.ghiChu}
+                          disabled={!attendanceCanUpdate || attendanceSaving}
                           onChange={(event) =>
                             setAttendanceStudents((current) =>
                               current.map((item) =>
@@ -1722,6 +1858,18 @@ function ScheduleManagement({
                     </div>
                   ))}
                 </div>
+                {attendanceCanUpdate && (
+                  <label className="schedule-field">
+                    <span>Lý do điều chỉnh (bắt buộc khi thay đổi điểm danh đã lưu)</span>
+                    <textarea
+                      value={attendanceReason}
+                      onChange={(event) => setAttendanceReason(event.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      disabled={attendanceSaving}
+                    />
+                  </label>
+                )}
                 <div className="schedule-modal-actions">
                   <button
                     type="button"
@@ -1731,13 +1879,13 @@ function ScheduleManagement({
                   >
                     Đóng
                   </button>
-                  <button
+                  {attendanceCanUpdate && <button
                     type="submit"
                     className="schedule-primary-button"
                     disabled={attendanceSaving || attendanceLoading}
                   >
                     {attendanceSaving ? "Đang lưu..." : "Lưu điểm danh"}
-                  </button>
+                  </button>}
                 </div>
               </form>
             )}

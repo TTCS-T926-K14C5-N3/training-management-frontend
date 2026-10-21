@@ -50,6 +50,14 @@ type Roster = {
   progressPercent: number;
   students: RosterRow[];
 };
+type AssignmentNotice = {
+  id: number;
+  assignmentId: number;
+  type: string;
+  title: string;
+  message: string;
+  at: string;
+};
 
 const errorText = (error: unknown): string => {
   if (axios.isAxiosError<{ detail?: unknown }>(error)) {
@@ -79,6 +87,9 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
   const [roster, setRoster] = useState<Roster | null>(null);
   const [rosterFilter, setRosterFilter] = useState("all");
   const [activeAssignment, setActiveAssignment] = useState<number | null>(null);
+  const [assignmentClassFilter, setAssignmentClassFilter] = useState("");
+  const [assignmentSubjectFilter, setAssignmentSubjectFilter] = useState("");
+  const [notifications, setNotifications] = useState<AssignmentNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -86,12 +97,14 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
 
   const loadTeacher = useCallback(async () => {
     try {
-      const [assignmentResponse, optionsResponse] = await Promise.all([
+      const [assignmentResponse, optionsResponse, notificationResponse] = await Promise.all([
         api.get<Assignment[]>("/assignments/teacher"),
         api.get<ClassOption[]>("/assignments/options"),
+        api.get<AssignmentNotice[]>("/assignments/notifications"),
       ]);
       setAssignments(assignmentResponse.data);
       setClassOptions(optionsResponse.data);
+      setNotifications(notificationResponse.data);
       setError("");
     } catch (requestError: unknown) {
       setError(errorText(requestError));
@@ -102,8 +115,12 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
 
   const loadStudent = useCallback(async () => {
     try {
-      const response = await api.get<Assignment[]>("/assignments/mine");
+      const [response, notificationResponse] = await Promise.all([
+        api.get<Assignment[]>("/assignments/mine"),
+        api.get<AssignmentNotice[]>("/assignments/notifications"),
+      ]);
       setAssignments(response.data);
+      setNotifications(notificationResponse.data);
       setError("");
     } catch (requestError: unknown) {
       setError(errorText(requestError));
@@ -122,6 +139,17 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
 
   const currentClass = classOptions.find((item) => String(item.lopHocId) === selectedClass);
   const currentSubject = currentClass?.subjects.find((item) => String(item.monHocId) === selectedSubject);
+  const filteredAssignments = assignments.filter((item) =>
+    (!assignmentClassFilter || String(item.lopHocId) === assignmentClassFilter) &&
+    (!assignmentSubjectFilter || String(item.monHocId) === assignmentSubjectFilter),
+  );
+  const availableFilterSubjects = Array.from(
+    new Map(
+      classOptions
+        .filter((item) => !assignmentClassFilter || String(item.lopHocId) === assignmentClassFilter)
+        .flatMap((item) => item.subjects.map((subject) => [subject.monHocId, subject] as const)),
+    ).values(),
+  );
 
   const validateFiles = (files: File[]) => {
     const tooLarge = files.find((item) => item.size > MAX_FILE_BYTES);
@@ -280,6 +308,19 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
       </header>
       {error && <div className="assignment-alert error" role="alert">{error}</div>}
       {notice && <div className="assignment-alert success" role="status">{notice}<button type="button" aria-label="Đóng thông báo" onClick={() => setNotice("")}>×</button></div>}
+      {!!notifications.length && (
+        <section className="assignment-panel" aria-label="Thông báo bài tập">
+          <h2>Thông báo</h2>
+          <ul>
+            {notifications.map((item) => (
+              <li key={item.id}>
+                <strong>{item.title}</strong> — {item.message}{" "}
+                <small>{formatDate(item.at)}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {loading ? <p className="assignment-loading">Đang tải bài tập…</p> : tab === "teacher" ? <>
         <section className="assignment-panel">
           <h2>Tạo bản nháp</h2>
@@ -297,14 +338,18 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
           </form>
         </section>
         <section className="assignment-list-section"><h2>Bài tập phụ trách</h2>
-          {assignments.length === 0 ? <p className="assignment-empty">Chưa có bài tập trong các lớp được phân công.</p> : assignments.map((item) => <article className="assignment-card" key={item.assignmentId}>
+          <div className="assignment-filters">
+            <label>Lớp<select value={assignmentClassFilter} onChange={(event) => { setAssignmentClassFilter(event.target.value); setAssignmentSubjectFilter(""); }}><option value="">Tất cả lớp</option>{classOptions.map((item) => <option key={item.lopHocId} value={item.lopHocId}>{item.tenLop}</option>)}</select></label>
+            <label>Môn học<select value={assignmentSubjectFilter} onChange={(event) => setAssignmentSubjectFilter(event.target.value)}><option value="">Tất cả môn</option>{availableFilterSubjects.map((item) => <option key={`${item.monHocId}-${item.tenMonHoc}`} value={item.monHocId}>{item.tenMonHoc}</option>)}</select></label>
+          </div>
+          {filteredAssignments.length === 0 ? <p className="assignment-empty">Không có bài tập phù hợp với bộ lọc.</p> : filteredAssignments.map((item) => <article className="assignment-card" key={item.assignmentId}>
             <div className="assignment-card-top"><div><span className={`assignment-status ${item.trangThai.toLowerCase()}`}>{item.trangThai === "Draft" ? "Bản nháp" : "Đã phát hành"}</span><h3>{item.tieuDe}</h3><p>{item.tenLop} · {item.tenMonHoc}</p></div><strong>{item.diemToiDa} điểm</strong></div>
             <p className="assignment-description">{item.moTa}</p><p className="assignment-meta">Hạn nộp: {formatDate(item.hanNop)} · {item.choNopMuon ? "Cho phép nộp muộn" : "Không nhận bài muộn"}</p>
             <div className="assignment-attachments">{item.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep} ({formatSize(attachment.kichThuoc)})</button>)}</div>
             <div className="assignment-actions">{item.trangThai === "Draft" && <button type="button" className="assignment-primary" disabled={saving} onClick={() => void publish(item.assignmentId)}>Phát hành</button>}{item.trangThai === "Published" && <button type="button" onClick={() => void loadRoster(item.assignmentId)}>Danh sách nộp bài</button>}</div>
           </article>)}
         </section>
-        {roster && activeAssignment !== null && <section className="assignment-panel roster-panel"><div className="roster-heading"><div><h2>Danh sách học viên</h2><p>{roster.submittedCount}/{roster.totalStudents} đã nộp · {roster.gradedCount} đã chấm · {roster.lateCount} muộn · {roster.missingCount} chưa nộp</p></div><label>Lọc<select value={rosterFilter} onChange={(event) => { setRosterFilter(event.target.value); void loadRoster(activeAssignment, event.target.value); }}><option value="all">Tất cả</option><option value="missing">Chưa nộp</option><option value="submitted">Đã nộp</option><option value="late">Nộp muộn</option><option value="graded">Đã chấm</option></select></label></div>
+        {roster && activeAssignment !== null && <section className="assignment-panel roster-panel"><div className="roster-heading"><div><h2>Danh sách học viên</h2><p>{roster.submittedCount}/{roster.totalStudents} đã nộp · {roster.gradedCount} đã chấm · {roster.lateCount} muộn · {roster.missingCount} chưa nộp</p></div><label>Lọc<select value={rosterFilter} onChange={(event) => { setRosterFilter(event.target.value); void loadRoster(activeAssignment, event.target.value); }}><option value="all">Tất cả</option><option value="missing">Chưa nộp</option><option value="submitted">Đã nộp</option><option value="ungraded">Chưa chấm</option><option value="late">Nộp muộn</option><option value="graded">Đã chấm</option></select></label></div>
           <div className="progress-track"><span style={{ width: `${roster.progressPercent}%` }} /></div><small>Tiến độ chấm {roster.progressPercent}%</small>
           <div className="roster-list">{roster.students.map((student) => <article className="roster-row" key={student.studentId}><div className="roster-student"><strong>{student.studentName}</strong><small>{student.email}</small><span className={`assignment-status ${student.status}`}>{student.status === "missing" ? "Chưa nộp" : student.status === "graded" ? "Đã chấm" : student.status === "late" ? "Nộp muộn" : "Đã nộp"}</span></div>
             {student.submission ? <div className="roster-submission"><a href={student.submission.repositoryUrl} target="_blank" rel="noreferrer">Repository · phiên bản {student.submission.version}</a><small>Nộp lúc {formatDate(student.submission.submittedAt)}{student.submission.grade !== null ? ` · ${student.submission.grade} điểm` : ""}</small><div className="assignment-attachments">{student.submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep}</button>)}</div>
@@ -320,8 +365,6 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
 };
 
 export default Assignments;
-
-
 
 
 

@@ -24,13 +24,6 @@ interface ScheduleRecord {
   ngayHuy: string | null;
 };
 
-interface SchedulePageResponse {
-  items: ScheduleRecord[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
 interface ScheduleArchiveProps {
   navigate: (path: string) => void;
 }
@@ -61,7 +54,7 @@ function ScheduleArchive({ navigate }: ScheduleArchiveProps) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [retryCount, setRetryCount] = useState(0);
-  const [result, setResult] = useState<SchedulePageResponse | null>(null);
+  const [result, setResult] = useState<ScheduleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -74,28 +67,17 @@ function ScheduleArchive({ navigate }: ScheduleArchiveProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const endpoint =
-      status === "completed"
-        ? "/academic/schedules/completed"
-        : "/academic/schedules/cancelled";
-
     setLoading(true);
     setLoadError("");
     void api
-      .get<SchedulePageResponse>(endpoint, {
+      .get<ScheduleRecord[]>("/academic/schedules", {
         params: {
-          page,
-          pageSize: PAGE_SIZE,
-          q: debouncedSearch || undefined,
+          status: status === "completed" ? "Đã diễn ra" : "Đã hủy",
         },
         signal: controller.signal,
       })
       .then(({ data }) => {
-        if (
-          !data ||
-          !Array.isArray(data.items) ||
-          typeof data.total !== "number"
-        ) {
+        if (!Array.isArray(data)) {
           throw new Error("Backend trả về danh sách buổi học không đúng định dạng.");
         }
         setResult(data);
@@ -116,8 +98,23 @@ function ScheduleArchive({ navigate }: ScheduleArchiveProps) {
     setPage(1);
   }, [debouncedSearch]);
 
-  const pageCount = Math.max(1, Math.ceil((result?.total ?? 0) / PAGE_SIZE));
-  const schedules = result?.items ?? [];
+  const searchTerm = debouncedSearch.toLocaleLowerCase("vi");
+  const filteredSchedules = result.filter((schedule) =>
+    [
+      schedule.maBuoiHoc,
+      schedule.maLop,
+      schedule.tenLop,
+      schedule.tenMonHoc,
+      schedule.giangVienTen,
+      schedule.maPhong,
+      schedule.tenPhong,
+    ]
+      .filter(Boolean)
+      .some((value) => value!.toLocaleLowerCase("vi").includes(searchTerm)),
+  );
+  const total = filteredSchedules.length;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const schedules = filteredSchedules.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const title =
     status === "completed" ? "Buổi học đã diễn ra" : "Buổi học đã hủy";
 
@@ -175,7 +172,7 @@ function ScheduleArchive({ navigate }: ScheduleArchiveProps) {
             <p>
               {loading
                 ? "Đang tải dữ liệu..."
-                : `${result?.total ?? 0} buổi học trong phạm vi bạn được xem`}
+                : `${total} buổi học trong phạm vi bạn được xem`}
             </p>
           </div>
           <button

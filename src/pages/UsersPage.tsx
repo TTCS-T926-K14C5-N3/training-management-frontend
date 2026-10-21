@@ -185,6 +185,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [studentProfileUser, setStudentProfileUser] = useState<User | null>(
     null,
   );
+  const [studentProfileSection, setStudentProfileSection] =
+    useState<StudentProfileSection>("information");
   const [studentActionUser, setStudentActionUser] = useState<User | null>(null);
   const [studentActionForm, setStudentActionForm] = useState({
     classId: "" as number | "",
@@ -686,7 +688,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
           </h2>
           <p>
             {profileSection === "information"
-              ? "Tra cứu học viên theo mã, họ tên hoặc lớp; theo dõi bảo lưu, chuyển lớp và thôi học."
+              ? "Tra cứu học viên, xem thông tin cá nhân, xử lý tình trạng ghi danh và theo dõi lịch sử học tập."
               : profileSection === "history"
                 ? "Theo dõi lớp đang học, lịch sử lớp và bảng điểm của học viên."
                 : "Tra cứu học viên theo mã, ID, họ tên hoặc số điện thoại; mở hồ sơ để xem quá trình học và bảng điểm."}
@@ -854,7 +856,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                     </th>
                     <th>{profileSection ? "Tình trạng ghi danh" : "Trạng thái"}</th>
                     {profileSection === "information" && <th>Tài khoản</th>}
-                    <th>{profileSection ? "Xem chi tiết" : "Thao tác"}</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -959,17 +961,6 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                       )}
                       <td>
                         <div className="users-actions">
-                          {profileSection === "information" &&
-                            canManageEnrollment &&
-                            !!user.lopHienTai?.length && (
-                              <button
-                                type="button"
-                                className="student-enrollment-action"
-                                onClick={() => openStudentAction(user)}
-                              >
-                                Xử lý
-                              </button>
-                            )}
                           <div className="users-action-menu-wrap">
                             <button
                               type="button"
@@ -989,30 +980,49 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
 
                             {openActionMenuUserId === user.nguoiDungId && (
                               <div className="users-action-menu open">
-                                {canViewAcademicProfile &&
-                                  (user.vaiTroIds?.includes(2) ||
-                                    user.vaiTroId === 2) && (
-                                  <button
-                                  type="button"
-                                  className="action-profile"
-                                    onClick={() => {
-                                      setStudentProfileUser(user);
-                                      setOpenActionMenuUserId(null);
-                                    }}
-                                    title={
-                                      profileSection === "information"
-                                        ? "Xem thông tin học viên"
-                                        : profileSection === "history"
-                                          ? "Xem lịch sử lớp học"
-                                          : "Mở hồ sơ học tập của học viên"
-                                    }
-                                  >
-                                    {profileSection === "information"
-                                      ? "Thông tin"
-                                      : profileSection === "history"
-                                        ? "Lịch sử lớp"
-                                        : "Hồ sơ học tập"}
-                                  </button>
+                                {profileSection &&
+                                  canViewAcademicProfile && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="action-profile"
+                                      onClick={() => {
+                                        setStudentProfileSection("information");
+                                        setStudentProfileUser(user);
+                                        setOpenActionMenuUserId(null);
+                                      }}
+                                    >
+                                      Thông tin học viên
+                                    </button>
+                                    {profileSection === "information" &&
+                                      canManageEnrollment && (
+                                        <button
+                                          type="button"
+                                          className="student-enrollment-action"
+                                          disabled={!user.lopHienTai?.length}
+                                          title={!user.lopHienTai?.length
+                                            ? "Học viên chưa có lớp đang ghi danh"
+                                            : "Bảo lưu, chuyển lớp hoặc thôi học"}
+                                          onClick={() => {
+                                            openStudentAction(user);
+                                            setOpenActionMenuUserId(null);
+                                          }}
+                                        >
+                                          Xử lý
+                                        </button>
+                                      )}
+                                    <button
+                                      type="button"
+                                      className="action-profile"
+                                      onClick={() => {
+                                        setStudentProfileSection("history");
+                                        setStudentProfileUser(user);
+                                        setOpenActionMenuUserId(null);
+                                      }}
+                                    >
+                                      Lịch sử học
+                                    </button>
+                                  </>
                                 )}
                                 {!profileSection && canUpdateUser && (
                                   <button
@@ -1115,9 +1125,9 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
         <StudentProfileModal
           student={studentProfileUser}
           canEdit={
-            profileSection !== "history" && canEditStudentProfile
+            studentProfileSection !== "history" && canEditStudentProfile
           }
-          section={profileSection}
+          section={studentProfileSection}
           onClose={() => setStudentProfileUser(null)}
           onSaved={() => void loadUsers()}
         />

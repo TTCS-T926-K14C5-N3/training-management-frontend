@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
+import { sessionsForCredits } from "../utils/subjectWorkload";
 import "./AcademicManagement.css";
 import "./TrainingCatalog.css";
 
@@ -11,6 +12,7 @@ interface Subject {
   monHocId: number;
   maMonHoc: string;
   tenMonHoc: string;
+  soTinChi: number | null;
   soBuoi: number;
   trongSo: number;
   moTaChuanDauRa: string | null;
@@ -25,7 +27,8 @@ interface TrainingCatalogProps {
 const EMPTY_SUBJECT = {
   maMonHoc: "",
   tenMonHoc: "",
-  soBuoi: "",
+  soTinChi: "1",
+  soBuoi: "3",
   trongSo: "1",
   moTaChuanDauRa: "",
 };
@@ -158,6 +161,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     setForm({
       maMonHoc: subject.maMonHoc,
       tenMonHoc: subject.tenMonHoc,
+      soTinChi: subject.soTinChi === null ? "" : String(subject.soTinChi),
       soBuoi: String(subject.soBuoi),
       trongSo: String(subject.trongSo),
       moTaChuanDauRa: subject.moTaChuanDauRa || "",
@@ -173,6 +177,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     setNotice("");
     const payload = {
       ...form,
+      soTinChi: form.soTinChi ? Number(form.soTinChi) : null,
       soBuoi: Number(form.soBuoi),
       trongSo: Number(form.trongSo),
       moTaChuanDauRa: form.moTaChuanDauRa || null,
@@ -355,11 +360,33 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                   />
                 </label>
                 <label>
+                  Số tín chỉ *
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    max="30"
+                    step="1"
+                    disabled={saving}
+                    value={form.soTinChi}
+                    onChange={(event) => {
+                      const soTinChi = event.target.value;
+                      setForm((current) => ({
+                        ...current,
+                        soTinChi,
+                        soBuoi: sessionsForCredits(soTinChi),
+                      }));
+                    }}
+                  />
+                </label>
+                <label>
                   Số buổi *
                   <input
                     required
                     type="number"
                     min="1"
+                    max="90"
+                    readOnly={!!form.soTinChi}
                     disabled={saving}
                     value={form.soBuoi}
                     onChange={(event) =>
@@ -445,6 +472,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
               <tr>
                 <th>Mã</th>
                 <th>Tên môn học</th>
+                <th>Tín chỉ</th>
                 <th>Buổi</th>
                 <th>Trọng số</th>
                 <th>Trạng thái</th>
@@ -470,6 +498,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                         </small>
                       )}
                     </td>
+                    <td>{subject.soTinChi ?? "—"}</td>
                     <td>{subject.soBuoi}</td>
                     <td>{subject.trongSo}</td>
                     <td>
@@ -550,7 +579,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
               })}
               {paginatedSubjects.length === 0 && (
                 <tr>
-                  <td colSpan={canUpdate || canDelete ? 6 : 5}>
+                  <td colSpan={canUpdate || canDelete ? 7 : 6}>
                     {searchQuery.trim()
                       ? "Không tìm thấy môn học phù hợp."
                       : "Chưa có môn học nào."}

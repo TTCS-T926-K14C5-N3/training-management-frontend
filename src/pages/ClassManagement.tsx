@@ -6,6 +6,7 @@ import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
 import StudentReservationModal from "../components/StudentReservationModal";
 import StudentTransferModal from "../components/StudentTransferModal";
+import { sessionsForCredits } from "../utils/subjectWorkload";
 import "./AcademicManagement.css";
 
 interface UserOption {
@@ -229,8 +230,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const [subjectForm, setSubjectForm] = useState({
     maMonHoc: "",
     tenMonHoc: "",
-    soTinChi: "",
-    soBuoi: "1",
+    soTinChi: "1",
+    soBuoi: "3",
     trongSo: "1",
     moTaChuanDauRa: "",
   });
@@ -799,8 +800,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
       setSubjectForm({
         maMonHoc: "",
         tenMonHoc: "",
-        soTinChi: "",
-        soBuoi: "1",
+        soTinChi: "1",
+        soBuoi: "3",
         trongSo: "1",
         moTaChuanDauRa: "",
       });
@@ -818,8 +819,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
     setSubjectForm({
       maMonHoc: "",
       tenMonHoc: "",
-      soTinChi: "",
-      soBuoi: "1",
+      soTinChi: "1",
+      soBuoi: "3",
       trongSo: "1",
       moTaChuanDauRa: "",
     });
@@ -2495,12 +2496,14 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     min="1"
                     max="30"
                     value={subjectForm.soTinChi}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const soTinChi = event.target.value;
                       setSubjectForm((current) => ({
                         ...current,
-                        soTinChi: event.target.value,
-                      }))
-                    }
+                        soTinChi,
+                        soBuoi: sessionsForCredits(soTinChi),
+                      }));
+                    }}
                   />
                 </label>
                 <label>
@@ -2509,8 +2512,9 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     required
                     type="number"
                     min="1"
-                    max="100"
+                    max="90"
                     value={subjectForm.soBuoi}
+                    readOnly={!!subjectForm.soTinChi}
                     onChange={(event) =>
                       setSubjectForm((current) => ({
                         ...current,

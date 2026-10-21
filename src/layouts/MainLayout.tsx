@@ -48,7 +48,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onHome,
   onGradeManagement,
   onStudentInformation,
-  onClassHistory,
   onClassManagement,
   onTrainingCatalog,
   onTrainingPrograms = () => {},
@@ -216,28 +215,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               )}
 
               {canViewGrades && permissions.includes("USER_VIEW") && (
-                <>
-                  <button
-                    type="button"
-                    className={`sidebar-item ${
-                      isActive("/thong-tin-hoc-vien") ? "active" : ""
-                    }`}
-                    onClick={onStudentInformation}
-                  >
-                    <span className="sidebar-item-icon">♙</span>
-                    <span>Thông tin học viên</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`sidebar-item ${
-                      isActive("/lich-su-lop-hoc") ? "active" : ""
-                    }`}
-                    onClick={onClassHistory}
-                  >
-                    <span className="sidebar-item-icon">▤</span>
-                    <span>Lịch sử lớp học</span>
-                  </button>
-                </>
+                <button
+                  type="button"
+                  className={`sidebar-item ${
+                    isActive("/thong-tin-hoc-vien") ||
+                    isActive("/lich-su-lop-hoc") ? "active" : ""
+                  }`}
+                  onClick={onStudentInformation}
+                >
+                  <span className="sidebar-item-icon">♙</span>
+                  <span>Thông tin học viên</span>
+                </button>
               )}
 
               {canManageClasses && (
