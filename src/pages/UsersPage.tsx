@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
 import AvatarImage from "../components/AvatarImage";
+import StudentProfileModal from "../components/StudentProfileModal";
 import UserImportModal from "../components/UserImportModal";
 import "./UsersPage.css";
 
@@ -14,6 +15,25 @@ interface User {
   trangThai: string;
   vaiTro?: string;
   vaiTroId?: number;
+  vaiTroIds?: number[];
+  maHocVien?: string | null;
+  lopHienTai?: Array<{ lopHocId: number; maLop: string; tenLop: string }>;
+  lopHocs?: Array<{
+    lopHocId: number;
+    maLop: string;
+    tenLop: string;
+    trangThai: string;
+  }>;
+  trangThaiTaiKhoan?: string;
+  trangThaiGhiDanh?: string;
+  ngayHieuLuc?: string | null;
+}
+
+interface StudentStatusClass {
+  lopHocId: number;
+  maLop: string;
+  tenLop: string;
+  trangThai: string;
 }
 
 interface Role {
@@ -86,16 +106,28 @@ const ROLE_OPTIONS = [
   { value: "8", label: "Admin" },
 ];
 
-const UsersPage: React.FC = () => {
+export type StudentProfileSection = "information" | "history";
+
+interface UsersPageProps {
+  profileSection?: StudentProfileSection;
+}
+
+const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [search, setSearch] = useState("");
-  const [roleId, setRoleId] = useState("");
+  const [roleId, setRoleId] = useState(profileSection ? "2" : "");
   const [status, setStatus] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState("");
+  const [studentStatusClasses, setStudentStatusClasses] = useState<
+    StudentStatusClass[]
+  >([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+  const [openActionMenuUserId, setOpenActionMenuUserId] = useState<number | null>(null);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -125,12 +157,17 @@ const UsersPage: React.FC = () => {
 
   const canCreateUser = isAdmin || permissions.includes("USER_CREATE");
   const canUpdateUser = isAdmin || permissions.includes("USER_UPDATE");
+  const canEditStudentProfile =
+    isAdmin || permissions.includes("STUDENT_PROFILE_UPDATE");
+  const canViewAcademicProfile =
+    isAdmin || permissions.includes("GRADE_VIEW");
   const canLockUser = isAdmin || permissions.includes("USER_LOCK");
   const canUnlockUser = isAdmin || permissions.includes("USER_UNLOCK");
   const canDeleteUser = isAdmin || permissions.includes("USER_DELETE");
   const canManageUserRoles =
     isAdmin ||
     (permissions.includes("ROLE_VIEW") && permissions.includes("ROLE_UPDATE"));
+  const canManageEnrollment = isAdmin || permissions.includes("CLASS_UPDATE");
 
   // Create Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -145,6 +182,21 @@ const UsersPage: React.FC = () => {
 
   // Edit Modal State
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [studentProfileUser, setStudentProfileUser] = useState<User | null>(
+    null,
+  );
+  const [studentProfileSection, setStudentProfileSection] =
+    useState<StudentProfileSection>("information");
+  const [studentActionUser, setStudentActionUser] = useState<User | null>(null);
+  const [studentActionForm, setStudentActionForm] = useState({
+    classId: "" as number | "",
+    type: "BaoLuu" as "BaoLuu" | "ChuyenLop" | "ThoiHoc",
+    targetClassId: "" as number | "",
+    effectiveDate: new Date().toISOString().slice(0, 10),
+    reason: "",
+  });
+  const [studentActionSaving, setStudentActionSaving] = useState(false);
+  const [studentActionError, setStudentActionError] = useState("");
   const [editForm, setEditForm] = useState({
     hoTen: "",
     email: "",
@@ -240,20 +292,36 @@ const UsersPage: React.FC = () => {
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get("/users/", {
-        params: {
-          search: search || undefined,
-          role_id: roleId || undefined,
-          status: status || undefined,
-          page,
-          limit,
-        },
-      });
+      const response = profileSection
+        ? await api.get("/academic/students/statuses", {
+            params: {
+              search: search || undefined,
+              classId: classFilter || undefined,
+              enrollmentStatus: enrollmentStatusFilter || undefined,
+              hasHistory: profileSection === "history" || undefined,
+              page,
+              limit,
+            },
+          })
+        : await api.get("/users/", {
+            params: {
+              search: search || undefined,
+              role_id: profileSection ? "2" : roleId || undefined,
+              status: status || undefined,
+              page,
+              limit,
+            },
+          });
       const data = response.data as UserResponse | User[];
       if (Array.isArray(data)) {
         setUsers(data);
         setTotal(data.length);
       } else {
+        if (profileSection) {
+          setStudentStatusClasses(
+            (data as UserResponse & { classes?: StudentStatusClass[] }).classes ?? [],
+          );
+        }
         const userList = data.items || data.users || data.data || [];
         setUsers(userList);
         if (typeof data.pagination?.total === "number") {
@@ -273,11 +341,26 @@ const UsersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, roleId, status, limit]);
+  }, [classFilter, enrollmentStatusFilter, page, profileSection, search, roleId, status, limit]);
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      const target = event.target as Node;
+      const menu = document.querySelector(".users-action-menu.open");
+      const toggle = document.querySelector(".users-action-toggle.open");
+      if (!menu?.contains(target) && !toggle?.contains(target)) {
+        setOpenActionMenuUserId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Create Account
   const handleCreateAccount = async () => {
@@ -439,6 +522,89 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const openStudentAction = (student: User) => {
+    setStudentActionUser(student);
+    setStudentActionForm({
+      classId: student.lopHienTai?.length === 1
+        ? student.lopHienTai[0].lopHocId
+        : "",
+      type: "BaoLuu",
+      targetClassId: "",
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      reason: "",
+    });
+    setStudentActionError("");
+  };
+
+  const saveStudentAction = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!studentActionUser || !studentActionForm.classId) {
+      setStudentActionError("Vui lòng chọn lớp cần xử lý.");
+      return;
+    }
+    if (
+      studentActionForm.type === "ChuyenLop" &&
+      !studentActionForm.targetClassId
+    ) {
+      setStudentActionError("Vui lòng chọn lớp chuyển đến.");
+      return;
+    }
+    if (studentActionForm.reason.trim().length < 5) {
+      setStudentActionError("Lý do xử lý học viên cần ít nhất 5 ký tự.");
+      return;
+    }
+
+    if (studentActionForm.type === "BaoLuu") {
+      const confirmed = window.confirm(
+        `Xác nhận bảo lưu học viên "${studentActionUser.hoTen}" kể từ ngày ${studentActionForm.effectiveDate}?\n\nLƯU Ý: Học viên sẽ NGỪNG XUẤT HIỆN trong danh sách điểm danh kể từ ngày này.`,
+      );
+      if (!confirmed) return;
+    }
+
+    if (studentActionForm.type === "ChuyenLop") {
+      const targetClass = studentStatusClasses.find(
+        (c) => c.lopHocId === studentActionForm.targetClassId,
+      );
+      const confirmed = window.confirm(
+        `Xác nhận chuyển học viên "${studentActionUser.hoTen}" sang lớp "${targetClass ? targetClass.tenLop : studentActionForm.targetClassId}" từ ngày ${studentActionForm.effectiveDate}?\n\nLịch sử điểm và điểm danh ở lớp cũ vẫn được giữ nguyên đầy đủ.`,
+      );
+      if (!confirmed) return;
+    }
+
+    if (studentActionForm.type === "ThoiHoc") {
+      const confirmed = window.confirm(
+        `CẢNH BÁO: Bạn có chắc chắn muốn cho học viên "${studentActionUser.hoTen}" THÔI HỌC từ ngày ${studentActionForm.effectiveDate}?\n\nHọc viên sẽ chính thức ngừng xuất hiện trong danh sách điểm danh.`,
+      );
+      if (!confirmed) return;
+    }
+
+    setStudentActionSaving(true);
+    setStudentActionError("");
+    try {
+      await api.post(
+        `/academic/classes/${studentActionForm.classId}/students/${studentActionUser.nguoiDungId}/actions`,
+        {
+          loaiThaoTac: studentActionForm.type,
+          lopHocDichId:
+            studentActionForm.type === "ChuyenLop"
+              ? studentActionForm.targetClassId
+              : null,
+          ngayHieuLuc: studentActionForm.effectiveDate,
+          lyDo: studentActionForm.reason,
+        },
+      );
+      setStudentActionUser(null);
+      setToast({ type: "success", text: "Đã lưu quyết định xử lý học viên." });
+      await loadUsers();
+    } catch (error: any) {
+      setStudentActionError(
+        error?.response?.data?.detail || "Không thể lưu quyết định học viên.",
+      );
+    } finally {
+      setStudentActionSaving(false);
+    }
+  };
+
   // Lock User
   const handleLock = async (user: User) => {
     if (user.nguoiDungId === currentUserId) {
@@ -514,13 +680,27 @@ const UsersPage: React.FC = () => {
 
       <section className="dashboard-hero users-page-hero">
         <div className="dashboard-hero-content">
-          <div className="dashboard-hero-label">QUẢN LÝ HỆ THỐNG</div>
-          <h2>Quản lý người dùng</h2>
-          <p>Quản lý tài khoản người dùng trong hệ thống.</p>
+          <div className="dashboard-hero-label">
+            {profileSection ? "HỒ SƠ HỌC VIÊN" : "QUẢN LÝ HỆ THỐNG"}
+          </div>
+          <h2>
+            {profileSection === "information"
+              ? "Thông tin học viên"
+              : profileSection === "history"
+                ? "Lịch sử lớp học"
+                : "Quản lý người dùng"}
+          </h2>
+          <p>
+            {profileSection === "information"
+              ? "Tra cứu học viên, xem thông tin cá nhân, xử lý tình trạng ghi danh và theo dõi lịch sử học tập."
+              : profileSection === "history"
+                ? "Theo dõi lớp đang học, lịch sử lớp và bảng điểm của học viên."
+                : "Tra cứu học viên theo mã, ID, họ tên hoặc số điện thoại; mở hồ sơ để xem quá trình học và bảng điểm."}
+          </p>
         </div>
 
         <div className="users-header-actions">
-          {canCreateUser && (
+          {!profileSection && canCreateUser && (
             <>
               <button
                 type="button"
@@ -542,7 +722,13 @@ const UsersPage: React.FC = () => {
         </div>
       </section>
 
-      <div className="users-filter-card">
+      <div
+        className={`users-filter-card ${
+          profileSection
+            ? "users-filter-enrollment-status"
+            : ""
+        }`}
+      >
         <div className="users-search-wrapper">
           <span className="users-search-icon">⌕</span>
           <input
@@ -551,36 +737,84 @@ const UsersPage: React.FC = () => {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSearch();
             }}
-            placeholder="Tìm theo họ tên, email, số điện thoại..."
+            placeholder="Tìm mã học viên, ID, họ tên, email hoặc số điện thoại..."
           />
         </div>
-        <select
-          value={roleId}
-          onChange={(e) => {
-            setRoleId(e.target.value);
-            setPage(1);
-          }}
-          className="users-filter-select"
-        >
-          <option value="">Tất cả vai trò</option>
-          {ROLE_OPTIONS.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="users-filter-select"
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="HoatDong">Hoạt động</option>
-          <option value="BiKhoa">Bị khóa</option>
-        </select>
+        {profileSection && (
+          <>
+            <select
+              value={classFilter}
+              onChange={(event) => {
+                setClassFilter(event.target.value);
+                setPage(1);
+              }}
+              className="users-filter-select"
+              aria-label="Lọc theo lớp"
+            >
+              <option value="">Tất cả lớp</option>
+              {studentStatusClasses.map((classItem) => (
+                <option key={classItem.lopHocId} value={classItem.lopHocId}>
+                  {classItem.maLop} · {classItem.tenLop}
+                </option>
+              ))}
+            </select>
+            <select
+              value={enrollmentStatusFilter}
+              onChange={(event) => {
+                setEnrollmentStatusFilter(event.target.value);
+                setPage(1);
+              }}
+              className="users-filter-select"
+              aria-label="Lọc tình trạng ghi danh"
+            >
+              <option value="">Mọi tình trạng ghi danh</option>
+              {[
+                "Đang học",
+                "Sắp bảo lưu",
+                "Sắp chuyển lớp",
+                "Sắp thôi học",
+                "Bảo lưu",
+                "Đã chuyển lớp",
+                "Thôi học",
+                "Đã kết thúc",
+                "Chưa ghi danh",
+              ].map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </>
+        )}
+        {!profileSection && (
+          <select
+            value={roleId}
+            onChange={(e) => {
+              setRoleId(e.target.value);
+              setPage(1);
+            }}
+            className="users-filter-select"
+          >
+            <option value="">Tất cả vai trò</option>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {!profileSection && (
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="users-filter-select"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="HoatDong">Hoạt động</option>
+            <option value="BiKhoa">Bị khóa</option>
+          </select>
+        )}
         <button className="users-search-button" onClick={handleSearch}>
           Tìm kiếm
         </button>
@@ -589,8 +823,10 @@ const UsersPage: React.FC = () => {
       <div className="users-table-card">
         <div className="users-table-header">
           <div>
-            <h2>Danh sách người dùng</h2>
-            <span>{total} người dùng</span>
+            <h2>{profileSection || roleId === "2" ? "Danh sách học viên" : "Danh sách người dùng"}</h2>
+            <span>
+              {total} {profileSection || roleId === "2" ? "học viên" : "người dùng"}
+            </span>
           </div>
         </div>
 
@@ -602,8 +838,8 @@ const UsersPage: React.FC = () => {
         ) : users.length === 0 ? (
           <div className="users-empty">
             <div className="users-empty-icon">👤</div>
-            <h3>Không tìm thấy người dùng</h3>
-            <p>Không có tài khoản nào phù hợp với điều kiện tìm kiếm.</p>
+            <h3>{profileSection ? "Không tìm thấy học viên" : "Không tìm thấy người dùng"}</h3>
+            <p>Không có bản ghi phù hợp với điều kiện tìm kiếm.</p>
           </div>
         ) : (
           <>
@@ -611,19 +847,28 @@ const UsersPage: React.FC = () => {
               <table className="users-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    <th>Mã / ID</th>
                     <th>Họ tên</th>
                     <th>Email</th>
                     <th>Số điện thoại</th>
-                    <th>Vai trò</th>
-                    <th>Trạng thái</th>
+                    <th>
+                      {profileSection === "history"
+                        ? "Lớp đã ghi danh"
+                        : profileSection === "information"
+                          ? "Lớp hiện tại"
+                          : "Vai trò"}
+                    </th>
+                    <th>{profileSection ? "Tình trạng ghi danh" : "Trạng thái"}</th>
+                    {profileSection === "information" && <th>Tài khoản</th>}
                     <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.nguoiDungId}>
-                      <td className="users-id">{user.nguoiDungId}</td>
+                      <td className="users-id">
+                        {user.maHocVien || user.nguoiDungId}
+                      </td>
                       <td>
                         <div className="users-name">
                           <div className="users-avatar">
@@ -649,75 +894,202 @@ const UsersPage: React.FC = () => {
                         )}
                       </td>
                       <td>
-                        {user.vaiTro ? (
+                        {profileSection ? (
+                          (profileSection === "history"
+                            ? user.lopHocs
+                            : user.lopHienTai
+                          )?.length ? (
+                            <div className="student-current-classes">
+                              {(profileSection === "history"
+                                ? user.lopHocs
+                                : user.lopHienTai
+                              )?.map((classItem) => (
+                                <span key={classItem.lopHocId} title={classItem.tenLop}>
+                                  {classItem.maLop}
+                                </span>
+                              ))}
+                            </div>
+                          ) : <span className="users-empty-value">—</span>
+                        ) : user.vaiTro ? (
                           <span className="users-role">{user.vaiTro}</span>
                         ) : (
                           <span className="users-empty-value">—</span>
                         )}
                       </td>
                       <td>
-                        <span
-                          className={`users-status ${
-                            user.trangThai === "HoatDong"
+                        {profileSection ? (
+                          <div className="student-enrollment-status-cell">
+                            <span className={`student-enrollment-badge ${
+                              user.trangThaiGhiDanh === "Đang học"
+                                ? "is-active"
+                                : user.trangThaiGhiDanh?.startsWith("Sắp ")
+                                  ? "is-pending"
+                                  : "is-inactive"
+                            }`}>
+                              {user.trangThaiGhiDanh ?? "Chưa ghi danh"}
+                            </span>
+                            {user.ngayHieuLuc && (
+                              <small>
+                                Từ {new Date(`${user.ngayHieuLuc}T00:00:00`).toLocaleDateString("vi-VN")}
+                              </small>
+                            )}
+                          </div>
+                        ) : (
+                          <span
+                            className={`users-status ${
+                              user.trangThai === "HoatDong"
+                                ? "users-status-active"
+                                : "users-status-locked"
+                            }`}
+                          >
+                            <span className="status-dot" />
+                            {user.trangThai === "HoatDong"
+                              ? "Hoạt động"
+                              : "Bị khóa"}
+                          </span>
+                        )}
+                      </td>
+                      {profileSection === "information" && (
+                        <td>
+                          <span className={`users-status ${
+                            (user.trangThaiTaiKhoan ?? user.trangThai) === "HoatDong"
                               ? "users-status-active"
                               : "users-status-locked"
-                          }`}
-                        >
-                          <span className="status-dot" />
-                          {user.trangThai === "HoatDong"
-                            ? "Hoạt động"
-                            : "Bị khóa"}
-                        </span>
-                      </td>
+                          }`}>
+                            <span className="status-dot" />
+                            {(user.trangThaiTaiKhoan ?? user.trangThai) === "HoatDong"
+                              ? "Hoạt động"
+                              : "Bị khóa"}
+                          </span>
+                        </td>
+                      )}
                       <td>
                         <div className="users-actions">
-                          {canUpdateUser && (
+                          <div className="users-action-menu-wrap">
                             <button
-                              className="action-edit"
-                              onClick={() => void openEditModal(user)}
-                              title="Chỉnh sửa thông tin người dùng"
-                            >
-                              Sửa
-                            </button>
-                          )}
-                          {user.trangThai === "HoatDong"
-                            ? canLockUser && (
-                                <button
-                                  className="action-lock"
-                                  onClick={() => handleLock(user)}
-                                  disabled={user.nguoiDungId === currentUserId}
-                                  title={
-                                    user.nguoiDungId === currentUserId
-                                      ? "Không thể tự khóa tài khoản đang đăng nhập"
-                                      : "Khóa tài khoản"
-                                  }
-                                >
-                                  Khóa
-                                </button>
-                              )
-                            : canUnlockUser && (
-                                <button
-                                  className="action-unlock"
-                                  onClick={() => handleUnlock(user)}
-                                  title="Mở khóa tài khoản"
-                                >
-                                  Mở khóa
-                                </button>
-                              )}
-                          {canDeleteUser && (
-                            <button
-                              className="action-delete"
-                              onClick={() => handleDelete(user)}
-                              disabled={user.nguoiDungId === currentUserId}
-                              title={
-                                user.nguoiDungId === currentUserId
-                                  ? "Không thể tự xóa tài khoản đang đăng nhập"
-                                  : "Xóa tài khoản"
+                              type="button"
+                              className={`users-action-toggle ${
+                                openActionMenuUserId === user.nguoiDungId ? "open" : ""
+                              }`}
+                              onClick={() =>
+                                setOpenActionMenuUserId((current) =>
+                                  current === user.nguoiDungId ? null : user.nguoiDungId,
+                                )
                               }
+                              aria-label={`Mở menu thao tác cho ${user.hoTen}`}
                             >
-                              Xóa
+                              Thao tác
+                              <span aria-hidden="true">▾</span>
                             </button>
-                          )}
+
+                            {openActionMenuUserId === user.nguoiDungId && (
+                              <div className="users-action-menu open">
+                                {profileSection &&
+                                  canViewAcademicProfile && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="action-profile"
+                                      onClick={() => {
+                                        setStudentProfileSection("information");
+                                        setStudentProfileUser(user);
+                                        setOpenActionMenuUserId(null);
+                                      }}
+                                    >
+                                      Thông tin học viên
+                                    </button>
+                                    {profileSection === "information" &&
+                                      canManageEnrollment && (
+                                        <button
+                                          type="button"
+                                          className="student-enrollment-action"
+                                          disabled={!user.lopHienTai?.length}
+                                          title={!user.lopHienTai?.length
+                                            ? "Học viên chưa có lớp đang ghi danh"
+                                            : "Bảo lưu, chuyển lớp hoặc thôi học"}
+                                          onClick={() => {
+                                            openStudentAction(user);
+                                            setOpenActionMenuUserId(null);
+                                          }}
+                                        >
+                                          Xử lý
+                                        </button>
+                                      )}
+                                    <button
+                                      type="button"
+                                      className="action-profile"
+                                      onClick={() => {
+                                        setStudentProfileSection("history");
+                                        setStudentProfileUser(user);
+                                        setOpenActionMenuUserId(null);
+                                      }}
+                                    >
+                                      Lịch sử học
+                                    </button>
+                                  </>
+                                )}
+                                {!profileSection && canUpdateUser && (
+                                  <button
+                                    className="action-edit"
+                                    onClick={() => {
+                                      void openEditModal(user);
+                                      setOpenActionMenuUserId(null);
+                                    }}
+                                    title="Chỉnh sửa thông tin người dùng"
+                                  >
+                                    Sửa
+                                  </button>
+                                )}
+                                {!profileSection && (user.trangThai === "HoatDong"
+                                  ? canLockUser && (
+                                      <button
+                                        className="action-lock"
+                                        onClick={() => {
+                                          void handleLock(user);
+                                          setOpenActionMenuUserId(null);
+                                        }}
+                                        disabled={user.nguoiDungId === currentUserId}
+                                        title={
+                                          user.nguoiDungId === currentUserId
+                                            ? "Không thể tự khóa tài khoản đang đăng nhập"
+                                            : "Khóa tài khoản"
+                                        }
+                                      >
+                                        Khóa
+                                      </button>
+                                    )
+                                  : canUnlockUser && (
+                                      <button
+                                        className="action-unlock"
+                                        onClick={() => {
+                                          void handleUnlock(user);
+                                          setOpenActionMenuUserId(null);
+                                        }}
+                                        title="Mở khóa tài khoản"
+                                      >
+                                        Mở khóa
+                                      </button>
+                                    ))}
+                                {!profileSection && canDeleteUser && (
+                                  <button
+                                    className="action-delete"
+                                    onClick={() => {
+                                      void handleDelete(user);
+                                      setOpenActionMenuUserId(null);
+                                    }}
+                                    disabled={user.nguoiDungId === currentUserId}
+                                    title={
+                                      user.nguoiDungId === currentUserId
+                                        ? "Không thể tự xóa tài khoản đang đăng nhập"
+                                        : "Xóa tài khoản"
+                                    }
+                                  >
+                                    Xóa
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -752,6 +1124,254 @@ const UsersPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {studentProfileUser && (
+        <StudentProfileModal
+          student={studentProfileUser}
+          canEdit={
+            studentProfileSection !== "history" && canEditStudentProfile
+          }
+          section={studentProfileSection}
+          onClose={() => setStudentProfileUser(null)}
+          onSaved={() => void loadUsers()}
+        />
+      )}
+
+      {studentActionUser && (
+        <div
+          className="users-modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !studentActionSaving) {
+              setStudentActionUser(null);
+            }
+          }}
+        >
+          <form
+            className="users-modal student-enrollment-action-modal"
+            onSubmit={saveStudentAction}
+          >
+            <div className="users-modal-header">
+              <div>
+                <h2>Xử lý tình trạng học viên</h2>
+                <p>{studentActionUser.hoTen}</p>
+              </div>
+              <button
+                type="button"
+                className="users-modal-close"
+                onClick={() => setStudentActionUser(null)}
+                disabled={studentActionSaving}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+            {studentActionError && (
+              <div className="users-message users-message-error" role="alert">
+                {studentActionError}
+              </div>
+            )}
+            <div className="student-enrollment-action-fields">
+              <label>
+                Lớp hiện tại
+                <select
+                  required
+                  value={studentActionForm.classId}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      classId: event.target.value ? Number(event.target.value) : "",
+                      targetClassId: "",
+                    }))
+                  }
+                >
+                  <option value="">Chọn lớp</option>
+                  {studentActionUser.lopHienTai?.map((classItem) => (
+                    <option key={classItem.lopHocId} value={classItem.lopHocId}>
+                      {classItem.maLop} · {classItem.tenLop}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Thao tác
+                <select
+                  value={studentActionForm.type}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      type: event.target.value as typeof current.type,
+                      targetClassId: "",
+                    }))
+                  }
+                >
+                  <option value="BaoLuu">Bảo lưu</option>
+                  <option value="ChuyenLop">Chuyển lớp</option>
+                  <option value="ThoiHoc">Thôi học</option>
+                </select>
+              </label>
+              {studentActionForm.type === "ChuyenLop" && (
+                <label>
+                  Lớp chuyển đến
+                  <select
+                    required
+                    value={studentActionForm.targetClassId}
+                    onChange={(event) =>
+                      setStudentActionForm((current) => ({
+                        ...current,
+                        targetClassId: event.target.value
+                          ? Number(event.target.value)
+                          : "",
+                      }))
+                    }
+                  >
+                    <option value="">Chọn lớp đích</option>
+                    {studentStatusClasses
+                      .filter(
+                        (classItem) =>
+                          classItem.lopHocId !== studentActionForm.classId &&
+                          ["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
+                            classItem.trangThai,
+                          ),
+                      )
+                      .map((classItem) => (
+                        <option key={classItem.lopHocId} value={classItem.lopHocId}>
+                          {classItem.maLop} · {classItem.tenLop}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
+              <label>
+                Ngày hiệu lực
+                <input
+                  required
+                  type="date"
+                  value={studentActionForm.effectiveDate}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      effectiveDate: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="student-enrollment-reason">
+                Lý do
+                <textarea
+                  required
+                  minLength={5}
+                  rows={3}
+                  maxLength={1000}
+                  value={studentActionForm.reason}
+                  onChange={(event) =>
+                    setStudentActionForm((current) => ({
+                      ...current,
+                      reason: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              {studentActionForm.type === "BaoLuu" && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#fffbeb",
+                    border: "1px solid #fcd34d",
+                    color: "#92400e",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <span style={{ fontSize: "18px" }}>⚠️</span>
+                  <div>
+                    <strong style={{ display: "block", color: "#78350f", marginBottom: "2px" }}>
+                      Cảnh báo ngừng điểm danh:
+                    </strong>
+                    Học viên sẽ <strong>ngừng xuất hiện trong danh sách điểm danh</strong> kể từ ngày{" "}
+                    <strong>{studentActionForm.effectiveDate}</strong>. Lịch sử điểm và điểm danh trước thời điểm này vẫn được bảo lưu trọn vẹn.
+                  </div>
+                </div>
+              )}
+
+              {studentActionForm.type === "ChuyenLop" && studentActionForm.targetClassId && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    color: "#1e40af",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <span style={{ fontSize: "18px" }}>ℹ️</span>
+                  <div>
+                    <strong style={{ display: "block", color: "#1e3a8a", marginBottom: "2px" }}>
+                      Thông tin chuyển lớp:
+                    </strong>
+                    Học viên sẽ được chuyển từ lớp hiện tại sang lớp mới kể từ ngày{" "}
+                    <strong>{studentActionForm.effectiveDate}</strong>. Toàn bộ lịch sử điểm và điểm danh ở lớp cũ vẫn được lưu trữ nguyên vẹn.
+                  </div>
+                </div>
+              )}
+
+              {studentActionForm.type === "ThoiHoc" && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#fef2f2",
+                    border: "1px solid #fca5a5",
+                    color: "#991b1b",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <span style={{ fontSize: "18px" }}>🛑</span>
+                  <div>
+                    <strong style={{ display: "block", color: "#7f1d1d", marginBottom: "2px" }}>
+                      Cảnh báo thôi học:
+                    </strong>
+                    Học viên sẽ chính thức dừng chương trình học tại lớp này kể từ ngày{" "}
+                    <strong>{studentActionForm.effectiveDate}</strong> và <strong>ngừng xuất hiện trong danh sách điểm danh</strong>.
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="student-enrollment-action-footer">
+              <button
+                type="button"
+                className="users-search-button users-action-cancel"
+                onClick={() => setStudentActionUser(null)}
+                disabled={studentActionSaving}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="users-create-button"
+                disabled={studentActionSaving}
+              >
+                {studentActionSaving ? "Đang lưu..." : "Lưu quyết định"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* MODAL EDIT USER */}
       {editingUser && (

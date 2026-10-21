@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
+import { sessionsForCredits } from "../utils/subjectWorkload";
 import "./AcademicManagement.css";
 import "./TrainingCatalog.css";
 
@@ -11,6 +12,7 @@ interface Subject {
   monHocId: number;
   maMonHoc: string;
   tenMonHoc: string;
+  soTinChi: number | null;
   soBuoi: number;
   trongSo: number;
   moTaChuanDauRa: string | null;
@@ -25,10 +27,13 @@ interface TrainingCatalogProps {
 const EMPTY_SUBJECT = {
   maMonHoc: "",
   tenMonHoc: "",
-  soBuoi: "",
+  soTinChi: "1",
+  soBuoi: "3",
   trongSo: "1",
   moTaChuanDauRa: "",
 };
+
+const SUBJECTS_PER_PAGE = 10;
 
 const errorMessage = (error: unknown, fallback: string): string => {
   if (
@@ -53,6 +58,32 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [openActionMenuSubjectId, setOpenActionMenuSubjectId] = useState<number | null>(null);
+
+  const filteredSubjects = subjects.filter((subject) => {
+    const query = searchQuery.trim().toLocaleLowerCase("vi");
+    return (
+      !query ||
+      subject.maMonHoc.toLocaleLowerCase("vi").includes(query) ||
+      subject.tenMonHoc.toLocaleLowerCase("vi").includes(query)
+    );
+  });
+  const totalPages = Math.ceil(filteredSubjects.length / SUBJECTS_PER_PAGE);
+  const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1));
+  const paginatedSubjects = filteredSubjects.slice(
+    (safeCurrentPage - 1) * SUBJECTS_PER_PAGE,
+    safeCurrentPage * SUBJECTS_PER_PAGE,
+  );
+  const firstVisibleSubject =
+    filteredSubjects.length === 0
+      ? 0
+      : (safeCurrentPage - 1) * SUBJECTS_PER_PAGE + 1;
+  const lastVisibleSubject = Math.min(
+    safeCurrentPage * SUBJECTS_PER_PAGE,
+    filteredSubjects.length,
+  );
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -96,6 +127,21 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      const target = event.target as Node;
+      const menu = document.querySelector(".academic-subject-action-menu.open");
+      const toggle = document.querySelector(".academic-subject-action-toggle.open");
+      if (!menu?.contains(target) && !toggle?.contains(target)) {
+        setOpenActionMenuSubjectId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const resetSubjectForm = () => {
     setForm(EMPTY_SUBJECT);
     setEditingId(null);
@@ -115,6 +161,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     setForm({
       maMonHoc: subject.maMonHoc,
       tenMonHoc: subject.tenMonHoc,
+      soTinChi: subject.soTinChi === null ? "" : String(subject.soTinChi),
       soBuoi: String(subject.soBuoi),
       trongSo: String(subject.trongSo),
       moTaChuanDauRa: subject.moTaChuanDauRa || "",
@@ -130,6 +177,7 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
     setNotice("");
     const payload = {
       ...form,
+      soTinChi: form.soTinChi ? Number(form.soTinChi) : null,
       soBuoi: Number(form.soBuoi),
       trongSo: Number(form.trongSo),
       moTaChuanDauRa: form.moTaChuanDauRa || null,
@@ -312,11 +360,33 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
                   />
                 </label>
                 <label>
+                  Số tín chỉ *
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    max="30"
+                    step="1"
+                    disabled={saving}
+                    value={form.soTinChi}
+                    onChange={(event) => {
+                      const soTinChi = event.target.value;
+                      setForm((current) => ({
+                        ...current,
+                        soTinChi,
+                        soBuoi: sessionsForCredits(soTinChi),
+                      }));
+                    }}
+                  />
+                </label>
+                <label>
                   Số buổi *
                   <input
                     required
                     type="number"
                     min="1"
+                    max="90"
+                    readOnly={!!form.soTinChi}
                     disabled={saving}
                     value={form.soBuoi}
                     onChange={(event) =>
@@ -379,12 +449,30 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
             </div>,
             document.body,
           )}
+        <div className="academic-subject-list-toolbar">
+          <label className="academic-subject-search">
+            <span>Tìm kiếm môn học</span>
+            <input
+              type="search"
+              value={searchQuery}
+              placeholder="Nhập mã hoặc tên môn học..."
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </label>
+          <span className="academic-subject-result-count">
+            {filteredSubjects.length} môn học
+          </span>
+        </div>
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
               <tr>
                 <th>Mã</th>
                 <th>Tên môn học</th>
+                <th>Tín chỉ</th>
                 <th>Buổi</th>
                 <th>Trọng số</th>
                 <th>Trạng thái</th>
@@ -392,65 +480,147 @@ const TrainingCatalog: React.FC<TrainingCatalogProps> = ({ permissions }) => {
               </tr>
             </thead>
             <tbody>
-              {subjects.map((subject) => (
-                <tr key={subject.monHocId}>
-                  <td>{subject.maMonHoc}</td>
-                  <td>
-                    <strong>{subject.tenMonHoc}</strong>
-                    {subject.moTaChuanDauRa && (
-                      <small className="academic-muted">
-                        {subject.moTaChuanDauRa}
-                      </small>
-                    )}
-                  </td>
-                  <td>{subject.soBuoi}</td>
-                  <td>{subject.trongSo}</td>
-                  <td>{subject.trangThai}</td>
-                  {(canUpdate || canDelete) && (
+              {paginatedSubjects.map((subject) => {
+                const isActive = subject.trangThai === "Đang hoạt động";
+                const isMenuOpen = openActionMenuSubjectId === subject.monHocId;
+
+                return (
+                  <tr
+                    key={subject.monHocId}
+                    className={isActive ? "subject-row-active" : "subject-row-inactive"}
+                  >
+                    <td>{subject.maMonHoc}</td>
                     <td>
-                      <div className="academic-subject-actions">
-                        {canUpdate && (
+                      <strong>{subject.tenMonHoc}</strong>
+                      {subject.moTaChuanDauRa && (
+                        <small className="academic-muted">
+                          {subject.moTaChuanDauRa}
+                        </small>
+                      )}
+                    </td>
+                    <td>{subject.soTinChi ?? "—"}</td>
+                    <td>{subject.soBuoi}</td>
+                    <td>{subject.trongSo}</td>
+                    <td>
+                      <span
+                        className={
+                          isActive
+                            ? "subject-status-badge subject-status-active"
+                            : "subject-status-badge subject-status-inactive"
+                        }
+                      >
+                        {subject.trangThai}
+                      </span>
+                    </td>
+                    {(canUpdate || canDelete) && (
+                      <td>
+                        <div className="academic-subject-action-wrap">
                           <button
                             type="button"
-                            onClick={() => openEditForm(subject)}
-                          >
-                            Sửa
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
+                            className={`academic-subject-action-toggle ${isMenuOpen ? "open" : ""}`}
                             onClick={() =>
-                              void handleToggleSubjectStatus(subject)
+                              setOpenActionMenuSubjectId((current) =>
+                                current === subject.monHocId ? null : subject.monHocId,
+                              )
                             }
                           >
-                            {subject.trangThai === "Đang hoạt động"
-                              ? "Ngừng"
-                              : "Áp dụng lại"}
+                            Thao tác <span aria-hidden="true">▾</span>
                           </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="academic-subject-delete"
-                            onClick={() => void handleDeleteSubject(subject)}
-                          >
-                            Xóa
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-              {subjects.length === 0 && (
+
+                          {isMenuOpen && (
+                            <div className="academic-subject-action-menu open">
+                              {canUpdate && (
+                                <button
+                                  type="button"
+                                  className="academic-subject-action-item academic-subject-edit"
+                                  onClick={() => {
+                                    openEditForm(subject);
+                                    setOpenActionMenuSubjectId(null);
+                                  }}
+                                >
+                                  Sửa
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className={
+                                    isActive
+                                      ? "academic-subject-action-item academic-subject-toggle"
+                                      : "academic-subject-action-item academic-subject-reactivate"
+                                  }
+                                  onClick={() => {
+                                    void handleToggleSubjectStatus(subject);
+                                    setOpenActionMenuSubjectId(null);
+                                  }}
+                                >
+                                  {isActive ? "Ngừng" : "Áp dụng lại"}
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="academic-subject-action-item academic-subject-delete"
+                                  onClick={() => {
+                                    void handleDeleteSubject(subject);
+                                    setOpenActionMenuSubjectId(null);
+                                  }}
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {paginatedSubjects.length === 0 && (
                 <tr>
-                  <td colSpan={6}>Chưa có môn học nào.</td>
+                  <td colSpan={canUpdate || canDelete ? 7 : 6}>
+                    {searchQuery.trim()
+                      ? "Không tìm thấy môn học phù hợp."
+                      : "Chưa có môn học nào."}
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        <nav
+          className="academic-subject-pagination"
+          aria-label="Phân trang môn học"
+        >
+          <span>
+            Hiển thị {firstVisibleSubject}–{lastVisibleSubject} /{" "}
+            {filteredSubjects.length} môn học
+          </span>
+          <div>
+            <button
+              type="button"
+              disabled={safeCurrentPage <= 1}
+              onClick={() =>
+                setCurrentPage((page) => Math.max(1, page - 1))
+              }
+            >
+              Trang trước
+            </button>
+            <strong>
+              {totalPages === 0 ? 0 : safeCurrentPage} / {totalPages}
+            </strong>
+            <button
+              type="button"
+              disabled={totalPages === 0 || safeCurrentPage >= totalPages}
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+            >
+              Trang sau
+            </button>
+          </div>
+        </nav>
       </section>
 
     </div>

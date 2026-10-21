@@ -5,6 +5,7 @@ import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AppStatusPage from "./components/AppStatusPage";
+import { ABSENCE_APPROVAL_ALERT_STORAGE_KEY } from "./components/AbsenceApprovalAlert";
 
 import UsersPage from "./pages/UsersPage";
 import UserImportInvalidDataPage from "./pages/UserImportInvalidDataPage";
@@ -16,7 +17,15 @@ import TrainingPrograms from "./pages/TrainingPrograms";
 import AdmissionsInquiry from "./pages/AdmissionsInquiry";
 import TrainingCatalog from "./pages/TrainingCatalog";
 import AdmissionsLeads from "./pages/AdmissionsLeads";
-import ScrumTaskBoard from "./pages/ScrumTaskBoard";
+import AdminDashboard from "./pages/AdminDashboard";
+import ScheduleManagement from "./pages/ScheduleManagement";
+import ScheduleArchive from "./pages/ScheduleArchive";
+import ScheduleHistory from "./pages/ScheduleHistory";
+import AbsenceRequest from "./pages/AbsenceRequest";
+import AbsenceRequestList from "./pages/AbsenceRequestList";
+import AttendanceManagement from "./pages/AttendanceManagement";
+import ClassAttendanceManagement from "./pages/ClassAttendanceManagement";
+import Assignments from "./pages/Assignments";
 
 
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -238,9 +247,54 @@ const ROUTE_ACCESS_RULES: Record<
     anyOf: ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"],
   },
   "/quan-ly-hoc-phi": { allOf: ["QUAN_LY_HOC_PHI"] },
+  "/quan-ly-lich-hoc": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-lich-hoc/luu-tru": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-lich-hoc/thong-bao": { allOf: ["SCHEDULE_VIEW"] },
+  "/don-xin-phep": { allOf: ["SCHEDULE_VIEW"] },
+  "/don-xin-phep/theo-doi": { allOf: ["SCHEDULE_VIEW"] },
+  "/quan-ly-diem-danh": { allOf: ["ATTENDANCE_VIEW"] },
+  "/quan-ly-diem-danh-lop": {
+    allOf: [],
+    anyOf: ["CLASS_VIEW", "ATTENDANCE_VIEW"],
+  },
+  "/quan-ly-bai-tap": {
+    allOf: [],
+    anyOf: [
+      "ASSIGNMENT_VIEW",
+      "ASSIGNMENT_CREATE",
+      "ASSIGNMENT_SUBMIT",
+      "ASSIGNMENT_GRADE",
+    ],
+  },
 };
 
 function hasRouteAccess(path: string, user: User | null): boolean {
+  if (isAdminUser(user)) return true;
+  if (
+    path === "/quan-ly-lop" &&
+    user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/don-xin-phep" &&
+    !user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/don-xin-phep/theo-doi" &&
+    !user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+  if (
+    path === "/quan-ly-diem-danh" &&
+    user?.vaiTro.some((role) => role.vaiTroId === 2)
+  ) {
+    return false;
+  }
+
   const rule = ROUTE_ACCESS_RULES[path];
   if (!rule) return true;
 
@@ -274,6 +328,10 @@ function isAdminUser(user: User | null): boolean {
       role.vaiTroId === 8
     );
   });
+}
+
+function isStudentUser(user: User | null): boolean {
+  return user?.vaiTro.some((role) => role.vaiTroId === 2) ?? false;
 }
 
 // ===========================================================
@@ -534,57 +592,6 @@ function App() {
       return null;
     }
   });
-
-  const [dashboardUserCount, setDashboardUserCount] = useState<number | null>(
-    null,
-  );
-  const [dashboardUsersLoading, setDashboardUsersLoading] = useState(false);
-
-  useEffect(() => {
-    if (!user || !isAdminUser(user) || currentPath !== "/") {
-      return;
-    }
-
-    let isCurrentRequest = true;
-
-    const loadDashboardUsers = async () => {
-      setDashboardUsersLoading(true);
-
-      try {
-        const response = await api.get("/users/", {
-          params: { page: 1, limit: 5 },
-        });
-        const data = response.data;
-        const users = Array.isArray(data?.data) ? data.data : [];
-
-        if (!isCurrentRequest) {
-          return;
-        }
-
-        setDashboardUserCount(
-          typeof data?.pagination?.total === "number"
-            ? data.pagination.total
-            : users.length,
-        );
-      } catch (error: any) {
-        if (!isCurrentRequest) {
-          return;
-        }
-
-        console.error("Không thể tải tổng số người dùng:", error);
-      } finally {
-        if (isCurrentRequest) {
-          setDashboardUsersLoading(false);
-        }
-      }
-    };
-
-    void loadDashboardUsers();
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [user?.nguoiDungId, user?.token, currentPath]);
 
   // =========================================================
   // LOGIN STATE
@@ -1034,6 +1041,27 @@ function App() {
       setUser(loggedInUser);
       sessionStorage.removeItem("expiredSessionEmail");
 
+      if (vaiTro.some((role) => role.vaiTroId === 2)) {
+        sessionStorage.removeItem(ABSENCE_APPROVAL_ALERT_STORAGE_KEY);
+        try {
+          const alertResponse = await api.get<{
+            id: number;
+            message: string;
+          } | null>("/attendance/sessions/notifications/approved-alert");
+          if (alertResponse.data) {
+            sessionStorage.setItem(
+              ABSENCE_APPROVAL_ALERT_STORAGE_KEY,
+              JSON.stringify(alertResponse.data),
+            );
+          }
+        } catch (alertError) {
+          console.error(
+            "Không thể kiểm tra thông báo duyệt đơn sau đăng nhập:",
+            alertError,
+          );
+        }
+      }
+
       if (data.yeuCauDoiMatKhau === true) {
         window.history.replaceState({}, "", "/change-password");
 
@@ -1152,6 +1180,28 @@ function App() {
     navigate("/quan-ly-diem");
   };
 
+  const handleStudentInformation = () => {
+    if (
+      !hasPermission(user, "USER_VIEW") ||
+      !hasPermission(user, "GRADE_VIEW")
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/thong-tin-hoc-vien");
+  };
+
+  const handleClassHistory = () => {
+    if (
+      !hasPermission(user, "USER_VIEW") ||
+      !hasPermission(user, "GRADE_VIEW")
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/thong-tin-hoc-vien");
+  };
+
   const handleClassManagement = () => {
     if (
       !hasPermission(user, "CLASS_VIEW") ||
@@ -1181,15 +1231,75 @@ function App() {
   };
 
   const handleTrainingCatalog = () => {
-    if (!hasPermission(user, "CURRICULUM_VIEW")) {
+    if (!isAdminUser(user) && !hasPermission(user, "CURRICULUM_VIEW")) {
       navigate("/");
       return;
     }
     navigate("/danh-muc-dao-tao");
   };
 
+  const handleScheduleManagement = () => {
+    if (!isAdminUser(user) && !hasPermission(user, "SCHEDULE_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-lich-hoc");
+  };
+
+  const handleAbsenceRequest = () => {
+    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/don-xin-phep");
+  };
+
+  const handleAbsenceRequestList = () => {
+    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
+      navigate("/");
+      return;
+    }
+    navigate("/don-xin-phep/theo-doi");
+  };
+
+  const handleAttendanceManagement = () => {
+    if (
+      isStudentUser(user) ||
+      !hasPermission(user, "ATTENDANCE_VIEW")
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-diem-danh");
+  };
+
+  const handleClassAttendanceManagement = () => {
+    if (
+      isStudentUser(user) ||
+      !hasAnyPermission(user, ["CLASS_VIEW", "ATTENDANCE_VIEW"])
+    ) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-diem-danh-lop");
+  };
+
+  const handleAssignments = () => {
+    const assignmentPermissions = [
+      "ASSIGNMENT_VIEW",
+      "ASSIGNMENT_CREATE",
+      "ASSIGNMENT_SUBMIT",
+      "ASSIGNMENT_GRADE",
+    ];
+    if (!hasAnyPermission(user, assignmentPermissions)) {
+      navigate("/");
+      return;
+    }
+    navigate("/quan-ly-bai-tap");
+  };
+
   const handleAdmissionsLeads = () => {
-    if (!hasPermission(user, "LEAD_VIEW")) {
+    if (!isAdminUser(user) && !hasPermission(user, "LEAD_VIEW")) {
       navigate("/");
       return;
     }
@@ -1261,6 +1371,7 @@ function App() {
     }
 
     localStorage.removeItem("user");
+    sessionStorage.removeItem(ABSENCE_APPROVAL_ALERT_STORAGE_KEY);
     setUser(null);
     setEmail("");
     setPassword("");
@@ -1317,16 +1428,24 @@ function App() {
         <div className="login-container">
           <section className="login-form-section">
             <div className="brand">
-              <div className="brand-icon">🎓</div>
-
-              <h1>
-                Hệ thống quản lý <span>đào tạo</span>
-              </h1>
+              <div className="brand-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="m5 18 19-9 19 9-19 9-19-9Z" fill="currentColor" />
+                  <path d="M13 22v9c6 6 16 6 22 0v-9l-11 5-11-5Z" fill="currentColor" opacity=".86" />
+                  <path d="M42 19v11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="42" cy="33" r="2.5" fill="#ffd166" />
+                </svg>
+              </div>
+              <div className="brand-copy">
+                <h1>
+                  Hệ thống quản lý
+                  <span>đào tạo</span>
+                </h1>
+                <p>Đồng hành cùng nhà trường trong hành trình chuyển đổi số giáo dục</p>
+              </div>
             </div>
 
-            <p className="subtitle">
-              Đăng nhập để truy cập và quản lý các chức năng của hệ thống
-            </p>
+            <p className="subtitle">Đăng nhập để tiếp tục sử dụng hệ thống</p>
 
             {message && (
               <div
@@ -1348,8 +1467,9 @@ function App() {
                   <span className="input-icon">✉️</span>
 
                   <input
+                    aria-label="Email"
                     type="email"
-                    placeholder="Nhập email"
+                    placeholder="Nhập địa chỉ email của bạn..."
                     value={email}
                     onChange={(e) => {
                       const newEmail = e.target.value;
@@ -1379,8 +1499,9 @@ function App() {
                   <span className="input-icon">🔒</span>
 
                   <input
+                    aria-label="Mật khẩu"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Nhập mật khẩu"
+                    placeholder="Nhập mật khẩu của bạn..."
                     value={password}
                     onChange={(e) => {
                       clearExpiredSessionNotice();
@@ -1397,6 +1518,7 @@ function App() {
                     type="button"
                     className="show-password"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   >
                     {showPassword ? "🙈" : "👁"}
                   </button>
@@ -1426,10 +1548,12 @@ function App() {
                 </a>
               </div>
 
-              <p className="admissions-login-link">
-                Muốn tìm hiểu chương trình học?{" "}
-                <a href="/dang-ky-tu-van">Đăng ký tư vấn tuyển sinh</a>
-              </p>
+              <div className="login-registration">
+                <span>Hoặc đăng ký tài khoản</span>
+                <a href="/dang-ky-tu-van">
+                  Đăng ký tư vấn tuyển sinh <span aria-hidden="true">›</span>
+                </a>
+              </div>
 
               <button
                 type="submit"
@@ -1453,12 +1577,51 @@ function App() {
 
           <section className="information-section">
             <div className="overlay"></div>
+            <svg
+              className="login-education-visual"
+              viewBox="0 0 360 420"
+              fill="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="cap-gradient" x1="76" y1="174" x2="282" y2="251" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#56E7FF" />
+                  <stop offset="1" stopColor="#887CFF" />
+                </linearGradient>
+                <linearGradient id="book-gradient" x1="110" y1="252" x2="276" y2="331" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#22BFF7" />
+                  <stop offset="1" stopColor="#647BFF" />
+                </linearGradient>
+                <filter id="visual-glow" x="0" y="0" width="360" height="420" filterUnits="userSpaceOnUse">
+                  <feGaussianBlur stdDeviation="10" />
+                </filter>
+              </defs>
+              <ellipse cx="194" cy="296" rx="133" ry="25" fill="#22D3EE" opacity=".35" filter="url(#visual-glow)" />
+              <path d="M55 299c38-63 222-81 269-21 38 48-75 79-171 81-88 2-138-21-98-60Z" stroke="#26D7FF" strokeWidth="2" opacity=".8" />
+              <path d="m110 252 107-43 97 39-108 45-96-41Z" fill="url(#book-gradient)" stroke="#8BE8FF" strokeWidth="2" />
+              <path d="m124 279 92 38 83-34v19l-83 39-92-40v-22Z" fill="#234DAE" stroke="#65CFFF" strokeWidth="2" />
+              <path d="m124 302 92 39 83-38v18l-83 39-92-39v-19Z" fill="#193E94" stroke="#64BFFF" strokeWidth="2" />
+              <path d="m78 174 109-42 103 43-108 46-104-47Z" fill="url(#cap-gradient)" stroke="#B2F3FF" strokeWidth="3" />
+              <path d="m111 193 71 31 69-29v28c-38 29-101 30-140 0v-30Z" fill="#3971E8" stroke="#8DDFFF" strokeWidth="2" />
+              <path d="M289 176v76" stroke="#8BE8FF" strokeWidth="3" />
+              <circle cx="289" cy="255" r="6" fill="#F8D977" />
+              <rect x="218" y="38" width="93" height="76" rx="12" fill="#4E8EFF" fillOpacity=".2" stroke="#58CFFF" />
+              <path d="M238 97V79m17 18V66m17 31V57m17 40V47" stroke="#8DE6FF" strokeWidth="7" strokeLinecap="round" />
+              <rect x="240" y="322" width="84" height="64" rx="10" fill="#5A8FFF" fillOpacity=".2" stroke="#76CFFF" />
+              <path d="M258 343h47M258 356h31M258 369h39" stroke="#9DEBFF" strokeWidth="4" strokeLinecap="round" />
+              <circle cx="298" cy="365" r="16" fill="#2249A0" stroke="#91E5FF" strokeWidth="2" />
+              <path d="M298 355v11l7 4" stroke="#B5F4FF" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="58" cy="93" r="3" fill="#55E6FF" />
+              <circle cx="175" cy="24" r="2.5" fill="#55E6FF" />
+              <circle cx="333" cy="145" r="3" fill="#A4A9FF" />
+              <path d="m58 93 68 32m49-101 43 35m115 86-22-31" stroke="#55C9FF" strokeOpacity=".3" />
+            </svg>
 
             <div className="information-content">
               <h2>
                 Quản lý đào tạo
                 <br />
-                hiệu quả hơn
+                <span>thông minh hơn</span>
               </h2>
 
               <p className="description">
@@ -1516,7 +1679,28 @@ function App() {
     user.vaiTro && user.vaiTro.length > 0
       ? user.vaiTro.map((role) => role.tenVaiTro).join(", ")
       : "Chưa có vai trò";
+  const isStudent = isStudentUser(user);
   const currentPermissions = user.quyen.map((permission) => permission.maQuyen);
+  const isAdmin = isAdminUser(user);
+  const effectivePermissions = isAdmin
+    ? [
+        ...new Set([
+          ...currentPermissions,
+          "CURRICULUM_VIEW",
+          "CURRICULUM_CREATE",
+          "CURRICULUM_UPDATE",
+          "CURRICULUM_DELETE",
+          "LEAD_VIEW",
+          "LEAD_CREATE",
+          "LEAD_UPDATE",
+          "LEAD_DELETE",
+          "LEAD_ASSIGN",
+          "SCHEDULE_VIEW",
+          "SCHEDULE_CREATE",
+          "SCHEDULE_UPDATE",
+        ]),
+      ]
+    : currentPermissions;
 
   if (!hasRouteAccess(currentPath, user)) {
     return <AppStatusPage status="forbidden" />;
@@ -1541,10 +1725,15 @@ function App() {
             onHome={handleHome}
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
+            onScheduleManagement={handleScheduleManagement}
+            onClassAttendanceManagement={handleClassAttendanceManagement}
+            onAssignments={handleAssignments}
             onChangePassword={handleChangePassword}
             onProfile={handleProfile}
           >
@@ -1560,13 +1749,18 @@ function App() {
             roleName={roleName}
             avatarUrl={user.anhDaiDien}
             permissions={currentPermissions}
+            isStudent={isStudent}
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
+            onAbsenceRequest={handleAbsenceRequest}
+            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1600,10 +1794,15 @@ function App() {
             onHome={handleHome}
             onUserManagement={handleUserManagement}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
+            onScheduleManagement={handleScheduleManagement}
+            onClassAttendanceManagement={handleClassAttendanceManagement}
+            onAssignments={handleAssignments}
             onChangePassword={handleChangePassword}
             onProfile={handleProfile}
           >
@@ -1615,13 +1814,18 @@ function App() {
             roleName={roleName}
             avatarUrl={user.anhDaiDien}
             permissions={currentPermissions}
+            isStudent={isStudent}
             onLogout={handleLogout}
             onHome={handleHome}
             onGradeManagement={handleGradeManagement}
+            onStudentInformation={handleStudentInformation}
+            onClassHistory={handleClassHistory}
             onClassManagement={handleClassManagement}
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
+            onAbsenceRequest={handleAbsenceRequest}
+            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1636,8 +1840,6 @@ function App() {
   // ADMIN
   // =========================================================
 
-  const isAdmin = isAdminUser(user);
-
   const renderAcademicLayout = (children: React.ReactNode) =>
     isAdmin ? (
       <AdminLayout
@@ -1651,10 +1853,14 @@ function App() {
         onHome={handleHome}
         onUserManagement={handleUserManagement}
         onGradeManagement={handleGradeManagement}
+        onStudentInformation={handleStudentInformation}
+        onClassHistory={handleClassHistory}
         onClassManagement={handleClassManagement}
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
+        onClassAttendanceManagement={handleClassAttendanceManagement}
+        onAssignments={handleAssignments}
         onChangePassword={handleChangePassword}
         onProfile={handleProfile}
       >
@@ -1666,13 +1872,20 @@ function App() {
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
         permissions={currentPermissions}
+        isStudent={isStudent}
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
+        onStudentInformation={handleStudentInformation}
+        onClassHistory={handleClassHistory}
         onClassManagement={handleClassManagement}
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
+        onAbsenceRequest={handleAbsenceRequest}
+        onAbsenceRequestList={handleAbsenceRequestList}
+        onClassAttendanceManagement={handleClassAttendanceManagement}
+        onAssignments={handleAssignments}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
@@ -1692,10 +1905,13 @@ function App() {
       onHome={handleHome}
       onUserManagement={handleUserManagement}
       onGradeManagement={handleGradeManagement}
+      onStudentInformation={handleStudentInformation}
+      onClassHistory={handleClassHistory}
       onClassManagement={handleClassManagement}
       onTrainingPrograms={handleTrainingPrograms}
       onTrainingCatalog={handleTrainingCatalog}
       onAdmissionsLeads={handleAdmissionsLeads}
+      onScheduleManagement={handleScheduleManagement}
       onChangePassword={handleChangePassword}
       onProfile={handleProfile}
     >
@@ -1703,19 +1919,22 @@ function App() {
     </AdminLayout>
   );
 
+  const renderScheduleLayout = (children: React.ReactNode) =>
+    isStudent ? renderAcademicLayout(children) : renderAdminLayout(children);
+
   if (currentPath === "/danh-muc-dao-tao") {
-    if (!hasPermission(user, "CURRICULUM_VIEW")) {
+    if (!isAdmin && !hasPermission(user, "CURRICULUM_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="CURRICULUM_VIEW">
-        <TrainingCatalog permissions={currentPermissions} />
+        <TrainingCatalog permissions={effectivePermissions} />
       </ProtectedRoute>,
     );
   }
 
   if (currentPath === "/quan-ly-lead") {
-    if (!hasPermission(user, "LEAD_VIEW")) {
+    if (!isAdmin && !hasPermission(user, "LEAD_VIEW")) {
       return <AppStatusPage status="forbidden" />;
     }
     const isTrainingManager = user.vaiTro.some(
@@ -1726,15 +1945,11 @@ function App() {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="LEAD_VIEW">
         <AdmissionsLeads
-          permissions={currentPermissions}
+          permissions={effectivePermissions}
           isTrainingManager={isTrainingManager || isAdmin}
         />
       </ProtectedRoute>,
     );
-  }
-
-  if (currentPath === "/scrum-board") {
-    return renderAcademicLayout(<ScrumTaskBoard />);
   }
 
   // =========================================================
@@ -1793,6 +2008,117 @@ function App() {
       <ProtectedRoute requiredPermission="GRADE_VIEW">
         <GradeManagement permissions={currentPermissions} />
       </ProtectedRoute>
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc") {
+    if (!hasPermission(user, "SCHEDULE_VIEW")) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    return renderScheduleLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleManagement
+          permissions={effectivePermissions}
+          isStudent={isStudent}
+          canReviewAbsenceRequests={
+            !isStudent && hasPermission(user, "ATTENDANCE_VIEW")
+          }
+          onOpenHistory={() => navigate("/quan-ly-lich-hoc/thong-bao")}
+          onOpenArchive={() => navigate("/quan-ly-lich-hoc/luu-tru")}
+          onOpenAbsenceRequests={handleAttendanceManagement}
+        />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc/luu-tru") {
+    if (!hasPermission(user, "SCHEDULE_VIEW")) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    return renderScheduleLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleArchive navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-lich-hoc/thong-bao") {
+    if (!hasPermission(user, "SCHEDULE_VIEW")) {
+      return <AppStatusPage status="forbidden" />;
+    }
+    return renderScheduleLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ScheduleHistory navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/don-xin-phep") {
+    if (!isStudent) return <AppStatusPage status="forbidden" />;
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <AbsenceRequest navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/don-xin-phep/theo-doi") {
+    if (!isStudent) return <AppStatusPage status="forbidden" />;
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <AbsenceRequestList navigate={navigate} />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-diem-danh") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="ATTENDANCE_VIEW">
+        <AttendanceManagement />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-diem-danh-lop") {
+    return renderAcademicLayout(
+      <ProtectedRoute
+        requiredAnyPermission={["CLASS_VIEW", "ATTENDANCE_VIEW"]}
+      >
+        <ClassAttendanceManagement />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (currentPath === "/quan-ly-bai-tap") {
+    const assignmentPermissions = [
+      "ASSIGNMENT_VIEW",
+      "ASSIGNMENT_CREATE",
+      "ASSIGNMENT_SUBMIT",
+      "ASSIGNMENT_GRADE",
+    ];
+    const studentOnly =
+      isStudentUser(user) &&
+      !hasAnyPermission(user, ["ASSIGNMENT_CREATE", "ASSIGNMENT_GRADE"]);
+    return renderAcademicLayout(
+      <ProtectedRoute requiredAnyPermission={assignmentPermissions}>
+        <Assignments
+          studentOnly={studentOnly}
+          canSubmit={hasPermission(user, "ASSIGNMENT_SUBMIT")}
+        />
+      </ProtectedRoute>,
+    );
+  }
+
+  if (
+    currentPath === "/thong-tin-hoc-vien" ||
+    currentPath === "/lich-su-lop-hoc"
+  ) {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="USER_VIEW">
+        <ProtectedRoute requiredPermission="GRADE_VIEW">
+          <UsersPage profileSection="information" />
+        </ProtectedRoute>
+      </ProtectedRoute>,
     );
   }
 
@@ -1861,160 +2187,25 @@ function App() {
           onHome={handleHome}
           onUserManagement={handleUserManagement}
           onGradeManagement={handleGradeManagement}
+          onStudentInformation={handleStudentInformation}
+          onClassHistory={handleClassHistory}
           onClassManagement={handleClassManagement}
           onTrainingPrograms={handleTrainingPrograms}
 
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
+          onClassAttendanceManagement={handleClassAttendanceManagement}
+          onAssignments={handleAssignments}
 
           onChangePassword={handleChangePassword}
           onProfile={handleProfile}
         >
-          <section className="dashboard-hero">
-            <div className="dashboard-hero-content">
-              <div className="dashboard-hero-label">
-                HỆ THỐNG QUẢN LÝ ĐÀO TẠO
-              </div>
-
-              <h2>
-                Xin chào, <span>{user.hoTen}</span> 👋
-              </h2>
-
-              <p>
-                Chào mừng bạn quay trở lại. Chúc bạn có một ngày làm việc hiệu
-                quả!
-              </p>
-
-              <div className="dashboard-hero-info">
-                <div>
-                  <span className="hero-info-label">Tài khoản</span>
-
-                  <strong>{user.email}</strong>
-                </div>
-
-                <div>
-                  <span className="hero-info-label">Vai trò</span>
-
-                  <strong>{roleName}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-hero-decoration">
-              <div className="hero-circle hero-circle-1"></div>
-
-              <div className="hero-circle hero-circle-2"></div>
-
-              <div className="hero-graduation">🎓</div>
-            </div>
-          </section>
-
-          <div className="admin-stat-grid">
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon blue">👥</div>
-
-              <div>
-                <span>Người dùng</span>
-
-                <strong>
-                  {dashboardUserCount === null
-                    ? dashboardUsersLoading
-                      ? "..."
-                      : "--"
-                    : dashboardUserCount.toLocaleString("vi-VN")}
-                </strong>
-
-                <small>Người dùng trong hệ thống</small>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon purple">🛡️</div>
-
-              <div>
-                <span>Vai trò</span>
-
-                <strong>{user.vaiTro.length}</strong>
-
-                <small>Vai trò hiện tại</small>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon green">🔐</div>
-
-              <div>
-                <span>Quyền</span>
-
-                <strong>{user.quyen.length}</strong>
-
-                <small>Quyền được cấp</small>
-              </div>
-            </div>
-
-            <div className="admin-stat-card">
-              <div className="admin-stat-icon orange">⚙️</div>
-
-              <div>
-                <span>Trạng thái</span>
-
-                <strong>Hoạt động</strong>
-
-                <small>Tài khoản hiện tại</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="admin-dashboard-grid">
-            <div className="admin-panel">
-              <div className="admin-panel-header">
-                <div>
-                  <h3>Hoạt động gần đây</h3>
-
-                  <p>Thông tin hoạt động của hệ thống</p>
-                </div>
-              </div>
-
-              <div className="admin-activity">
-                <div className="admin-activity-item">
-                  <div className="activity-icon blue">🔑</div>
-
-                  <div>
-                    <strong>Đăng nhập hệ thống</strong>
-
-                    <span>{user.hoTen} đã đăng nhập</span>
-
-                    <small>Vừa mới đây</small>
-                  </div>
-                </div>
-
-                <div className="admin-activity-item">
-                  <div className="activity-icon green">👤</div>
-
-                  <div>
-                    <strong>Tài khoản đang hoạt động</strong>
-
-                    <span>Tài khoản đang ở trạng thái hoạt động</span>
-
-                    <small>Hiện tại</small>
-                  </div>
-                </div>
-
-                <div className="admin-activity-item">
-                  <div className="activity-icon purple">🛡️</div>
-
-                  <div>
-                    <strong>Phân quyền</strong>
-
-                    <span>{user.quyen.length} quyền được cấp</span>
-
-                    <small>Hiện tại</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <AdminDashboard
+            userName={user.hoTen}
+            onUserManagement={handleUserManagement}
+            onClassManagement={handleClassManagement}
+            onTrainingCatalog={handleTrainingCatalog}
+          />
         </AdminLayout>
       </ProtectedRoute>
     );
@@ -2031,13 +2222,20 @@ function App() {
         roleName={roleName}
         avatarUrl={user.anhDaiDien}
         permissions={currentPermissions}
+        isStudent={isStudent}
         onLogout={handleLogout}
         onHome={handleHome}
         onGradeManagement={handleGradeManagement}
+        onStudentInformation={handleStudentInformation}
+        onClassHistory={handleClassHistory}
         onClassManagement={handleClassManagement}
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
+        onClassAttendanceManagement={handleClassAttendanceManagement}
+        onAssignments={handleAssignments}
+        onAbsenceRequest={handleAbsenceRequest}
+        onAbsenceRequestList={handleAbsenceRequestList}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >
@@ -2061,19 +2259,6 @@ function App() {
                 quả!
               </p>
 
-              <div className="dashboard-hero-info">
-                <div>
-                  <span className="hero-info-label">Tài khoản</span>
-
-                  <strong>{user.email}</strong>
-                </div>
-
-                <div>
-                  <span className="hero-info-label">Vai trò</span>
-
-                  <strong>{roleName}</strong>
-                </div>
-              </div>
             </div>
 
             <div className="dashboard-hero-decoration">
@@ -2081,7 +2266,7 @@ function App() {
 
               <div className="hero-circle hero-circle-2"></div>
 
-              <div className="hero-graduation">🎓</div>
+              <DashboardDateTime />
             </div>
           </section>
 
@@ -2192,13 +2377,44 @@ interface FeatureProps {
 function Feature({ icon, title, description }: FeatureProps) {
   return (
     <div className="feature">
-      <div className="feature-icon">{icon}</div>
+      <div className="feature-icon">
+        <span className="feature-icon-glyph">{icon}</span>
+      </div>
 
       <div>
         <h3>{title}</h3>
 
         <p>{description}</p>
       </div>
+    </div>
+  );
+}
+
+function DashboardDateTime() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(now);
+  const date = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+
+  return (
+    <div className="dashboard-date-time" aria-label={`Hôm nay ${date}, ${time}`}>
+      <span className="dashboard-date-time-label">Thời gian hiện tại</span>
+      <strong className="dashboard-clock">{time}</strong>
+      <span className="dashboard-date">{date}</span>
     </div>
   );
 }

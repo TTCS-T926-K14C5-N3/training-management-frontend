@@ -42,36 +42,39 @@ function ProtectedRoute({
   // =========================================================
 
   const permissions = Array.isArray(session.quyen) ? session.quyen : [];
-  const isSystemAdmin = Array.isArray(session.vaiTro) && session.vaiTro.some(
-    (role: any) => {
-      const roleName =
-        typeof role?.tenVaiTro === "string"
-          ? role.tenVaiTro.trim().toLowerCase()
-          : "";
+  // =========================================================
+  // KIỂM TRA ADMIN
+  // =========================================================
 
-      return (
-        role?.vaiTroId === 8 ||
-        roleName === "admin" ||
-        roleName === "quản trị hệ thống" ||
-        roleName === "quản trị viên hệ thống"
-      );
-    },
-  );
-  const hasPermission = (permissionCode: string) =>
-    isSystemAdmin ||
-    permissions.some(
-      (permission: any) => permission?.maQuyen === permissionCode,
+  const roles = Array.isArray(session.vaiTro) ? session.vaiTro : [];
+  const isAdmin = roles.some((role: any) => {
+    const name = (role?.tenVaiTro ?? "").trim().toLowerCase();
+    return (
+      name === "admin" ||
+      name === "quản trị hệ thống" ||
+      name === "quản trị viên hệ thống" ||
+      role?.vaiTroId === 8
     );
+  });
 
   // =========================================================
   // KIỂM TRA QUYỀN
   // =========================================================
 
   const hasRequiredPermission =
-    !requiredPermission || hasPermission(requiredPermission);
+    !requiredPermission ||
+    isAdmin ||
+    permissions.some(
+      (permission: any) => permission?.maQuyen === requiredPermission,
+    );
   const hasAnyRequiredPermission =
     !requiredAnyPermission ||
-    requiredAnyPermission.some(hasPermission);
+    isAdmin ||
+    requiredAnyPermission.some((requiredCode) =>
+      permissions.some(
+        (permission: any) => permission?.maQuyen === requiredCode,
+      ),
+    );
 
   if (requiredPermission && !hasRequiredPermission) {
     return <AppStatusPage status="forbidden" />;

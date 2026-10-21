@@ -1,0 +1,96 @@
+.absence-approval-alert-backdrop {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.absence-approval-alert {
+  width: min(100%, 460px);
+  padding: 28px;
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+  color: #172033;
+  text-align: center;
+}
+
+.absence-approval-alert-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.absence-approval-alert h2 {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+}
+
+.absence-approval-alert p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.absence-approval-alert .absence-approval-alert-error {
+  margin-top: 12px;
+  color: #b91c1c;
+}
+
+.absence-approval-alert-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.absence-approval-alert-actions button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.absence-approval-alert-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.absence-approval-alert-dismiss {
+  border-color: #cbd5e1 !important;
+  background: #fff;
+  color: #334155;
+}
+
+.absence-approval-alert-follow {
+  background: #2563eb;
+  color: #fff;
+}
+
+.absence-approval-alert-follow:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+@media (max-width: 480px) {
+  .absence-approval-alert {
+    padding: 24px 18px;
+  }
+
+  .absence-approval-alert-actions {
+    flex-direction: column-reverse;
+  }
+}

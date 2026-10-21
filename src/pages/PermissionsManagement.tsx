@@ -40,40 +40,24 @@ const PermissionsManagement: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ padding: "28px 32px 40px" }}>
-      <header
-        style={{
-          marginBottom: "20px",
-          padding: "22px 24px",
-          borderRadius: "18px",
-          background: "linear-gradient(135deg, #172554 0%, #2563eb 100%)",
-          boxShadow: "0 12px 30px rgba(37, 99, 235, 0.16)",
-          color: "#fff",
-        }}
-      >
-        <div
-          style={{
-            marginBottom: "8px",
-            fontSize: "12px",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            opacity: 0.75,
-          }}
-        >
+    <div className="permission-management-page">
+      <header className="permission-management-hero">
+        <div className="permission-management-eyebrow">
           Phân quyền hệ thống
         </div>
-        <h1 style={{ margin: 0, fontSize: "24px" }}>Quyền</h1>
-        <p style={{ margin: "7px 0 0", fontSize: "13px", opacity: 0.8 }}>
+        <h1>Quyền</h1>
+        <p>
           Cấu hình quyền truy cập theo vai trò hệ thống.
         </p>
       </header>
       {error ? (
-        <p role="alert" style={{ color: "#b91c1c" }}>
+        <p className="permission-management-error" role="alert">
           {error}
         </p>
       ) : loading ? (
-        <p role="status">Đang tải cấu hình quyền...</p>
+        <p className="permission-management-loading" role="status">
+          Đang tải cấu hình quyền...
+        </p>
       ) : (
         <RolePermissionsPanel roles={roles} />
       )}

@@ -6,6 +6,7 @@ const SESSION_EXPIRED_EVENT = "session-expired";
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 15000,
 });
 
 // ===========================================================
