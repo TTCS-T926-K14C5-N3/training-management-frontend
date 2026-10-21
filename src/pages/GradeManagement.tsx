@@ -106,6 +106,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const [yearFilter, setYearFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exportingAttendance, setExportingAttendance] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [optionsError, setOptionsError] = useState("");
   const [gradesError, setGradesError] = useState("");
@@ -115,6 +116,10 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const canCreate = permissions.includes("GRADE_CREATE");
   const canUpdate = permissions.includes("GRADE_UPDATE");
   const canDelete = permissions.includes("GRADE_DELETE");
+  const canExportAttendance = permissions.includes("ATTENDANCE_VIEW");
+  const attendanceExportClass = classes.find(
+    (item) => String(item.lopHocId) === classFilter,
+  );
   const selectedClass = classes.find(
     (item) => item.lopHocId === form.lopHocId,
   );
@@ -286,6 +291,46 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
     } catch (error: unknown) {
       console.error("Không thể xóa bảng điểm:", error);
       setErrorMessage(responseError(error, "Không thể xóa bảng điểm."));
+    }
+  };
+
+  const exportAttendance = async () => {
+    if (!classFilter || exportingAttendance) return;
+    setExportingAttendance(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      const response = await api.get<Blob>(
+        `/attendance/classes/${classFilter}/export-matrix`,
+        { responseType: "blob" },
+      );
+      const blobUrl = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      const contentDisposition = response.headers["content-disposition"];
+      const filename = /filename="([^"]+)"/i.exec(
+        typeof contentDisposition === "string" ? contentDisposition : "",
+      )?.[1];
+      const exportDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+      }).format(new Date());
+      link.href = blobUrl;
+      link.download =
+        filename ??
+        `${attendanceExportClass?.maLop ?? "lop-hoc"}-chuyen-can-${exportDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setSuccessMessage(
+        `Đã xuất ma trận chuyên cần${attendanceExportClass ? ` lớp ${attendanceExportClass.maLop}` : ""}.`,
+      );
+    } catch (error: unknown) {
+      console.error("Không thể xuất bảng chuyên cần:", error);
+      setErrorMessage(
+        responseError(error, "Không thể xuất bảng chuyên cần của lớp."),
+      );
+    } finally {
+      setExportingAttendance(false);
     }
   };
 
@@ -568,6 +613,24 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
             <h2>Bảng điểm</h2>
             <p>{grades.length} kết quả phù hợp</p>
           </div>
+          <div className="academic-row-actions">
+          {canExportAttendance && (
+            <button
+              className="academic-secondary-button"
+              type="button"
+              onClick={() => void exportAttendance()}
+              disabled={!classFilter || exportingAttendance}
+              title={
+                classFilter
+                  ? `Xuất ma trận chuyên cần lớp ${attendanceExportClass?.maLop ?? ""}`
+                  : "Chọn một lớp để xuất bảng chuyên cần."
+              }
+            >
+              {exportingAttendance
+                ? "Đang xuất ma trận..."
+                : "Xuất ma trận chuyên cần"}
+            </button>
+          )}
           {canCreate && (
             <button
               className="academic-primary-button"
@@ -577,6 +640,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
               + Nhập điểm
             </button>
           )}
+          </div>
         </div>
         <div className="academic-filters">
           <label>

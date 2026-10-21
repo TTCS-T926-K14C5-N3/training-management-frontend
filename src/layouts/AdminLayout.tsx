@@ -1,5 +1,6 @@
 import React from "react";
 import AvatarImage from "../components/AvatarImage";
+import AbsenceApprovalAlert from "../components/AbsenceApprovalAlert";
 import "./AdminLayout.css";
 
 interface AdminLayoutProps {
@@ -8,6 +9,7 @@ interface AdminLayoutProps {
   roleName: string;
   avatarUrl?: string | null;
   isAdmin: boolean;
+  isStudent?: boolean;
   permissions: string[];
   onLogout: () => void;
 
@@ -29,9 +31,10 @@ interface AdminLayoutProps {
   onTrainingPrograms?: () => void;
   onAdmissionsLeads?: () => void;
   onScheduleManagement?: () => void;
-  onAttendanceManagement?: () => void;
   onClassAttendanceManagement?: () => void;
   onAssignments?: () => void;
+  onAbsenceRequest?: () => void;
+  onAbsenceRequestList?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
   onChangePassword: () => void;
@@ -46,6 +49,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   roleName,
   avatarUrl,
   isAdmin,
+  isStudent = false,
   permissions,
   onLogout,
   onRoleManagement,
@@ -58,10 +62,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
-  onAttendanceManagement = () => window.location.assign("/quan-ly-diem-danh"),
-  onClassAttendanceManagement = () =>
-    window.location.assign("/quan-ly-diem-danh-lop"),
   onAssignments = () => window.location.assign("/quan-ly-bai-tap"),
+  onAbsenceRequest = () => window.location.assign("/don-xin-phep"),
+  onAbsenceRequestList = () =>
+    window.location.assign("/don-xin-phep/theo-doi"),
   onChangePassword,
   onProfile,
 }) => {
@@ -133,9 +137,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const isScheduleManagementActive =
     currentPath === "/quan-ly-lich-hoc" ||
     currentPath.startsWith("/quan-ly-lich-hoc/");
-  const isAttendanceManagementActive = currentPath === "/quan-ly-diem-danh";
-  const isClassAttendanceActive =
-    currentPath === "/quan-ly-diem-danh-lop";
   const isAssignmentsActive = currentPath === "/quan-ly-bai-tap";
 
   const isTrainingProgramsActive = currentPath === "/quan-ly-chuong-trinh";
@@ -290,29 +291,44 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
 
           {hasPermission("SCHEDULE_VIEW") && (
-            <button
-              type="button"
-              className={`admin-menu-item ${
-                isScheduleManagementActive ? "admin-menu-active" : ""
-              }`}
-              onClick={onScheduleManagement}
-            >
-              <span className="admin-menu-symbol">▦</span>
-              <span>Quản lý lịch học</span>
-            </button>
-          )}
-
-          {hasPermission("ATTENDANCE_VIEW") && (
-            <button
-              type="button"
-              className={`admin-menu-item ${
-                isAttendanceManagementActive ? "admin-menu-active" : ""
-              }`}
-              onClick={onAttendanceManagement}
-            >
-              <span className="admin-menu-symbol">✓</span>
-              <span>Điểm danh</span>
-            </button>
+            <>
+              <button
+                type="button"
+                className={`admin-menu-item ${
+                  isScheduleManagementActive ? "admin-menu-active" : ""
+                }`}
+                onClick={onScheduleManagement}
+              >
+                <span className="admin-menu-symbol">▦</span>
+                <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
+              </button>
+              {isStudent && (
+                <>
+                  <button
+                    type="button"
+                    className={`admin-menu-item ${
+                      currentPath === "/don-xin-phep" ? "admin-menu-active" : ""
+                    }`}
+                    onClick={onAbsenceRequest}
+                  >
+                    <span className="admin-menu-symbol">✉</span>
+                    <span>Gửi đơn xin phép</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-menu-item ${
+                      currentPath === "/don-xin-phep/theo-doi"
+                        ? "admin-menu-active"
+                        : ""
+                    }`}
+                    onClick={onAbsenceRequestList}
+                  >
+                    <span className="admin-menu-symbol">▤</span>
+                    <span>Theo dõi đơn</span>
+                  </button>
+                </>
+              )}
+            </>
           )}
 
           {(hasPermission("ASSIGNMENT_VIEW") ||
@@ -331,20 +347,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
           )}
 
-          {hasPermission("CLASS_VIEW") && (
-            <button
-              type="button"
-              className={`admin-menu-item ${
-                isClassAttendanceActive ? "admin-menu-active" : ""
-              }`}
-              onClick={onClassAttendanceManagement}
-            >
-              <span className="admin-menu-symbol">✓</span>
-              <span>Điểm danh theo lớp/ngày</span>
-            </button>
-          )}
-
-          {hasPermission("CLASS_VIEW") && (
+          {hasPermission("CLASS_VIEW") &&
+            ["CLASS_CREATE", "CLASS_UPDATE", "CLASS_DELETE"].some(
+              (permission) => hasPermission(permission),
+            ) && (
             <button
               type="button"
               className={`admin-menu-item ${
@@ -470,6 +476,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         <section className="admin-content">{children}</section>
       </main>
+      <AbsenceApprovalAlert
+        isStudent={isStudent}
+        onTrack={onAbsenceRequestList}
+      />
     </div>
   );
 };

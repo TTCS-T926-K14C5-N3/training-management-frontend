@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
 import "./AbsenceRequest.css";
 
 interface ScheduleOption {
@@ -72,26 +73,50 @@ const getErrorMessage = (error: unknown): string => {
   }
   const detail = error.response?.data?.detail;
   if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const message = detail.find(
+      (item): item is { msg: string } =>
+        !!item && typeof item === "object" && "msg" in item,
+    );
+    if (message) return message.msg;
+  }
   if (error.response?.status === 401) return "Phiên đăng nhập đã hết hạn.";
   if (error.response?.status === 403) {
-    return "Tài khoản không có quyền xem các buổi học.";
+    return "Bạn không có quyền gửi đơn xin phép cho buổi học này.";
   }
+  if (error.response?.status === 409) {
+    return typeof detail === "string"
+      ? detail
+      : "Không thể gửi đơn cho buổi học này.";
+  }
+  if (error.response?.status === 413) return "Tệp minh chứng không được vượt quá 5 MB.";
+  if (error.response?.status === 415) return "Minh chứng phải là tệp PDF, PNG hoặc JPEG hợp lệ.";
   if (!error.response) return "Không thể kết nối Backend. Vui lòng thử lại.";
-  return `Không thể tải buổi học (HTTP ${error.response.status}).`;
+  return `Không thể xử lý yêu cầu (HTTP ${error.response.status}).`;
 };
 
 const fetchAvailableSchedules = async (
   signal?: AbortSignal,
 ): Promise<ScheduleOption[]> => {
-  const response = await api.get<ScheduleOption[]>("/academic/schedules", {
-    params: { excludeCompleted: true },
-    signal,
-  });
+  const [scheduleResponse, requestResponse] = await Promise.all([
+    api.get<ScheduleOption[]>("/academic/schedules", {
+      params: { excludeCompleted: true },
+      signal,
+    }),
+    api.get<Array<{ scheduleId: number }>>(
+      "/attendance/sessions/absence-requests",
+      { signal },
+    ),
+  ]);
   const today = getBusinessDate();
   const currentTime = getBusinessTime();
-  return response.data.filter(
+  const requestedScheduleIds = new Set(
+    requestResponse.data.map((request) => request.scheduleId),
+  );
+  return scheduleResponse.data.filter(
     (schedule) =>
       schedule.trangThai === "Đã lên lịch" &&
+      !requestedScheduleIds.has(schedule.lichHocId) &&
       (schedule.ngayHoc > today ||
         (schedule.ngayHoc === today && schedule.gioBatDau > currentTime)),
   );
@@ -106,6 +131,11 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState("");
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -141,17 +171,52 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
     const nextErrors: FormErrors = {};
     if (!scheduleId) nextErrors.schedule = "Vui lòng chọn buổi học cần xin phép.";
     if (!reason.trim()) nextErrors.reason = "Vui lòng nhập lý do xin phép.";
+    if (errors.attachment) nextErrors.attachment = errors.attachment;
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!validate()) return;
 
-    setSubmitError(
-      "Backend hiện chưa có API nhận đơn xin phép hoặc tệp minh chứng. Đơn chưa được gửi và chưa có dữ liệu nào được lưu.",
-    );
+    setSubmitting(true);
+    setSubmitError("");
+    setToast(null);
+    try {
+      if (attachment) {
+        const formData = new FormData();
+        formData.append("scheduleId", scheduleId);
+        formData.append("reason", reason.trim());
+        formData.append("file", attachment);
+        await api.post(
+          "/attendance/sessions/absence-requests/with-evidence",
+          formData,
+        );
+      } else {
+        await api.post("/attendance/sessions/absence-requests", {
+          scheduleId: Number(scheduleId),
+          reason: reason.trim(),
+        });
+      }
+      setToast({
+        type: "success",
+        text: "Đơn xin phép đã được gửi. Bạn có thể theo dõi kết quả xử lý tại mục Theo dõi đơn.",
+      });
+      setSchedules((current) =>
+        current.filter((schedule) => schedule.lichHocId !== Number(scheduleId)),
+      );
+      setReason("");
+      setAttachment(null);
+      setScheduleId("");
+    } catch (error) {
+      console.error("Không thể gửi đơn xin phép vắng:", error);
+      const message = getErrorMessage(error);
+      setSubmitError(message);
+      setToast({ type: "error", text: message });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const selectedSchedule = schedules.find(
@@ -160,6 +225,13 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
 
   return (
     <main className="absence-request-page">
+      {toast && (
+        <ToastNotification
+          type={toast.type}
+          text={toast.text}
+          onClose={() => setToast(null)}
+        />
+      )}
       <header className="absence-request-hero">
         <div>
           <span className="absence-request-eyebrow">HỌC TẬP CÁ NHÂN</span>
@@ -191,15 +263,7 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
           </div>
         )}
 
-        <div className="absence-request-api-notice" role="status">
-          <strong>Chưa thể gửi đơn</strong>
-          <span>
-            Backend chưa cung cấp API gửi đơn xin phép. Biểu mẫu chỉ giúp chuẩn
-            bị thông tin; hệ thống sẽ không báo thành công giả.
-          </span>
-        </div>
-
-        <form className="absence-request-form" onSubmit={submit} noValidate>
+        <form className="absence-request-form" onSubmit={(event) => void submit(event)} noValidate>
           <label className="absence-request-field">
             <span>Buổi học cần xin phép <i>*</i></span>
             <select
@@ -231,7 +295,7 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
             )}
             {!loading && !loadError && schedules.length === 0 && (
               <small className="absence-request-hint">
-                Không có buổi học sắp tới phù hợp để xin phép.
+                Không có buổi học sắp tới chưa gửi đơn để xin phép.
               </small>
             )}
           </label>
@@ -283,8 +347,46 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
             <label className="absence-request-file-picker">
               <input
                 type="file"
+                accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                 onChange={(event) => {
-                  setAttachment(event.target.files?.[0] ?? null);
+                  const file = event.target.files?.[0] ?? null;
+                  if (file) {
+                    const extension = file.name.split(".").pop()?.toLowerCase();
+                    const allowed = new Set(["pdf", "png", "jpg", "jpeg"]);
+                    const allowedTypes = new Set([
+                      "application/pdf",
+                      "image/png",
+                      "image/jpeg",
+                    ]);
+                    if (!extension || !allowed.has(extension)) {
+                      setAttachment(null);
+                      setErrors((current) => ({
+                        ...current,
+                        attachment: "Minh chứng phải là tệp PDF, PNG hoặc JPEG.",
+                      }));
+                      event.target.value = "";
+                      return;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                      setAttachment(null);
+                      setErrors((current) => ({
+                        ...current,
+                        attachment: "Tệp minh chứng không được vượt quá 5 MB.",
+                      }));
+                      event.target.value = "";
+                      return;
+                    }
+                    if (file.type && !allowedTypes.has(file.type)) {
+                      setAttachment(null);
+                      setErrors((current) => ({
+                        ...current,
+                        attachment: "Định dạng tệp không khớp với loại minh chứng cho phép.",
+                      }));
+                      event.target.value = "";
+                      return;
+                    }
+                  }
+                  setAttachment(file);
                   setErrors((current) => ({ ...current, attachment: undefined }));
                   setSubmitError("");
                 }}
@@ -307,9 +409,11 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
                 </button>
               </div>
             )}
+            {errors.attachment && (
+              <small role="alert">{errors.attachment}</small>
+            )}
             <small className="absence-request-hint">
-              Chưa có quy định định dạng hoặc dung lượng tệp từ backend; hiện
-              chưa thể tải minh chứng lên.
+              Có thể đính kèm tệp PDF, PNG hoặc JPEG, tối đa 5 MB.
             </small>
           </div>
 
@@ -330,9 +434,9 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
             <button
               className="absence-request-submit"
               type="submit"
-              disabled={loading}
+              disabled={loading || submitting || !scheduleId}
             >
-              Gửi đơn
+              {submitting ? "Đang gửi..." : "Gửi đơn"}
             </button>
           </div>
         </form>

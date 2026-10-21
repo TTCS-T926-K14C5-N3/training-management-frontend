@@ -534,6 +534,10 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const saveStudentAction = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!studentAction) return;
+    if (studentActionForm.lyDo.trim().length < 5) {
+      setErrorMessage("Lý do xử lý học viên cần ít nhất 5 ký tự.");
+      return;
+    }
 
     if (studentActionForm.loaiThaoTac === "BaoLuu") {
       const confirmed = window.confirm(
@@ -961,6 +965,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   Lý do
                   <textarea
                     required
+                    minLength={5}
                     maxLength={1000}
                     rows={3}
                     value={studentActionForm.lyDo}

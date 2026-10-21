@@ -218,6 +218,152 @@
   text-align: center;
 }
 
+.attendance-request-review {
+  gap: 0;
+}
+
+.attendance-request-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.attendance-request-heading h2 {
+  margin: 0 0 6px;
+  color: #172554;
+  font-size: 1.1rem;
+}
+
+.attendance-request-heading p {
+  max-width: 760px;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.attendance-request-list {
+  display: grid;
+}
+
+.attendance-request-item {
+  display: grid;
+  gap: 10px;
+  padding: 17px 0;
+}
+
+.attendance-request-item + .attendance-request-item {
+  border-top: 1px solid #edf1f7;
+}
+
+.attendance-request-item-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.attendance-request-item-heading > div {
+  display: grid;
+  gap: 5px;
+}
+
+.attendance-request-item-heading strong {
+  color: #1e3a8a;
+}
+
+.attendance-request-item-heading > div > span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.attendance-request-status {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.attendance-request-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.attendance-request-status.approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.attendance-request-status.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.attendance-request-reason,
+.attendance-request-review-reason {
+  margin: 0;
+  color: #475569;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.attendance-request-review-reason {
+  padding: 10px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.attendance-request-evidence {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #3730a3;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attendance-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attendance-request-actions button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attendance-request-approve {
+  border: 1px solid #15803d;
+  background: #16a34a;
+  color: #fff;
+}
+
+.attendance-request-reject {
+  border: 1px solid #fecaca;
+  background: #fff7f7;
+  color: #b91c1c;
+}
+
+.attendance-request-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 @media (max-width: 700px) {
   .attendance-page {
     gap: 14px;
@@ -237,6 +383,12 @@
 
   .attendance-page-card {
     padding: 17px 14px;
+  }
+
+  .attendance-request-heading,
+  .attendance-request-item-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .attendance-page-table thead {

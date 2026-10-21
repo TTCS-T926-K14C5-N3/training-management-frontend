@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import axios from "axios";
 import api from "../services/api";
 import "./StudentReservationModal.css";
 
@@ -67,6 +68,30 @@ const COMMON_REASONS = [
   "Trùng lịch học chuyên ngành",
   "Thu xếp tài chính cá nhân",
 ];
+
+const reservationErrorMessage = (error: unknown): string => {
+  if (!axios.isAxiosError<{ detail?: unknown }>(error)) {
+    return "Không thể ghi nhận quyết định bảo lưu. Vui lòng thử lại.";
+  }
+
+  const detail = error.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) =>
+        item && typeof item === "object" && "msg" in item
+          ? item.msg
+          : null,
+      )
+      .filter((message): message is string => typeof message === "string");
+    if (messages.length) return messages.join(" ");
+  }
+
+  if (!error.response) {
+    return "Không nhận được phản hồi từ máy chủ. Vui lòng thử lại; nếu quyết định đã được lưu, gửi lại cùng thông tin sẽ không tạo bản ghi trùng.";
+  }
+  return "Không thể ghi nhận quyết định bảo lưu. Vui lòng thử lại.";
+};
 
 export const StudentReservationModal: React.FC<StudentReservationModalProps> = ({
   isOpen,
@@ -199,15 +224,25 @@ export const StudentReservationModal: React.FC<StudentReservationModalProps> = (
     setErrorMessage("");
 
     try {
-      await api.post(
-        `/academic/classes/${selectedClassId}/students/${selectedStudentId}/actions`,
-        {
-          loaiThaoTac: "BaoLuu",
-          ngayHieuLuc: effectiveDate,
-          lyDo: reason.trim(),
-          lopHocDichId: null,
+      const url = `/academic/classes/${selectedClassId}/students/${selectedStudentId}/actions`;
+      const payload = {
+        loaiThaoTac: "BaoLuu",
+        ngayHieuLuc: effectiveDate,
+        lyDo: reason.trim(),
+        lopHocDichId: null,
+      };
+      try {
+        await api.post(url, payload);
+      } catch (error) {
+        if (
+          !axios.isAxiosError(error) ||
+          (error.response && error.response.status < 500)
+        ) {
+          throw error;
         }
-      );
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        await api.post(url, payload);
+      }
 
       onSuccess(
         `Đã ghi nhận bảo lưu cho học viên ${
@@ -217,18 +252,7 @@ export const StudentReservationModal: React.FC<StudentReservationModalProps> = (
       onClose();
     } catch (err: unknown) {
       console.error("Lỗi thực hiện bảo lưu:", err);
-      let message = "Không thể ghi nhận quyết định bảo lưu. Vui lòng thử lại.";
-      if (
-        typeof err === "object" &&
-        err !== null &&
-        "response" in err &&
-        typeof (err as { response?: { data?: { detail?: string } } }).response?.data
-          ?.detail === "string"
-      ) {
-        message = (err as { response: { data: { detail: string } } }).response.data
-          .detail;
-      }
-      setErrorMessage(message);
+      setErrorMessage(reservationErrorMessage(err));
       // Return to form step so user can fix issue (e.g., date before enrollment)
       setStep("form");
     } finally {

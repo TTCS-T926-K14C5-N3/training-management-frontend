@@ -1,397 +1,262 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "../components/ToastNotification";
 import "./AttendanceManagement.css";
 
-type AttendanceStatus =
-  | "Có mặt"
-  | "Đi muộn"
-  | "Vắng có phép"
-  | "Vắng không phép";
-
-interface ScheduleOption {
-  lichHocId: number;
-  maBuoiHoc: string;
-  maLop: string | null;
-  tenLop: string | null;
-  tenMonHoc: string | null;
-  ngayHoc: string;
-  gioBatDau: string;
-  gioKetThuc: string;
-  trangThai: string;
+interface AbsenceReviewRequest {
+  requestId: number;
+  scheduleId: number;
+  classCode: string | null;
+  className: string | null;
+  studentName: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  subjectName: string | null;
+  reason: string;
+  evidence: string | null;
+  evidenceName: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewReason: string | null;
 }
-
-interface AttendanceStudent {
-  hocVienId: number;
-  hoTen: string;
-  email: string;
-  trangThai: AttendanceStatus | null;
-  ghiChu: string | null;
-}
-
-interface AttendanceSession {
-  lichHocId: number;
-  maBuoiHoc: string;
-  ngayHoc: string;
-  records: AttendanceStudent[];
-  coTheCapNhat: boolean;
-}
-
-interface AttendanceAuditEntry {
-  id: number;
-  hocVienId: number;
-  trangThaiCu: AttendanceStatus | null;
-  trangThaiMoi: AttendanceStatus | null;
-  lyDo: string;
-  nguoiThucHien: string;
-  thoiDiem: string;
-}
-
-const STATUSES: AttendanceStatus[] = [
-  "Có mặt",
-  "Đi muộn",
-  "Vắng có phép",
-  "Vắng không phép",
-];
 
 const errorMessage = (error: unknown): string => {
   if (axios.isAxiosError<{ detail?: unknown }>(error)) {
     const detail = error.response?.data?.detail;
     if (typeof detail === "string") return detail;
     if (error.response?.status === 401) return "Phiên đăng nhập đã hết hạn.";
-    if (error.response?.status === 403) return "Bạn không có quyền thao tác điểm danh buổi học này.";
-    if (error.response?.status === 404) return "Không tìm thấy buổi học.";
-    if (error.response?.status === 409) return detail?.toString() ?? "Buổi học chưa thể điểm danh.";
+    if (error.response?.status === 403) return "Bạn không có quyền xử lý đơn xin phép.";
+    if (error.response?.status === 404) return "Không tìm thấy đơn xin phép.";
   }
   return error instanceof Error
     ? error.message
-    : "Không thể tải hoặc lưu dữ liệu điểm danh.";
+    : "Không thể tải hoặc xử lý đơn xin phép.";
 };
 
 function AttendanceManagement() {
-  const [schedules, setSchedules] = useState<ScheduleOption[]>([]);
-  const [selectedScheduleId, setSelectedScheduleId] = useState("");
-  const [attendance, setAttendance] = useState<AttendanceSession | null>(null);
-  const [audit, setAudit] = useState<AttendanceAuditEntry[]>([]);
-  const [statuses, setStatuses] = useState<Record<number, AttendanceStatus | "">>({});
-  const [notes, setNotes] = useState<Record<number, string>>({});
-  const [reason, setReason] = useState("");
-  const [loadingSchedules, setLoadingSchedules] = useState(true);
-  const [loadingAttendance, setLoadingAttendance] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [scheduleReloadKey, setScheduleReloadKey] = useState(0);
-  const [attendanceReloadKey, setAttendanceReloadKey] = useState(0);
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [absenceRequests, setAbsenceRequests] = useState<AbsenceReviewRequest[]>([]);
+  const [absenceRequestsLoading, setAbsenceRequestsLoading] = useState(true);
+  const [absenceRequestsError, setAbsenceRequestsError] = useState("");
+  const [requestActionId, setRequestActionId] = useState<number | null>(null);
+
+  const loadAbsenceRequests = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await api.get<AbsenceReviewRequest[]>(
+        "/attendance/sessions/absence-requests",
+        { signal },
+      );
+      if (signal?.aborted) return;
+      setAbsenceRequests(response.data);
+      setAbsenceRequestsError("");
+    } catch (loadError) {
+      if (axios.isCancel(loadError) || signal?.aborted) return;
+      console.error("Không thể tải đơn xin phép cần duyệt:", loadError);
+      setAbsenceRequestsError(errorMessage(loadError));
+    } finally {
+      if (!signal?.aborted) setAbsenceRequestsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    const loadSchedules = async () => {
-      try {
-        const response = await api.get<ScheduleOption[]>("/academic/schedules", {
-          params: { excludeCompleted: true },
-          signal: controller.signal,
-        });
-        setSchedules(response.data.filter((item) => item.trangThai !== "Đã hủy"));
-      } catch (loadError) {
-        if (!controller.signal.aborted) {
-          setError(errorMessage(loadError));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoadingSchedules(false);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadAbsenceRequests(controller.signal);
       }
-    };
-    void loadSchedules();
+    });
     return () => controller.abort();
-  }, [scheduleReloadKey]);
+  }, [loadAbsenceRequests]);
 
-  const activeScheduleId =
-    selectedScheduleId || String(schedules[0]?.lichHocId ?? "");
-
-  useEffect(() => {
-    if (!activeScheduleId) return;
-    const controller = new AbortController();
-    const loadAttendance = async () => {
-      setLoadingAttendance(true);
-      setError("");
-      setNotice("");
-      try {
-        const response = await api.get<AttendanceSession>(
-          `/academic/schedules/${activeScheduleId}/attendance`,
-          { signal: controller.signal },
-        );
-        setAttendance(response.data);
-        setStatuses(
-          Object.fromEntries(
-            response.data.records.map((student) => [
-              student.hocVienId,
-              student.trangThai ?? "Có mặt",
-            ]),
-          ),
-        );
-        setNotes(
-          Object.fromEntries(
-            response.data.records.map((student) => [
-              student.hocVienId,
-              student.ghiChu ?? "",
-            ]),
-          ),
-        );
-        const auditResponse = await api.get<AttendanceAuditEntry[]>(
-          `/academic/schedules/${activeScheduleId}/attendance/audit`,
-          { signal: controller.signal },
-        );
-        setAudit(auditResponse.data);
-      } catch (loadError) {
-        if (!controller.signal.aborted) {
-          setAttendance(null);
-          setError(errorMessage(loadError));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoadingAttendance(false);
-      }
-    };
-    void loadAttendance();
-    return () => controller.abort();
-  }, [activeScheduleId, attendanceReloadKey]);
-
-  const saveAttendance = async () => {
-    if (!attendance) return;
-    const entries = attendance.records.map((student) => ({
-        hocVienId: student.hocVienId,
-        trangThai: statuses[student.hocVienId] || "Có mặt",
-        ghiChu: notes[student.hocVienId]?.trim() || null,
-      }));
-    if (entries.length === 0) {
-      setError("Hãy chọn trạng thái cho ít nhất một học viên.");
+  const reviewAbsenceRequest = async (
+    request: AbsenceReviewRequest,
+    decision: "approved" | "rejected",
+  ) => {
+    const reason = window.prompt(
+      decision === "approved"
+        ? "Nhập lý do duyệt đơn xin phép:"
+        : "Nhập lý do từ chối đơn xin phép:",
+      "",
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setAbsenceRequestsError("Vui lòng nhập lý do duyệt hoặc từ chối.");
       return;
     }
 
-    setSaving(true);
-    setError("");
-    setNotice("");
+    setRequestActionId(request.requestId);
+    setAbsenceRequestsError("");
+    setToast(null);
     try {
-      const response = await api.put<AttendanceSession>(
-        `/academic/schedules/${attendance.lichHocId}/attendance`,
-        { records: entries, lyDo: reason.trim() || null },
+      await api.post(
+        `/attendance/sessions/absence-requests/${request.requestId}/decision`,
+        { decision, reason: reason.trim() },
       );
-      setAttendance(response.data);
-      setStatuses(
-        Object.fromEntries(
-          response.data.records.map((student) => [
-            student.hocVienId,
-            student.trangThai ?? "Có mặt",
-          ]),
-        ),
-      );
-      setNotes(
-        Object.fromEntries(
-          response.data.records.map((student) => [
-            student.hocVienId,
-            student.ghiChu ?? "",
-          ]),
-        ),
-      );
-      const auditResponse = await api.get<AttendanceAuditEntry[]>(
-        `/academic/schedules/${attendance.lichHocId}/attendance/audit`,
-      );
-      setAudit(auditResponse.data);
-      setNotice("Đã lưu điểm danh.");
-      setReason("");
-    } catch (saveError) {
-      setError(errorMessage(saveError));
+      setToast({
+        type: "success",
+        text:
+          decision === "approved"
+            ? "Đã duyệt đơn. Điểm danh được cập nhật thành Vắng có phép và học viên đã nhận thông báo."
+            : "Đã từ chối đơn và gửi thông báo cho học viên.",
+      });
+      await loadAbsenceRequests();
+    } catch (reviewError) {
+      console.error("Không thể xử lý đơn xin phép:", reviewError);
+      setAbsenceRequestsError(errorMessage(reviewError));
     } finally {
-      setSaving(false);
+      setRequestActionId(null);
     }
   };
 
-  const selectedSchedule = schedules.find(
-    (item) => String(item.lichHocId) === activeScheduleId,
-  );
+  const downloadEvidence = async (request: AbsenceReviewRequest) => {
+    if (!request.evidence) return;
+    setAbsenceRequestsError("");
+    try {
+      const response = await api.get<Blob>(request.evidence, {
+        responseType: "blob",
+      });
+      const objectUrl = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = request.evidenceName || "minh-chung";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (downloadError) {
+      console.error("Không thể tải minh chứng xin phép:", downloadError);
+      setAbsenceRequestsError(errorMessage(downloadError));
+    }
+  };
 
   return (
     <main className="attendance-page">
       <header className="attendance-page-hero">
         <div>
           <span>QUẢN LÝ HỌC TẬP</span>
-          <h1>Điểm danh</h1>
-          <p>Chọn buổi học để xem danh sách và ghi nhận chuyên cần.</p>
+          <h1>Xử lý đơn xin phép vắng</h1>
+          <p>Xem xét đơn xin phép vắng và gửi kết quả đến học viên.</p>
         </div>
         <div className="attendance-page-actions">
-          <button
-            type="button"
-            className="attendance-page-switch"
-            onClick={() => window.location.assign("/quan-ly-diem-danh-lop")}
-          >
-            Điểm danh theo lớp/ngày
-          </button>
           <span className="attendance-page-icon" aria-hidden="true">✓</span>
         </div>
       </header>
 
-      <section className="attendance-page-card">
-        <label className="attendance-page-field">
-          <span>Buổi học</span>
-          <select
-            value={activeScheduleId}
-            onChange={(event) => {
-              setSelectedScheduleId(event.target.value);
-              setAttendance(null);
+      <section className="attendance-page-card attendance-request-review">
+        <div className="attendance-request-heading">
+          <div>
+            <h2>Đơn xin phép vắng cần xử lý</h2>
+            <p>
+              Chỉ hiển thị các buổi học được phân công cho bạn. Khi duyệt đơn,
+              điểm danh của học viên sẽ chuyển thành Vắng có phép.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="attendance-page-switch"
+            onClick={() => {
+              setAbsenceRequestsLoading(true);
+              void loadAbsenceRequests();
             }}
-            disabled={loadingSchedules || schedules.length === 0}
+            disabled={absenceRequestsLoading}
           >
-            {loadingSchedules && <option value="">Đang tải buổi học...</option>}
-            {!loadingSchedules && schedules.length === 0 && (
-              <option value="">Không có buổi học khả dụng</option>
-            )}
-            {schedules.map((schedule) => (
-              <option key={schedule.lichHocId} value={schedule.lichHocId}>
-                {schedule.maLop ?? schedule.maBuoiHoc} · {schedule.tenMonHoc ?? "Buổi học"} ·{" "}
-                {schedule.ngayHoc} · {schedule.gioBatDau}–{schedule.gioKetThuc}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {selectedSchedule && (
-          <div className="attendance-page-summary">
-            <strong>{selectedSchedule.tenLop ?? selectedSchedule.maLop ?? "Lớp học"}</strong>
-            <span>
-              {selectedSchedule.tenMonHoc ?? "Môn học"} · {selectedSchedule.ngayHoc} ·{" "}
-              {selectedSchedule.gioBatDau}–{selectedSchedule.gioKetThuc}
-            </span>
-          </div>
-        )}
-
-        {error && (
+            {absenceRequestsLoading ? "Đang tải..." : "Tải lại"}
+          </button>
+        </div>
+        {absenceRequestsError && (
           <div className="attendance-page-message error" role="alert">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setError("");
-                if (schedules.length === 0) {
-                  setScheduleReloadKey((current) => current + 1);
-                } else {
-                  setAttendanceReloadKey((current) => current + 1);
-                }
-              }}
-              disabled={loadingAttendance || loadingSchedules}
-            >
-              Tải lại
-            </button>
+            {absenceRequestsError}
           </div>
         )}
-        {notice && <div className="attendance-page-message success" role="status">{notice}</div>}
-
-        {loadingAttendance ? (
-          <p className="attendance-page-empty" role="status">Đang tải danh sách học viên...</p>
-        ) : attendance?.records.length ? (
-          <>
-            <div className="attendance-page-table-wrap">
-              <table className="attendance-page-table">
-                <thead>
-                  <tr>
-                    <th>Học viên</th>
-                    <th>Email</th>
-                    <th>Trạng thái điểm danh</th>
-                    <th>Ghi chú</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendance.records.map((student) => (
-                    <tr key={student.hocVienId}>
-                      <td data-label="Học viên">{student.hoTen}</td>
-                      <td data-label="Email">{student.email}</td>
-                      <td data-label="Trạng thái điểm danh">
-                        <select
-                          value={statuses[student.hocVienId] ?? "Có mặt"}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            if (
-                              value === "" ||
-                              STATUSES.includes(value as AttendanceStatus)
-                            ) {
-                              setStatuses((current) => ({
-                                ...current,
-                                [student.hocVienId]: value as AttendanceStatus | "",
-                              }));
-                            }
-                          }}
-                          disabled={saving || !attendance.coTheCapNhat}
-                          aria-label={`Trạng thái điểm danh của ${student.hoTen}`}
-                        >
-                          <option value="">Chưa điểm danh</option>
-                          {STATUSES.map((status) => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td data-label="Ghi chú">
-                        <input
-                          value={notes[student.hocVienId] ?? ""}
-                          onChange={(event) =>
-                            setNotes((current) => ({
-                              ...current,
-                              [student.hocVienId]: event.target.value,
-                            }))
-                          }
-                          maxLength={1000}
-                          placeholder="Ghi chú (không bắt buộc)"
-                          disabled={saving || !attendance.coTheCapNhat}
-                          aria-label={`Ghi chú cho ${student.hoTen}`}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {attendance.coTheCapNhat && (
-              <>
-                <label className="attendance-page-field attendance-page-reason">
-                  <span>Lý do điều chỉnh (bắt buộc khi thay đổi dữ liệu đã lưu)</span>
-                  <textarea
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    rows={3}
-                    maxLength={1000}
-                    disabled={saving}
-                  />
-                </label>
-                <button
-                  className="attendance-page-save"
-                  type="button"
-                  onClick={() => void saveAttendance()}
-                  disabled={saving || loadingAttendance}
-                >
-                  {saving ? "Đang lưu..." : "Lưu điểm danh"}
-                </button>
-              </>
-            )}
-            {!!audit.length && (
-              <section className="attendance-page-audit" aria-label="Lịch sử chỉnh sửa điểm danh">
-                <h2>Lịch sử chỉnh sửa điểm danh (360 ngày)</h2>
-                <ul>
-                  {audit.map((entry) => (
-                    <li key={entry.id}>
-                      Học viên #{entry.hocVienId}: {entry.trangThaiCu ?? "Chưa điểm danh"} →{" "}
-                      {entry.trangThaiMoi ?? "Đã xóa"} · {entry.lyDo} · {entry.nguoiThucHien} ·{" "}
-                      {new Date(entry.thoiDiem).toLocaleString("vi-VN")}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </>
-        ) : !loadingAttendance && !error ? (
-          <p className="attendance-page-empty">
-            {attendance
-              ? "Buổi học chưa có học viên trong danh sách điểm danh."
-              : "Chọn buổi học để xem danh sách điểm danh."}
+        {absenceRequestsLoading ? (
+          <p className="attendance-page-empty" role="status">
+            Đang tải đơn xin phép...
           </p>
-        ) : null}
+        ) : absenceRequests.length === 0 ? (
+          <p className="attendance-page-empty">
+            Hiện không có đơn xin phép nào cần theo dõi.
+          </p>
+        ) : (
+          <div className="attendance-request-list">
+            {absenceRequests.map((request) => (
+              <article
+                className="attendance-request-item"
+                key={request.requestId}
+              >
+                <div className="attendance-request-item-heading">
+                  <div>
+                    <strong>
+                      {request.studentName ?? "Học viên"}
+                      {" · "}
+                      {request.classCode ?? "Lớp học"}
+                    </strong>
+                    <span>
+                      {request.subjectName ?? "Buổi học"} · {request.date} ·{" "}
+                      {request.startTime}–{request.endTime}
+                    </span>
+                  </div>
+                  <span className={`attendance-request-status ${request.status}`}>
+                    {request.status === "pending"
+                      ? "Chờ duyệt"
+                      : request.status === "approved"
+                        ? "Đã duyệt"
+                        : "Đã từ chối"}
+                  </span>
+                </div>
+                <p className="attendance-request-reason">{request.reason}</p>
+                {request.evidence && (
+                  <button
+                    type="button"
+                    className="attendance-request-evidence"
+                    onClick={() => void downloadEvidence(request)}
+                  >
+                    Tải minh chứng
+                    {request.evidenceName ? ` (${request.evidenceName})` : ""}
+                  </button>
+                )}
+                {request.reviewReason && (
+                  <p className="attendance-request-review-reason">
+                    <strong>Lý do xử lý:</strong> {request.reviewReason}
+                  </p>
+                )}
+                {request.status === "pending" && (
+                  <div className="attendance-request-actions">
+                    <button
+                      type="button"
+                      className="attendance-request-approve"
+                      disabled={requestActionId === request.requestId}
+                      onClick={() =>
+                        void reviewAbsenceRequest(request, "approved")
+                      }
+                    >
+                      Duyệt đơn
+                    </button>
+                    <button
+                      type="button"
+                      className="attendance-request-reject"
+                      disabled={requestActionId === request.requestId}
+                      onClick={() =>
+                        void reviewAbsenceRequest(request, "rejected")
+                      }
+                    >
+                      Từ chối
+                    </button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
+      {toast && (
+        <ToastNotification
+          type={toast.type}
+          text={toast.text}
+          onClose={() => setToast(null)}
+        />
+      )}
     </main>
   );
 }

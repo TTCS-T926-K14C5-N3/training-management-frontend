@@ -5,6 +5,7 @@ import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AppStatusPage from "./components/AppStatusPage";
+import { ABSENCE_APPROVAL_ALERT_STORAGE_KEY } from "./components/AbsenceApprovalAlert";
 
 import UsersPage from "./pages/UsersPage";
 import UserImportInvalidDataPage from "./pages/UserImportInvalidDataPage";
@@ -1040,6 +1041,27 @@ function App() {
       setUser(loggedInUser);
       sessionStorage.removeItem("expiredSessionEmail");
 
+      if (vaiTro.some((role) => role.vaiTroId === 2)) {
+        sessionStorage.removeItem(ABSENCE_APPROVAL_ALERT_STORAGE_KEY);
+        try {
+          const alertResponse = await api.get<{
+            id: number;
+            message: string;
+          } | null>("/attendance/sessions/notifications/approved-alert");
+          if (alertResponse.data) {
+            sessionStorage.setItem(
+              ABSENCE_APPROVAL_ALERT_STORAGE_KEY,
+              JSON.stringify(alertResponse.data),
+            );
+          }
+        } catch (alertError) {
+          console.error(
+            "Không thể kiểm tra thông báo duyệt đơn sau đăng nhập:",
+            alertError,
+          );
+        }
+      }
+
       if (data.yeuCauDoiMatKhau === true) {
         window.history.replaceState({}, "", "/change-password");
 
@@ -1349,6 +1371,7 @@ function App() {
     }
 
     localStorage.removeItem("user");
+    sessionStorage.removeItem(ABSENCE_APPROVAL_ALERT_STORAGE_KEY);
     setUser(null);
     setEmail("");
     setPassword("");
@@ -1709,7 +1732,6 @@ function App() {
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onScheduleManagement={handleScheduleManagement}
-            onAttendanceManagement={handleAttendanceManagement}
             onClassAttendanceManagement={handleClassAttendanceManagement}
             onAssignments={handleAssignments}
             onChangePassword={handleChangePassword}
@@ -1779,7 +1801,6 @@ function App() {
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
             onScheduleManagement={handleScheduleManagement}
-            onAttendanceManagement={handleAttendanceManagement}
             onClassAttendanceManagement={handleClassAttendanceManagement}
             onAssignments={handleAssignments}
             onChangePassword={handleChangePassword}
@@ -1838,7 +1859,6 @@ function App() {
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
-        onAttendanceManagement={handleAttendanceManagement}
         onClassAttendanceManagement={handleClassAttendanceManagement}
         onAssignments={handleAssignments}
         onChangePassword={handleChangePassword}
@@ -1864,7 +1884,6 @@ function App() {
         onAdmissionsLeads={handleAdmissionsLeads}
         onAbsenceRequest={handleAbsenceRequest}
         onAbsenceRequestList={handleAbsenceRequestList}
-        onAttendanceManagement={handleAttendanceManagement}
         onClassAttendanceManagement={handleClassAttendanceManagement}
         onAssignments={handleAssignments}
         onProfile={handleProfile}
@@ -2001,8 +2020,12 @@ function App() {
         <ScheduleManagement
           permissions={effectivePermissions}
           isStudent={isStudent}
+          canReviewAbsenceRequests={
+            !isStudent && hasPermission(user, "ATTENDANCE_VIEW")
+          }
           onOpenHistory={() => navigate("/quan-ly-lich-hoc/thong-bao")}
           onOpenArchive={() => navigate("/quan-ly-lich-hoc/luu-tru")}
+          onOpenAbsenceRequests={handleAttendanceManagement}
         />
       </ProtectedRoute>,
     );
@@ -2171,7 +2194,6 @@ function App() {
 
           onTrainingCatalog={handleTrainingCatalog}
           onAdmissionsLeads={handleAdmissionsLeads}
-          onAttendanceManagement={handleAttendanceManagement}
           onClassAttendanceManagement={handleClassAttendanceManagement}
           onAssignments={handleAssignments}
 
@@ -2210,7 +2232,6 @@ function App() {
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
-        onAttendanceManagement={handleAttendanceManagement}
         onClassAttendanceManagement={handleClassAttendanceManagement}
         onAssignments={handleAssignments}
         onAbsenceRequest={handleAbsenceRequest}

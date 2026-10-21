@@ -549,6 +549,10 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
       setStudentActionError("Vui lòng chọn lớp chuyển đến.");
       return;
     }
+    if (studentActionForm.reason.trim().length < 5) {
+      setStudentActionError("Lý do xử lý học viên cần ít nhất 5 ký tự.");
+      return;
+    }
 
     if (studentActionForm.type === "BaoLuu") {
       const confirmed = window.confirm(
@@ -1255,6 +1259,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                 Lý do
                 <textarea
                   required
+                  minLength={5}
                   rows={3}
                   maxLength={1000}
                   value={studentActionForm.reason}
