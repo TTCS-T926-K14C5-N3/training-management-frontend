@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import SearchableSelect from "./SearchableSelect";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "./ToastNotification";
@@ -365,7 +366,7 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
         </div>
         <label className="academic-program-select">
           Chương trình
-          <select
+          <SearchableSelect
             value={programId}
             onChange={(event) => {
               setProgramId(event.target.value);
@@ -380,7 +381,7 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
                 {program.maChuongTrinh} — {program.tenChuongTrinh}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
         </label>
       </div>
       <div className="academic-program-subject-grid">
@@ -504,7 +505,7 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
                 </div>
                 <label className="academic-prerequisite">
                   Môn tiên quyết
-                  <select
+                  <SearchableSelect
                     value={item.monTienQuyetId ?? ""}
                     disabled={!canUpdate}
                     onChange={(event) =>
@@ -534,7 +535,7 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
                           {subject.tenMonHoc}
                         </option>
                       ))}
-                  </select>
+                  </SearchableSelect>
                 </label>
                 {sessionsFor === item.monHocId && (
                   <div className="academic-session-editor">
@@ -566,7 +567,7 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
                           </span>
                         </div>
                         <div className="academic-clone-controls">
-                          <select
+                          <SearchableSelect
                             className="academic-clone-select"
                             value={cloneSourceSubjectId}
                             onChange={(event) =>
@@ -599,7 +600,7 @@ const ProgramComposition: React.FC<ProgramCompositionProps> = ({
                                   /{subject.soBuoi})
                                 </option>
                               ))}
-                          </select>
+                          </SearchableSelect>
                           <button
                             type="button"
                             className="academic-clone-button"

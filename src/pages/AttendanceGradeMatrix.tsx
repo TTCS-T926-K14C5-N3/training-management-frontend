@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import axios from "axios";
 import api from "../services/api";
 import "./AttendanceGradeMatrix.css";
@@ -206,7 +207,7 @@ export default function AttendanceGradeMatrix({ isStudent, onBack }: Props) {
         <div className="attendance-grade-toolbar">
           <label>
             Lớp học
-            <select
+            <SearchableSelect
               value={classId}
               onChange={(event) => {
                 setClassId(event.target.value);
@@ -226,7 +227,7 @@ export default function AttendanceGradeMatrix({ isStudent, onBack }: Props) {
                   {item.classCode} — {item.className}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <button
             className="attendance-grade-button primary"

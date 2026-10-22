@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
@@ -272,7 +273,7 @@ function AbsenceRequest({
         <form className="absence-request-form" onSubmit={(event) => void submit(event)} noValidate>
           <label className="absence-request-field">
             <span>Buổi học cần xin phép <i>*</i></span>
-            <select
+            <SearchableSelect
               value={scheduleId}
               onChange={(event) => {
                 setScheduleId(event.target.value);
@@ -293,7 +294,7 @@ function AbsenceRequest({
                   {schedule.maLop ? ` · ${schedule.maLop}` : ""}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
             {errors.schedule && (
               <small id="absence-schedule-error" role="alert">
                 {errors.schedule}

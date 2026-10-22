@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
@@ -566,7 +567,7 @@ function StudentScheduleView({
         </article>
         <label className="student-schedule-filter">
           <span>Lớp học</span>
-          <select
+          <SearchableSelect
             value={selectedClassId}
             onChange={(event) => setSelectedClassId(event.target.value)}
           >
@@ -576,11 +577,11 @@ function StudentScheduleView({
                 {item.label}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
         </label>
         <label className="student-schedule-filter">
           <span>Trạng thái</span>
-          <select
+          <SearchableSelect
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
@@ -589,7 +590,7 @@ function StudentScheduleView({
             <option>Đang diễn ra</option>
             <option>Đã diễn ra</option>
             <option>Đã hủy</option>
-          </select>
+          </SearchableSelect>
         </label>
       </div>
 
@@ -1573,7 +1574,7 @@ function ScheduleManagement({
             )}
             <label className="schedule-filter">
               <span>Trạng thái</span>
-              <select
+              <SearchableSelect
                 value={filter}
                 onChange={(event) => {
                   setFilter(event.target.value);
@@ -1585,13 +1586,13 @@ function ScheduleManagement({
                 <option>Đang diễn ra</option>
                 <option>Đã diễn ra</option>
                 <option>Đã hủy</option>
-              </select>
+              </SearchableSelect>
             </label>
             {!isStudent && (
               <>
                 <label className="schedule-filter">
                   <span>Lớp</span>
-                  <select value={classFilter} onChange={(event) => {
+                  <SearchableSelect value={classFilter} onChange={(event) => {
                     setClassFilter(event.target.value);
                     setSchedulePage(1);
                   }}>
@@ -1599,11 +1600,11 @@ function ScheduleManagement({
                     {Array.from(new Map(schedules.map((item) => [item.lopHocId, item.maLop ?? String(item.lopHocId)])).entries()).map(([id, code]) => (
                       <option key={id} value={id}>{code}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </label>
                 <label className="schedule-filter">
                   <span>Giảng viên</span>
-                  <select value={teacherFilter} onChange={(event) => {
+                  <SearchableSelect value={teacherFilter} onChange={(event) => {
                     setTeacherFilter(event.target.value);
                     setSchedulePage(1);
                   }}>
@@ -1611,11 +1612,11 @@ function ScheduleManagement({
                     {Array.from(new Map(schedules.map((item) => [item.giangVienId, item.giangVienTen ?? String(item.giangVienId)])).entries()).map(([id, name]) => (
                       <option key={id} value={id}>{name}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </label>
                 <label className="schedule-filter">
                   <span>Phòng</span>
-                  <select value={roomFilter} onChange={(event) => {
+                  <SearchableSelect value={roomFilter} onChange={(event) => {
                     setRoomFilter(event.target.value);
                     setSchedulePage(1);
                   }}>
@@ -1623,7 +1624,7 @@ function ScheduleManagement({
                     {Array.from(new Map(schedules.filter((item) => item.phongHocId !== null).map((item) => [item.phongHocId!, item.maPhong ?? String(item.phongHocId)])).entries()).map(([id, room]) => (
                       <option key={id} value={id}>{room}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </label>
               </>
             )}
@@ -1945,7 +1946,7 @@ function ScheduleManagement({
                   {editing ? (
                     <input value={`${editing.maLop ?? ""} · ${editing.tenLop ?? ""}`} readOnly />
                   ) : (
-                    <select
+                    <SearchableSelect
                       value={form.lopHocId}
                       onChange={(event) => {
                         const classId = Number(event.target.value) || "";
@@ -1975,7 +1976,7 @@ function ScheduleManagement({
                           {item.maLop} · {item.tenLop}
                         </option>
                       ))}
-                    </select>
+                    </SearchableSelect>
                   )}
                   {fieldErrors.lopHocId && <small>{fieldErrors.lopHocId}</small>}
                 </label>
@@ -1984,7 +1985,7 @@ function ScheduleManagement({
                   {editing ? (
                     <input value={editing.tenMonHoc ?? ""} readOnly />
                   ) : (
-                    <select
+                    <SearchableSelect
                       value={form.monHocId}
                       onChange={(event) => setForm((current) => ({
                         ...current,
@@ -1999,7 +2000,7 @@ function ScheduleManagement({
                           {item.maMonHoc} · {item.tenMonHoc}
                         </option>
                       ))}
-                    </select>
+                    </SearchableSelect>
                   )}
                   {fieldErrors.monHocId && <small>{fieldErrors.monHocId}</small>}
                 </label>
@@ -2021,7 +2022,7 @@ function ScheduleManagement({
                 </label>
                 <label className="schedule-field">
                   <span>Giảng viên dạy <i>*</i></span>
-                  <select
+                  <SearchableSelect
                     value={form.giangVienId}
                     onChange={(event) => setForm((current) => ({
                       ...current,
@@ -2035,7 +2036,7 @@ function ScheduleManagement({
                         {item.hoTen} · {item.email}
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                   {fieldErrors.giangVienId && <small>{fieldErrors.giangVienId}</small>}
                 </label>
                 <label className="schedule-field">
@@ -2060,7 +2061,7 @@ function ScheduleManagement({
                 </label>
                 <label className="schedule-field schedule-field-full">
                   <span>Phòng học</span>
-                  <select
+                  <SearchableSelect
                     value={form.phongHocId}
                     onChange={(event) => setForm((current) => ({
                       ...current,
@@ -2073,7 +2074,7 @@ function ScheduleManagement({
                         {item.maPhong} · {item.tenPhong}
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                   <small className="schedule-hint">Để trống nếu buổi học không cần sử dụng phòng.</small>
                 </label>
               </div>
@@ -2234,7 +2235,7 @@ function ScheduleManagement({
                       </div>
                       <label className="schedule-field">
                         <span>Trạng thái</span>
-                        <select
+                        <SearchableSelect
                           required
                           value={student.trangThai}
                           disabled={!attendanceCanUpdate || attendanceSaving}
@@ -2253,7 +2254,7 @@ function ScheduleManagement({
                           <option value="Đi muộn">Đi muộn</option>
                           <option value="Vắng có phép">Vắng có phép</option>
                           <option value="Vắng không phép">Vắng không phép</option>
-                        </select>
+                        </SearchableSelect>
                       </label>
                       <label className="schedule-field schedule-attendance-note">
                         <span>Ghi chú</span>

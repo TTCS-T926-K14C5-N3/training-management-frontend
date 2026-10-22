@@ -73,7 +73,7 @@
 }
 
 .training-program-modal .academic-form-grid input,
-.training-program-modal .academic-form-grid select,
+.training-program-modal .academic-form-grid .searchable-select-trigger,
 .training-program-modal .academic-form-grid textarea {
   box-sizing: border-box;
   width: 100%;

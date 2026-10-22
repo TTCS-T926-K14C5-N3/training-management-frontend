@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import SearchableSelect from "./SearchableSelect";
 import axios from "axios";
 import api from "../services/api";
 import "./StudentReservationModal.css";
@@ -320,7 +321,7 @@ export const StudentReservationModal: React.FC<StudentReservationModalProps> = (
                   <label htmlFor="res-class-select">
                     Lớp học <span className="required">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
                     id="res-class-select"
                     value={selectedClassId}
                     disabled={Boolean(initialClassId) || loadingClasses}
@@ -337,7 +338,7 @@ export const StudentReservationModal: React.FC<StudentReservationModalProps> = (
                         {c.maLop} · {c.tenLop} ({c.siSoHienTai ?? (c.hocViens?.length || 0)} học viên)
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
 
                 {/* 2. Chọn học viên cần bảo lưu (Bullet 1) */}
@@ -345,7 +346,7 @@ export const StudentReservationModal: React.FC<StudentReservationModalProps> = (
                   <label htmlFor="res-student-select">
                     Học viên cần bảo lưu <span className="required">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
                     id="res-student-select"
                     value={selectedStudentId}
                     disabled={Boolean(initialStudentId) || !selectedClassId}
@@ -368,7 +369,7 @@ export const StudentReservationModal: React.FC<StudentReservationModalProps> = (
                         {s.hoTen} {s.email ? `(${s.email})` : ""} {s.trangThaiGhiDanh ? `· ${s.trangThaiGhiDanh}` : ""}
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                   {initialStudentName && initialStudentId && (
                     <small style={{ color: "#64748b", marginTop: "3px" }}>
                       Đang xử lý cho: <strong>{initialStudentName}</strong>
