@@ -16,6 +16,8 @@ type Submission = {
   status: string;
   late: boolean;
   grade: number | null;
+  rawGrade?: number | null;
+  penaltyDeduction?: number;
   feedback: string | null;
   gradedAt?: string | null;
   attachments: Attachment[];
@@ -33,10 +35,38 @@ type Assignment = {
   hanNop: string;
   diemToiDa: number;
   choNopMuon: boolean;
+  hanNopMuon?: string | null;
+  loaiPhatNopMuon?: string;
+  giaTriPhat?: number;
+  diemSanToiThieu?: number;
   trangThai: string;
   attachments: Attachment[];
   submission?: Submission | null;
   canResubmit?: boolean;
+};
+
+const describeLatePolicy = (assignment: Assignment): string => {
+  if (!assignment.choNopMuon) return "Không nhận bài muộn";
+  const parts: string[] = [];
+  if (assignment.hanNopMuon) {
+    parts.push(`Hạn chót: ${new Date(assignment.hanNopMuon).toLocaleString("vi-VN")}`);
+  }
+  const pType = assignment.loaiPhatNopMuon || "none";
+  const pVal = assignment.giaTriPhat ?? 0;
+  const minFloor = assignment.diemSanToiThieu ?? 0;
+  if (pType === "none") {
+    parts.push("Không phạt điểm");
+  } else if (pType === "percentage_per_day") {
+    parts.push(`Trừ ${pVal}%/ngày`);
+  } else if (pType === "fixed_percentage") {
+    parts.push(`Trừ ${pVal}%`);
+  } else if (pType === "fixed_points") {
+    parts.push(`Trừ ${pVal}đ`);
+  }
+  if (pType !== "none" && minFloor > 0) {
+    parts.push(`Sàn: ${minFloor}đ`);
+  }
+  return parts.length ? `Cho phép nộp muộn (${parts.join(" · ")})` : "Cho phép nộp muộn";
 };
 type LessonOption = { lichHocId: number; label: string };
 type SubjectOption = { monHocId: number; tenMonHoc: string; lessons: LessonOption[] };
@@ -112,7 +142,18 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
   const [submissionFormVersions, setSubmissionFormVersions] = useState<Record<number, number>>({});
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", deadline: "", points: "100", allowLate: false, lessonId: "" });
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    deadline: "",
+    points: "100",
+    allowLate: false,
+    lateDeadline: "",
+    penaltyType: "none",
+    penaltyValue: "10",
+    minFloorScore: "0",
+    lessonId: "",
+  });
   const [assignmentFiles, setAssignmentFiles] = useState<File[]>([]);
   const [submissionFiles, setSubmissionFiles] = useState<Record<number, File[]>>({});
   const [repositoryUrls, setRepositoryUrls] = useState<Record<number, string>>({});
@@ -216,6 +257,18 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
       setError("Hạn nộp phải ở thời điểm tương lai.");
       return;
     }
+    if (
+      form.allowLate &&
+      form.lateDeadline &&
+      new Date(form.lateDeadline).getTime() <= new Date(form.deadline).getTime()
+    ) {
+      setError("Hạn chót nộp muộn phải sau hạn nộp chính thức.");
+      return;
+    }
+    if (form.allowLate && Number(form.minFloorScore) > Number(form.points)) {
+      setError("Điểm sàn tối thiểu không được lớn hơn điểm tối đa.");
+      return;
+    }
     if (!validateFiles(assignmentFiles)) return;
     setSaving(true);
     setError("");
@@ -230,12 +283,27 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
         hanNop: new Date(form.deadline).toISOString(),
         diemToiDa: Number(form.points),
         choNopMuon: form.allowLate,
+        hanNopMuon: form.allowLate && form.lateDeadline ? new Date(form.lateDeadline).toISOString() : null,
+        loaiPhatNopMuon: form.allowLate ? form.penaltyType : "none",
+        giaTriPhat: form.allowLate && form.penaltyType !== "none" ? Number(form.penaltyValue || 0) : 0,
+        diemSanToiThieu: form.allowLate && form.penaltyType !== "none" ? Number(form.minFloorScore || 0) : 0,
       }));
       assignmentFiles.forEach((file) => data.append("files", file));
       await api.post<Assignment>("/assignments", data);
-      setForm({ title: "", description: "", deadline: "", points: "100", allowLate: false, lessonId: "" });
+      setForm({
+        title: "",
+        description: "",
+        deadline: "",
+        points: "100",
+        allowLate: false,
+        lateDeadline: "",
+        penaltyType: "none",
+        penaltyValue: "10",
+        minFloorScore: "0",
+        lessonId: "",
+      });
       setAssignmentFiles([]);
-      setNotice("Đã lưu bản nháp bài tập.");
+      setNotice("Đã lưu bản nháp bài tập cùng chính sách nộp muộn.");
       await loadTeacher();
     } catch (requestError: unknown) {
       setError(errorText(requestError));
@@ -499,7 +567,85 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
             <label>Điểm tối đa<input required type="number" min="0.01" max="99999.99" step="0.01" value={form.points} onChange={(event) => setForm((value) => ({ ...value, points: event.target.value }))} /></label>
             <label className="assignment-wide">Mô tả<textarea required rows={4} value={form.description} onChange={(event) => setForm((value) => ({ ...value, description: event.target.value }))} /></label>
             <label className="assignment-wide">Tệp đính kèm (tối đa 20 MB/tệp)<input type="file" multiple onChange={(event) => setAssignmentFiles(Array.from(event.target.files ?? []))} /></label>
-            <label className="assignment-checkbox"><input type="checkbox" checked={form.allowLate} onChange={(event) => setForm((value) => ({ ...value, allowLate: event.target.checked }))} /> Cho phép nộp muộn</label>
+            <div className="assignment-wide assignment-late-box">
+              <label className="assignment-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.allowLate}
+                  onChange={(event) => setForm((value) => ({ ...value, allowLate: event.target.checked }))}
+                />
+                Cho phép nộp muộn
+              </label>
+
+              {form.allowLate && (
+                <div className="late-policy-config-box">
+                  <div className="late-policy-title">
+                    <strong>⚙️ Cấu hình chính sách nộp muộn</strong>
+                    <span>Thiết lập hạn chót và quy tắc trừ điểm phạt khi nộp muộn</span>
+                  </div>
+                  <div className="late-policy-grid">
+                    <label>
+                      <span>Hạn chót nộp muộn (Cut-off date)</span>
+                      <input
+                        type="datetime-local"
+                        min={form.deadline || minimumDeadline}
+                        value={form.lateDeadline}
+                        onChange={(event) => setForm((value) => ({ ...value, lateDeadline: event.target.value }))}
+                      />
+                      <small className="field-hint">Sau thời điểm này hệ thống khóa nộp bài hoàn toàn (để trống nếu không giới hạn).</small>
+                    </label>
+
+                    <label>
+                      <span>Hình thức trừ điểm phạt</span>
+                      <select
+                        value={form.penaltyType}
+                        onChange={(event) => setForm((value) => ({ ...value, penaltyType: event.target.value }))}
+                      >
+                        <option value="none">Không trừ điểm phạt</option>
+                        <option value="percentage_per_day">Trừ % điểm tối đa mỗi ngày trễ</option>
+                        <option value="fixed_percentage">Trừ % cố định khi nộp muộn</option>
+                        <option value="fixed_points">Trừ số điểm cố định</option>
+                      </select>
+                    </label>
+
+                    {form.penaltyType !== "none" && (
+                      <>
+                        <label>
+                          <span>
+                            {form.penaltyType === "percentage_per_day"
+                              ? "Tỷ lệ trừ mỗi ngày trễ (%)"
+                              : form.penaltyType === "fixed_percentage"
+                              ? "Tỷ lệ trừ cố định (%)"
+                              : "Số điểm trừ cố định"}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={form.penaltyType.includes("percentage") ? "100" : form.points}
+                            step={form.penaltyType.includes("percentage") ? "1" : "0.5"}
+                            value={form.penaltyValue}
+                            onChange={(event) => setForm((value) => ({ ...value, penaltyValue: event.target.value }))}
+                          />
+                        </label>
+
+                        <label>
+                          <span>Điểm sàn tối thiểu sau phạt</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={form.points}
+                            step="0.5"
+                            value={form.minFloorScore}
+                            onChange={(event) => setForm((value) => ({ ...value, minFloorScore: event.target.value }))}
+                          />
+                          <small className="field-hint">Điểm sau phạt không được thấp hơn mức sàn này.</small>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <button className="assignment-primary" type="submit" disabled={saving}>{saving ? "Đang lưu…" : "Lưu bản nháp"}</button>
           </form>
         </section>
@@ -523,14 +669,14 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
             const visibleStudents = roster?.students.slice(rosterStartIndex, rosterStartIndex + ROSTER_PAGE_SIZE) ?? [];
             return <article className="assignment-card" key={item.assignmentId}>
             <div className="assignment-card-top"><div><span className={`assignment-status ${item.trangThai.toLowerCase()}`}>{item.trangThai === "Draft" ? "Bản nháp" : "Đã phát hành"}</span><h3>{item.tieuDe}</h3><p>{item.tenLop} · {item.tenMonHoc}</p></div><strong>{item.diemToiDa} điểm</strong></div>
-            <p className="assignment-description">{item.moTa}</p><p className="assignment-meta">Hạn nộp: {formatDate(item.hanNop)} · {item.choNopMuon ? "Cho phép nộp muộn" : "Không nhận bài muộn"}</p>
+            <p className="assignment-description">{item.moTa}</p><p className="assignment-meta">Hạn nộp: {formatDate(item.hanNop)} · <span className="assignment-late-policy-text">{describeLatePolicy(item)}</span></p>
             <div className="assignment-attachments">{item.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep} ({formatSize(attachment.kichThuoc)})</button>)}</div>
             <div className="assignment-actions">{item.trangThai === "Draft" && <button type="button" className="assignment-primary" disabled={saving} onClick={() => void publish(item.assignmentId)}>Phát hành</button>}{item.trangThai === "Published" && <button type="button" aria-expanded={Boolean(roster)} disabled={loadingRosterId === item.assignmentId} onClick={() => void toggleRoster(item.assignmentId)}>{loadingRosterId === item.assignmentId ? "Đang tải danh sách…" : roster ? "Đóng danh sách nộp bài" : "Danh sách nộp bài"}</button>}</div>
             {loadingRosterId === item.assignmentId && !roster && <p className="assignment-loading">Đang tải danh sách học viên…</p>}
             {roster && <section className="assignment-panel roster-panel"><div className="roster-heading"><div><h2>Danh sách học viên</h2><p>{roster.submittedCount}/{roster.totalStudents} đã nộp · {roster.gradedCount} đã chấm · {roster.lateCount} muộn · {roster.missingCount} chưa nộp</p></div><label>Lọc<select value={rosterFilters[item.assignmentId] ?? "all"} onChange={(event) => { setRosterFilters((current) => ({ ...current, [item.assignmentId]: event.target.value })); setRosterPages((current) => ({ ...current, [item.assignmentId]: 1 })); void loadRoster(item.assignmentId, event.target.value); }}><option value="all">Tất cả</option><option value="missing">Chưa nộp</option><option value="submitted">Đã nộp</option><option value="ungraded">Chưa chấm</option><option value="late">Nộp muộn</option><option value="graded">Đã chấm</option></select></label></div>
               <div className="progress-track"><span style={{ width: `${roster.progressPercent}%` }} /></div><small>Tiến độ chấm {roster.progressPercent}%</small>
               <div className="roster-list">{visibleStudents.map((student) => <article className="roster-row" key={student.studentId}><div className="roster-student"><strong>{student.studentName}</strong><small>{student.email}</small><span className={`assignment-status ${student.status}`}>{student.status === "missing" ? "Chưa nộp" : student.status === "graded" ? "Đã chấm" : student.status === "late" ? "Nộp muộn" : "Đã nộp"}</span></div>
-                {student.submission ? <div className="roster-submission"><a href={student.submission.repositoryUrl} target="_blank" rel="noreferrer">Repository · phiên bản {student.submission.version}</a><small>Nộp lúc {formatDate(student.submission.submittedAt)}{student.submission.grade !== null ? ` · ${student.submission.grade} điểm` : ""}</small><div className="assignment-attachments">{student.submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep}</button>)}</div>
+                {student.submission ? <div className="roster-submission"><a href={student.submission.repositoryUrl} target="_blank" rel="noreferrer">Repository · phiên bản {student.submission.version}</a><small>Nộp lúc {formatDate(student.submission.submittedAt)}{student.submission.grade !== null ? ` · ${student.submission.grade} điểm` : ""}{student.submission.penaltyDeduction ? ` (gốc ${student.submission.rawGrade}đ, trừ muộn -${student.submission.penaltyDeduction}đ)` : ""}</small><div className="assignment-attachments">{student.submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep}</button>)}</div>
                   {student.submission.grade === null ? <form className="grade-form" onSubmit={(event) => void gradeSubmission(student.submission!.submissionId, item.assignmentId, student.studentId, student.studentName, event)}><input name="points" type="number" min="0" max={item.diemToiDa} step="0.01" required placeholder="Điểm" /><input name="feedback" maxLength={2000} placeholder="Nhận xét" /><button type="submit" disabled={saving}>Chấm bài</button></form> : <button type="button" onClick={() => void reopen(item.assignmentId, student.studentId)}>Mở lại bài</button>}
                   <button type="button" className="submission-history-trigger" aria-expanded={Boolean(teacherSubmissionHistories[item.assignmentId]?.[student.studentId])} disabled={loadingTeacherHistoryKey === `${item.assignmentId}:${student.studentId}`} onClick={() => void toggleTeacherSubmissionHistory(item.assignmentId, student.studentId)}>{loadingTeacherHistoryKey === `${item.assignmentId}:${student.studentId}` ? "Đang tải lịch sử…" : teacherSubmissionHistories[item.assignmentId]?.[student.studentId] ? "Ẩn lịch sử nộp" : "Lịch sử nộp"}</button>
                   {teacherSubmissionHistories[item.assignmentId]?.[student.studentId] && <section className="submission-history teacher-submission-history" aria-label={`Lịch sử nộp của ${student.studentName}`}><h4>Các phiên đã nộp ({teacherSubmissionHistories[item.assignmentId][student.studentId].length})</h4>{teacherSubmissionHistories[item.assignmentId][student.studentId].map((submission) => <article className="submission-history-version" key={submission.submissionId}><div className="submission-history-heading"><strong>Phiên bản {submission.version}</strong><span>{submission.late ? "Nộp muộn" : "Đã nộp"} lúc {formatDate(submission.submittedAt)}</span></div><a href={submission.repositoryUrl} target="_blank" rel="noreferrer">Mở liên kết repository</a>{submission.grade !== null && <p>Điểm: {submission.grade}/{item.diemToiDa}{submission.gradedAt ? ` · Chấm lúc ${formatDate(submission.gradedAt)}` : ""}</p>}{submission.feedback && <p>Nhận xét: {submission.feedback}</p>}<div className="assignment-attachments">{submission.attachments.length ? submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep} ({formatSize(attachment.kichThuoc)})</button>) : <span className="roster-placeholder">Phiên bản này không có tệp đính kèm.</span>}</div></article>)}</section>}
@@ -550,13 +696,26 @@ const Assignments: React.FC<{ studentOnly?: boolean; canSubmit?: boolean }> = ({
           const status = studentAssignmentStatus(item);
           const remainingMs = new Date(item.hanNop).getTime() - clockNow;
           const dueSoon = remainingMs > 0 && remainingMs <= 24 * 60 * 60 * 1000;
-          const canSubmit = item.canResubmit !== false && (!item.submission || status === "redo" || item.submission.grade === null);
+          const isPastDeadline = remainingMs <= 0;
+          const canLateSubmit = isPastDeadline && item.choNopMuon && (!item.hanNopMuon || new Date(item.hanNopMuon).getTime() > clockNow);
+          const isClosed = (item.hanNopMuon && new Date(item.hanNopMuon).getTime() <= clockNow) || (!item.choNopMuon && isPastDeadline);
+          const canSubmit = item.canResubmit !== false && (!item.submission || status === "redo" || item.submission.grade === null) && !isClosed;
           return <article className={`assignment-card student-assignment-card${dueSoon && !item.submission ? " due-soon" : ""}`} key={item.assignmentId}>
             <div className="assignment-card-top"><div><span className={`assignment-status ${status}`}>{studentStatusLabel[status]}{item.submission?.late ? " · Nộp muộn" : ""}</span><h3>{item.tieuDe}</h3><p>{item.tenLop} · {item.tenMonHoc} · buổi {item.lichHocId}</p></div><strong>{item.diemToiDa} điểm</strong></div>
             <p className="assignment-description">{item.moTa}</p>
-            <p className={`assignment-meta student-deadline${dueSoon && !item.submission ? " deadline-soon" : ""}`}>Hạn nộp: {formatDate(item.hanNop)} · <strong>{formatTimeRemaining(item.hanNop, clockNow)}</strong>{dueSoon && !item.submission && <span className="deadline-warning">Sắp hết hạn</span>} · {item.choNopMuon ? "Cho phép nộp muộn" : "Không nhận bài muộn"}</p>
+            <p className={`assignment-meta student-deadline${dueSoon && !item.submission ? " deadline-soon" : ""}`}>Hạn nộp: {formatDate(item.hanNop)} · <strong>{formatTimeRemaining(item.hanNop, clockNow)}</strong>{dueSoon && !item.submission && <span className="deadline-warning">Sắp hết hạn</span>} · <span className="assignment-late-policy-text">{describeLatePolicy(item)}</span></p>
+            {canLateSubmit && !item.submission && (
+              <div className="late-warning-banner">
+                <span>⚠️ Bài tập đã quá hạn chính thức ({formatDate(item.hanNop)}). Đang trong thời gian nộp muộn{item.hanNopMuon ? ` đến ${formatDate(item.hanNopMuon)}` : ""}. {item.loaiPhatNopMuon !== "none" ? `Chính sách phạt: ${describeLatePolicy(item)}.` : "Không trừ điểm phạt."}</span>
+              </div>
+            )}
+            {isClosed && !item.submission && (
+              <div className="late-closed-banner">
+                <span>🔒 Đã kết thúc thời gian nhận bài nộp. Hệ thống đã đóng nộp bài tập này.</span>
+              </div>
+            )}
             <div className="assignment-attachments">{item.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep} ({formatSize(attachment.kichThuoc)})</button>)}</div>
-            {item.submission && <div className="student-submission-summary"><a href={item.submission.repositoryUrl} target="_blank" rel="noreferrer">Repository · phiên bản {item.submission.version}</a><span>{item.submission.late ? "Nộp muộn" : "Đã nộp"} lúc {formatDate(item.submission.submittedAt)}{item.submission.grade !== null ? ` · Điểm ${item.submission.grade}/${item.diemToiDa}` : ""}</span>{item.submission.feedback && <p>Nhận xét: {item.submission.feedback}</p>}{item.submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep}</button>)}</div>}
+            {item.submission && <div className="student-submission-summary"><a href={item.submission.repositoryUrl} target="_blank" rel="noreferrer">Repository · phiên bản {item.submission.version}</a><span>{item.submission.late ? "Nộp muộn" : "Đã nộp"} lúc {formatDate(item.submission.submittedAt)}{item.submission.grade !== null ? ` · Điểm ${item.submission.grade}/${item.diemToiDa}` : ""}{item.submission.penaltyDeduction ? ` (gốc ${item.submission.rawGrade}đ, trừ phạt -${item.submission.penaltyDeduction}đ)` : ""}</span>{item.submission.feedback && <p>Nhận xét: {item.submission.feedback}</p>}{item.submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep}</button>)}</div>}
             {item.submission && <div className="submission-history-toggle"><button type="button" aria-expanded={Boolean(submissionHistories[item.assignmentId])} disabled={loadingHistoryId === item.assignmentId} onClick={() => void toggleSubmissionHistory(item.assignmentId)}>{loadingHistoryId === item.assignmentId ? "Đang tải chi tiết…" : submissionHistories[item.assignmentId] ? "Ẩn chi tiết các phiên đã nộp" : "Chi tiết các phiên đã nộp"}</button></div>}
             {submissionHistories[item.assignmentId] && <section className="submission-history" aria-label={`Lịch sử nộp bài ${item.tieuDe}`}><h4>Các phiên đã nộp ({submissionHistories[item.assignmentId].length})</h4>{submissionHistories[item.assignmentId].length === 0 ? <p>Chưa có phiên nộp bài.</p> : submissionHistories[item.assignmentId].map((submission) => <article className="submission-history-version" key={submission.submissionId}><div className="submission-history-heading"><strong>Phiên bản {submission.version}</strong><span>{submission.late ? "Nộp muộn" : "Đã nộp"} lúc {formatDate(submission.submittedAt)}</span></div><a href={submission.repositoryUrl} target="_blank" rel="noreferrer">Mở liên kết repository</a>{submission.grade !== null && <p>Điểm: {submission.grade}/{item.diemToiDa}{submission.gradedAt ? ` · Chấm lúc ${formatDate(submission.gradedAt)}` : ""}</p>}{submission.feedback && <p>Nhận xét: {submission.feedback}</p>}<div className="assignment-attachments">{submission.attachments.length ? submission.attachments.map((attachment) => <button type="button" key={attachment.attachmentId} onClick={() => void downloadAttachment(attachment)}>↓ {attachment.tenTep} ({formatSize(attachment.kichThuoc)})</button>) : <span className="roster-placeholder">Phiên bản này không có tệp đính kèm.</span>}</div></article>)}</section>}
             {canSubmit && <div className="student-submit-form"><label>Liên kết repository HTTPS<input type="url" maxLength={1000} required placeholder="https://github.com/ten-ban/du-an" value={repositoryUrls[item.assignmentId] ?? ""} onChange={(event) => setRepositoryUrls((current) => ({ ...current, [item.assignmentId]: event.target.value }))} /></label><label><span className="submission-file-label"><span>Tệp bài làm (nhiều tệp, tối đa 20 MB/tệp)</span>{(submissionFiles[item.assignmentId]?.length ?? 0) > 0 && <small>Đã chọn {submissionFiles[item.assignmentId].length} tệp</small>}</span><input key={`${item.assignmentId}-${submissionFormVersions[item.assignmentId] ?? 0}`} type="file" multiple onChange={(event) => { const files = Array.from(event.target.files ?? []); if (validateFiles(files)) setSubmissionFiles((current) => ({ ...current, [item.assignmentId]: files })); else event.currentTarget.value = ""; }} /></label><button type="button" className="assignment-primary" disabled={saving} onClick={() => void submitWork(item.assignmentId)}>{item.submission ? "Nộp phiên bản mới" : "Nộp bài"}</button></div>}
