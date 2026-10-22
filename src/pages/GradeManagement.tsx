@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -56,6 +57,7 @@ interface GradeForm {
 
 interface GradeManagementProps {
   permissions: string[];
+  onOpenAttendanceMatrix: (classId: number) => void;
 }
 
 const EMPTY_FORM: GradeForm = {
@@ -93,7 +95,10 @@ const responseError = (error: unknown, fallback: string): string => {
 const formatScore = (score: number | null) =>
   score === null ? "—" : score.toFixed(2).replace(/\.?0+$/, "");
 
-const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
+const GradeManagement: React.FC<GradeManagementProps> = ({
+  permissions,
+  onOpenAttendanceMatrix,
+}) => {
   const studentPickerRef = useRef<HTMLDetailsElement>(null);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [grades, setGrades] = useState<GradeRecord[]>([]);
@@ -106,7 +111,6 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
   const [yearFilter, setYearFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [exportingAttendance, setExportingAttendance] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [optionsError, setOptionsError] = useState("");
   const [gradesError, setGradesError] = useState("");
@@ -294,46 +298,6 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
     }
   };
 
-  const exportAttendance = async () => {
-    if (!classFilter || exportingAttendance) return;
-    setExportingAttendance(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-    try {
-      const response = await api.get<Blob>(
-        `/attendance/classes/${classFilter}/export-matrix`,
-        { responseType: "blob" },
-      );
-      const blobUrl = URL.createObjectURL(response.data);
-      const link = document.createElement("a");
-      const contentDisposition = response.headers["content-disposition"];
-      const filename = /filename="([^"]+)"/i.exec(
-        typeof contentDisposition === "string" ? contentDisposition : "",
-      )?.[1];
-      const exportDate = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Ho_Chi_Minh",
-      }).format(new Date());
-      link.href = blobUrl;
-      link.download =
-        filename ??
-        `${attendanceExportClass?.maLop ?? "lop-hoc"}-chuyen-can-${exportDate}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-      setSuccessMessage(
-        `Đã xuất ma trận chuyên cần${attendanceExportClass ? ` lớp ${attendanceExportClass.maLop}` : ""}.`,
-      );
-    } catch (error: unknown) {
-      console.error("Không thể xuất bảng chuyên cần:", error);
-      setErrorMessage(
-        responseError(error, "Không thể xuất bảng chuyên cần của lớp."),
-      );
-    } finally {
-      setExportingAttendance(false);
-    }
-  };
-
   const availableSubjects = classFilter
     ? classes.find((item) => item.lopHocId === Number(classFilter))?.monHocs ?? []
     : classes.flatMap((item) => item.monHocs);
@@ -431,7 +395,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
               <div className="academic-form-grid">
             <label>
               Lớp
-              <select
+              <SearchableSelect
                 required
                 value={form.lopHocId || ""}
                 disabled={editingGradeId !== null}
@@ -453,7 +417,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                     {item.maLop} — {item.tenLop}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <div className="academic-student-field">
               <span className="academic-field-label">Học viên</span>
@@ -503,7 +467,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
             </div>
             <label>
               Môn học
-              <select
+              <SearchableSelect
                 required
                 value={form.monHocId || ""}
                 disabled={editingGradeId !== null}
@@ -520,11 +484,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                     {subject.maMonHoc} — {subject.tenMonHoc}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Học kỳ
-              <select
+              <SearchableSelect
                 value={form.hocKy}
                 disabled={editingGradeId !== null}
                 onChange={(event) =>
@@ -537,7 +501,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                 <option value={1}>Học kỳ 1</option>
                 <option value={2}>Học kỳ 2</option>
                 <option value={3}>Học kỳ 3</option>
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Năm học
@@ -618,17 +582,19 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
             <button
               className="academic-secondary-button"
               type="button"
-              onClick={() => void exportAttendance()}
-              disabled={!classFilter || exportingAttendance}
+              onClick={() => {
+                if (attendanceExportClass) {
+                  onOpenAttendanceMatrix(attendanceExportClass.lopHocId);
+                }
+              }}
+              disabled={!classFilter}
               title={
                 classFilter
-                  ? `Xuất ma trận chuyên cần lớp ${attendanceExportClass?.maLop ?? ""}`
-                  : "Chọn một lớp để xuất bảng chuyên cần."
+                  ? `Xem bảng chuyên cần lớp ${attendanceExportClass?.maLop ?? ""}`
+                  : "Chọn một lớp để xem bảng chuyên cần."
               }
             >
-              {exportingAttendance
-                ? "Đang xuất ma trận..."
-                : "Xuất ma trận chuyên cần"}
+              Chuyên cần
             </button>
           )}
           {canCreate && (
@@ -645,7 +611,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
         <div className="academic-filters">
           <label>
             Lớp
-            <select
+            <SearchableSelect
               value={classFilter}
               onChange={(event) => {
                 setLoading(true);
@@ -659,11 +625,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                   {item.maLop} — {item.tenLop}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Môn học
-            <select
+            <SearchableSelect
               value={subjectFilter}
               onChange={(event) => {
                 setLoading(true);
@@ -676,11 +642,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
                   {subject.maMonHoc} — {subject.tenMonHoc}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Học kỳ
-            <select
+            <SearchableSelect
               value={termFilter}
               onChange={(event) => {
                 setLoading(true);
@@ -691,7 +657,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({ permissions }) => {
               <option value="1">Học kỳ 1</option>
               <option value="2">Học kỳ 2</option>
               <option value="3">Học kỳ 3</option>
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Năm học

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
 import AvatarImage from "../components/AvatarImage";
@@ -96,15 +97,47 @@ const isValidEmailFormat = (email: string): boolean => {
 };
 
 const ROLE_OPTIONS = [
-  { value: "1", label: "Guest" },
-  { value: "2", label: "Student" },
-  { value: "3", label: "Instructor" },
-  { value: "4", label: "TA" },
-  { value: "5", label: "Admissions" },
-  { value: "6", label: "Accountant" },
-  { value: "7", label: "Training Manager" },
-  { value: "8", label: "Admin" },
+  { value: "1", label: "Khách" },
+  { value: "2", label: "Học viên" },
+  { value: "3", label: "Giảng viên" },
+  { value: "4", label: "Trợ giảng" },
+  { value: "5", label: "Tuyển sinh" },
+  { value: "6", label: "Kế toán" },
+  { value: "7", label: "Quản lý đào tạo" },
+  { value: "8", label: "Quản trị hệ thống" },
 ];
+
+const ROLE_LABELS_BY_NAME = new Map([
+  ["guest", "Khách"],
+  ["student", "Học viên"],
+  ["instructor", "Giảng viên"],
+  ["ta", "Trợ giảng"],
+  ["teaching assistant", "Trợ giảng"],
+  ["admissions", "Tuyển sinh"],
+  ["accountant", "Kế toán"],
+  ["training manager", "Quản lý đào tạo"],
+  ["admin", "Quản trị hệ thống"],
+]);
+
+const localizedRoleLabel = (roleId: number, roleName?: string | null) =>
+  ROLE_OPTIONS.find((role) => Number(role.value) === roleId)?.label
+  ?? ROLE_LABELS_BY_NAME.get(roleName?.trim().toLocaleLowerCase("en") ?? "")
+  ?? roleName?.trim()
+  ?? "";
+
+const localizedUserRoles = (user: User) => {
+  if (user.vaiTroIds?.length) {
+    return user.vaiTroIds
+      .map((roleId) => localizedRoleLabel(roleId))
+      .filter(Boolean)
+      .join(", ");
+  }
+  return user.vaiTro
+    ?.split(",")
+    .map((roleName) => localizedRoleLabel(0, roleName))
+    .filter(Boolean)
+    .join(", ");
+};
 
 export type StudentProfileSection = "information" | "history";
 
@@ -742,7 +775,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
         </div>
         {profileSection && (
           <>
-            <select
+            <SearchableSelect
               value={classFilter}
               onChange={(event) => {
                 setClassFilter(event.target.value);
@@ -757,8 +790,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                   {classItem.maLop} · {classItem.tenLop}
                 </option>
               ))}
-            </select>
-            <select
+            </SearchableSelect>
+            <SearchableSelect
               value={enrollmentStatusFilter}
               onChange={(event) => {
                 setEnrollmentStatusFilter(event.target.value);
@@ -781,11 +814,11 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
               ].map((value) => (
                 <option key={value} value={value}>{value}</option>
               ))}
-            </select>
+            </SearchableSelect>
           </>
         )}
         {!profileSection && (
-          <select
+          <SearchableSelect
             value={roleId}
             onChange={(e) => {
               setRoleId(e.target.value);
@@ -799,10 +832,10 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                 {r.label}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
         )}
         {!profileSection && (
-          <select
+          <SearchableSelect
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -813,7 +846,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             <option value="">Tất cả trạng thái</option>
             <option value="HoatDong">Hoạt động</option>
             <option value="BiKhoa">Bị khóa</option>
-          </select>
+          </SearchableSelect>
         )}
         <button className="users-search-button" onClick={handleSearch}>
           Tìm kiếm
@@ -911,7 +944,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                             </div>
                           ) : <span className="users-empty-value">—</span>
                         ) : user.vaiTro ? (
-                          <span className="users-role">{user.vaiTro}</span>
+                          <span className="users-role">{localizedUserRoles(user) || user.vaiTro}</span>
                         ) : (
                           <span className="users-empty-value">—</span>
                         )}
@@ -1173,7 +1206,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
             <div className="student-enrollment-action-fields">
               <label>
                 Lớp hiện tại
-                <select
+                <SearchableSelect
                   required
                   value={studentActionForm.classId}
                   onChange={(event) =>
@@ -1190,11 +1223,11 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                       {classItem.maLop} · {classItem.tenLop}
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
               </label>
               <label>
                 Thao tác
-                <select
+                <SearchableSelect
                   value={studentActionForm.type}
                   onChange={(event) =>
                     setStudentActionForm((current) => ({
@@ -1207,12 +1240,12 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                   <option value="BaoLuu">Bảo lưu</option>
                   <option value="ChuyenLop">Chuyển lớp</option>
                   <option value="ThoiHoc">Thôi học</option>
-                </select>
+                </SearchableSelect>
               </label>
               {studentActionForm.type === "ChuyenLop" && (
                 <label>
                   Lớp chuyển đến
-                  <select
+                  <SearchableSelect
                     required
                     value={studentActionForm.targetClassId}
                     onChange={(event) =>
@@ -1238,7 +1271,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                           {classItem.maLop} · {classItem.tenLop}
                         </option>
                       ))}
-                  </select>
+                  </SearchableSelect>
                 </label>
               )}
               <label>
@@ -1540,7 +1573,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                           }
                         />
                         <span>
-                          <strong>{role.tenVaiTro}</strong>
+                          <strong>{localizedRoleLabel(role.vaiTroId, role.tenVaiTro)}</strong>
                           {role.moTa && <small>{role.moTa}</small>}
                         </span>
                       </label>
@@ -1606,7 +1639,11 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
 
             {createError && <div className="users-form-error">{createError}</div>}
             {createSuccess && (
-              <div className="users-form-success">✓ {createSuccess}</div>
+              <ToastNotification
+                type="success"
+                text={createSuccess}
+                onClose={() => setCreateSuccess("")}
+              />
             )}
 
             <div className="users-form-group">
@@ -1647,7 +1684,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
               <label>
                 Vai trò <span>*</span>
               </label>
-              <select
+              <SearchableSelect
                 value={createForm.vaiTroId}
                 onChange={(e) =>
                   setCreateForm((prev) => ({
@@ -1663,7 +1700,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
                     {r.label}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
             <div className="users-info-box">
               <strong>Lưu ý:</strong> Không cần nhập mật khẩu. Hệ thống sẽ tự

@@ -1,7 +1,26 @@
 import React from "react";
+import { useEffect, useRef, useState } from "react";
 import AvatarImage from "../components/AvatarImage";
 import AbsenceApprovalAlert from "../components/AbsenceApprovalAlert";
+import api from "../services/api";
 import "./AdminLayout.css";
+
+type AssignmentNotificationSummary = { id: number; type: string };
+
+const assignmentNotificationStorageKey = (userName: string) => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem("user") ?? "null") as {
+      nguoiDungId?: number | string;
+      NguoiDungId?: number | string;
+      email?: string;
+    } | null;
+    const userId = storedUser?.nguoiDungId ?? storedUser?.NguoiDungId;
+    return `assignment-notifications-seen:${userId ?? storedUser?.email ?? userName}`;
+  } catch (error) {
+    console.error("Không thể xác định tài khoản để lưu trạng thái thông báo bài tập:", error);
+    return `assignment-notifications-seen:${userName}`;
+  }
+};
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -33,7 +52,6 @@ interface AdminLayoutProps {
   onScheduleManagement?: () => void;
   onClassAttendanceManagement?: () => void;
   onAssignments?: () => void;
-  onAbsenceRequest?: () => void;
   onAbsenceRequestList?: () => void;
 
   // Điều hướng đến trang đổi mật khẩu
@@ -62,13 +80,76 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   onTrainingPrograms = () => {},
   onAdmissionsLeads = () => {},
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
+  onClassAttendanceManagement,
   onAssignments = () => window.location.assign("/quan-ly-bai-tap"),
-  onAbsenceRequest = () => window.location.assign("/don-xin-phep"),
   onAbsenceRequestList = () =>
-    window.location.assign("/don-xin-phep/theo-doi"),
+    window.location.assign("/lich-su-diem-danh?tab=request-tracking"),
   onChangePassword,
   onProfile,
 }) => {
+  const [hasUnreadAssignment, setHasUnreadAssignment] = useState(false);
+  const latestPublishedNotificationId = useRef(0);
+  const markUnreadAfterLoad = useRef(false);
+  const canViewAssignments = permissions.includes("ASSIGNMENT_VIEW");
+  const assignmentSeenStorageKey = assignmentNotificationStorageKey(userName);
+
+  useEffect(() => {
+    if (!isStudent || !canViewAssignments) return;
+
+    let active = true;
+    const refreshUnreadAssignments = async () => {
+      try {
+        const response = await api.get<AssignmentNotificationSummary[]>("/assignments/notifications");
+        if (!active) return;
+        const latestPublishedId = response.data.reduce(
+          (latestId, notification) =>
+            notification.type === "published" ? Math.max(latestId, notification.id) : latestId,
+          0,
+        );
+        latestPublishedNotificationId.current = latestPublishedId;
+
+        const seenId = Number(localStorage.getItem(assignmentSeenStorageKey) ?? 0);
+        if (markUnreadAfterLoad.current) {
+          localStorage.setItem(assignmentSeenStorageKey, String(latestPublishedId));
+          markUnreadAfterLoad.current = false;
+          setHasUnreadAssignment(false);
+          return;
+        }
+        setHasUnreadAssignment(latestPublishedId > seenId);
+      } catch (error) {
+        console.error("Không thể tải thông báo bài tập mới:", error);
+      }
+    };
+
+    void refreshUnreadAssignments();
+    const timer = window.setInterval(() => void refreshUnreadAssignments(), 60_000);
+    window.addEventListener("focus", refreshUnreadAssignments);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshUnreadAssignments);
+    };
+  }, [assignmentSeenStorageKey, canViewAssignments, isStudent]);
+
+  const handleAssignmentsClick = () => {
+    if (isStudent) {
+      try {
+        if (latestPublishedNotificationId.current > 0) {
+          localStorage.setItem(
+            assignmentSeenStorageKey,
+            String(latestPublishedNotificationId.current),
+          );
+        } else {
+          markUnreadAfterLoad.current = true;
+        }
+      } catch (error) {
+        console.error("Không thể lưu trạng thái đã xem thông báo bài tập:", error);
+      }
+      setHasUnreadAssignment(false);
+    }
+    onAssignments();
+  };
+
   // =========================================================
   // AVATAR
   // =========================================================
@@ -302,29 +383,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <span className="admin-menu-symbol">▦</span>
                 <span>{isStudent ? "Lịch học" : "Quản lý lịch học"}</span>
               </button>
-              {isStudent && (
-                <>
-                  <button
+                {isStudent && (
+                  <>
+                    <button
                     type="button"
                     className={`admin-menu-item ${
-                      currentPath === "/don-xin-phep" ? "admin-menu-active" : ""
-                    }`}
-                    onClick={onAbsenceRequest}
-                  >
-                    <span className="admin-menu-symbol">✉</span>
-                    <span>Gửi đơn xin phép</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-menu-item ${
-                      currentPath === "/don-xin-phep/theo-doi"
+                      currentPath === "/lich-su-diem-danh" &&
+                      new URLSearchParams(window.location.search).get("tab") !==
+                        "request-tracking"
                         ? "admin-menu-active"
                         : ""
                     }`}
-                    onClick={onAbsenceRequestList}
+                    onClick={onClassAttendanceManagement}
                   >
                     <span className="admin-menu-symbol">▤</span>
-                    <span>Theo dõi đơn</span>
+                    <span>Lịch sử điểm danh</span>
                   </button>
                 </>
               )}
@@ -339,11 +412,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               type="button"
               className={`admin-menu-item ${
                 isAssignmentsActive ? "admin-menu-active" : ""
-              }`}
-              onClick={onAssignments}
+              }${isStudent && hasUnreadAssignment ? " has-unread-assignment" : ""}`}
+              onClick={handleAssignmentsClick}
+              aria-label={isStudent && hasUnreadAssignment ? "Bài tập, có bài tập mới chưa xem" : undefined}
             >
               <span className="admin-menu-symbol">▤</span>
               <span>Bài tập</span>
+              {isStudent && hasUnreadAssignment && <span className="assignment-unread-dot" aria-hidden="true" />}
             </button>
           )}
 

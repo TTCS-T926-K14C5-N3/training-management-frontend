@@ -73,7 +73,7 @@
   font-weight: 700;
 }
 
-.attendance-page-field select,
+.attendance-page-field .searchable-select-trigger,
 .attendance-page-field textarea {
   width: 100%;
   box-sizing: border-box;
@@ -172,7 +172,7 @@
   border-bottom: 0;
 }
 
-.attendance-page-table select,
+.attendance-page-table .searchable-select-trigger,
 .attendance-page-table input {
   width: 100%;
   min-width: 140px;
@@ -434,7 +434,7 @@
     font-weight: 700;
   }
 
-  .attendance-page-table select,
+  .attendance-page-table .searchable-select-trigger,
   .attendance-page-table input {
     min-width: 0;
   }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import axios from "axios";
 import api from "../services/api";
 import "./ScheduleHistory.css";
@@ -268,7 +269,7 @@ function ScheduleHistory({ navigate }: ScheduleHistoryProps) {
           </label>
           <label className="schedule-history-filter">
             <span>Loại sự kiện</span>
-            <select
+            <SearchableSelect
               value={eventFilter}
               onChange={(event) => {
                 setEventFilter(event.target.value as EventFilter);
@@ -280,7 +281,7 @@ function ScheduleHistory({ navigate }: ScheduleHistoryProps) {
               <option value="room">Đổi phòng học</option>
               <option value="instructor">Đổi giảng viên</option>
               <option value="cancelled">Hủy buổi học</option>
-            </select>
+            </SearchableSelect>
           </label>
         </div>
         <div className="schedule-history-result-count" aria-live="polite">

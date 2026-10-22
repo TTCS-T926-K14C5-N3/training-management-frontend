@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
@@ -784,7 +785,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </label>
             <label>
               Chương trình quan tâm
-              <select
+              <SearchableSelect
                 value={form.chuongTrinhId}
                 onChange={(event) =>
                   setForm({ ...form, chuongTrinhId: event.target.value })
@@ -799,11 +800,11 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                     {program.tenChuongTrinh}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Trạng thái
-              <select
+              <SearchableSelect
                 disabled={!editingId}
                 value={form.trangThai}
                 onChange={(event) =>
@@ -827,7 +828,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   ].includes(form.trangThai) && (
                     <option value={form.trangThai}>{form.trangThai}</option>
                   )}
-              </select>
+              </SearchableSelect>
             </label>
             {form.trangThai === "Từ chối" && (
               <label>
@@ -865,7 +866,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
               <fieldset className="lead-assignments academic-wide-field">
                 <label>
                   Người phụ trách
-                  <select
+                  <SearchableSelect
                     value={assignedId}
                     onChange={(event) => setAssignedId(event.target.value)}
                   >
@@ -878,7 +879,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                         {consultant.hoTen}
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </label>
               </fieldset>
             )}
@@ -1038,7 +1039,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
           </label>
           <label>
             Trạng thái
-            <select
+            <SearchableSelect
               value={filters.trangThai}
               onChange={(event) =>
                 setFilters({ ...filters, trangThai: event.target.value })
@@ -1056,7 +1057,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
               <option value="Không tiềm năng">Không tiềm năng (cũ)</option>
               <option value="Đã chuyển đổi">Đã chuyển đổi</option>
               <option value="Đã nhập học">Đã nhập học</option>
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Nguồn
@@ -1070,7 +1071,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
           {canAssign && (
             <label>
               Người phụ trách
-              <select
+              <SearchableSelect
                 value={filters.assignedUserId}
                 onChange={(event) =>
                   setFilters({
@@ -1089,7 +1090,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                     {consultant.hoTen}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
           )}
           <label>
@@ -1135,7 +1136,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
             </div>
             <div className="lead-bulk-assign">
               <label htmlFor="bulk-consultant">Giao lead cho:</label>
-              <select
+              <SearchableSelect
                 id="bulk-consultant"
                 value={bulkConsultantId}
                 onChange={(event) =>
@@ -1152,7 +1153,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   </option>
                 ))}
                 <option value="unassigned">Gỡ phân công</option>
-              </select>
+              </SearchableSelect>
               <button
                 type="button"
                 className="lead-bulk-apply-btn"
@@ -1561,7 +1562,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                   <h3>Ghi nhận trạng thái</h3>
                   <label>
                     Trạng thái mới
-                    <select
+                    <SearchableSelect
                       required
                       value={statusForm.trangThai}
                       onChange={(event) =>
@@ -1580,7 +1581,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                           {status}
                         </option>
                       ))}
-                    </select>
+                    </SearchableSelect>
                   </label>
                   {statusForm.trangThai === "Từ chối" && (
                     <label>
@@ -1614,7 +1615,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                     <h3>Ghi tương tác</h3>
                     <label>
                       Hình thức
-                      <select
+                      <SearchableSelect
                         value={interactionForm.loai}
                         onChange={(event) =>
                           setInteractionForm({
@@ -1626,7 +1627,7 @@ const AdmissionsLeads: React.FC<LeadsProps> = ({
                         <option value="Gọi">Gọi</option>
                         <option value="Nhắn tin">Nhắn tin</option>
                         <option value="Gặp">Gặp trực tiếp</option>
-                      </select>
+                      </SearchableSelect>
                     </label>
                     <label className="lead-interaction-note">
                       Nội dung chăm sóc

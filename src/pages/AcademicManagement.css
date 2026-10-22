@@ -245,10 +245,10 @@
 }
 
 .academic-form-grid input,
-.academic-form-grid select,
+.academic-form-grid .searchable-select-trigger,
 .academic-form-grid textarea,
 .academic-filters input,
-.academic-filters select {
+.academic-filters .searchable-select-trigger {
   width: 100%;
   min-width: 0;
   min-height: 41px;
@@ -284,7 +284,7 @@
   accent-color: #2563eb;
 }
 
-.academic-form-grid select[multiple] {
+.academic-form-grid .searchable-select-trigger[multiple] {
   min-height: 110px;
 }
 
@@ -295,10 +295,10 @@
 }
 
 .academic-form-grid input:focus,
-.academic-form-grid select:focus,
+.academic-form-grid .searchable-select-trigger:focus,
 .academic-form-grid textarea:focus,
 .academic-filters input:focus,
-.academic-filters select:focus {
+.academic-filters .searchable-select-trigger:focus {
   border-color: #3b82f6;
   outline: 3px solid rgba(59, 130, 246, 0.15);
 }
@@ -518,13 +518,13 @@
   font-weight: 600;
 }
 
-.academic-filter-field select {
+.academic-filter-field .searchable-select-trigger {
   min-width: 220px;
 }
 
-.academic-filter-field select,
+.academic-filter-field .searchable-select-trigger,
 .academic-field input,
-.academic-field select {
+.academic-field .searchable-select-trigger {
   width: 100%;
   min-height: 42px;
   padding: 0 11px;
@@ -539,8 +539,8 @@
 }
 
 .academic-field input:focus,
-.academic-field select:focus,
-.academic-filter-field select:focus {
+.academic-field .searchable-select-trigger:focus,
+.academic-filter-field .searchable-select-trigger:focus {
   border-color: #4d83f5;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.09);
 }
@@ -838,7 +838,7 @@
 }
 
 .class-management-page .class-filters input,
-.class-management-page .class-filters select {
+.class-management-page .class-filters .searchable-select-trigger {
   min-height: 37px;
   padding: 7px 10px;
   border-color: #dce3ed;
@@ -846,7 +846,7 @@
 }
 
 .class-management-page .class-filters input:focus,
-.class-management-page .class-filters select:focus {
+.class-management-page .class-filters .searchable-select-trigger:focus {
   border-color: #7aa2f7;
   outline: 3px solid rgba(59, 130, 246, 0.1);
 }
@@ -1250,6 +1250,33 @@
   border-bottom: 1px solid #e7ebf0;
 }
 
+.class-absence-warning {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.student-profile-absence-warning {
+  display: grid;
+  gap: 4px;
+  width: auto;
+  margin: 16px 0;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.student-profile-absence-warning p {
+  margin: 0;
+  font-weight: 500;
+}
+
 .class-student-action-button {
   padding: 4px 0;
   border: 0;
@@ -1327,7 +1354,7 @@
     width: 100%;
   }
 
-  .academic-filter-field select {
+  .academic-filter-field .searchable-select-trigger {
     min-width: 0;
   }
 

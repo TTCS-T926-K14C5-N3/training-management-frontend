@@ -140,7 +140,7 @@
   margin-left: 2px;
 }
 
-.reservation-field select,
+.reservation-field .searchable-select-trigger,
 .reservation-field input[type="date"],
 .reservation-field input[type="text"],
 .reservation-field textarea {
@@ -156,7 +156,7 @@
   transition: all 0.15s ease;
 }
 
-.reservation-field select:focus,
+.reservation-field .searchable-select-trigger:focus,
 .reservation-field input[type="date"]:focus,
 .reservation-field input[type="text"]:focus,
 .reservation-field textarea:focus {
@@ -165,7 +165,7 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
-.reservation-field select:disabled,
+.reservation-field .searchable-select-trigger:disabled,
 .reservation-field input:disabled,
 .reservation-field textarea:disabled {
   background: #f1f5f9;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -47,6 +48,11 @@ interface ClassRecord {
       nguoiGhiDanh: string | null;
       trangThaiGhiDanh: string;
       ngayHieuLuc: string | null;
+      soBuoiVang: number;
+      tongBuoiDiemDanh: number;
+      tiLeVang: number;
+      nguongVang: number;
+      canhBaoVang: boolean;
     }
   >;
   monHocIds: number[];
@@ -134,6 +140,15 @@ interface StudentProfile {
     trangThai: string;
   };
   lopHocs: ClassRecord[];
+  canhBaoVangs?: Array<{
+    programId: number;
+    programCode: string;
+    programName: string;
+    soBuoiVang: number;
+    tongBuoiDiemDanh: number;
+    tiLeVang: number;
+    nguongVang: number;
+  }>;
   thaoTacs: Array<{
     actionId: number;
     loaiThaoTac: "BaoLuu" | "ChuyenLop" | "ThoiHoc";
@@ -201,6 +216,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const canDeleteClasses = permissions.includes("CLASS_DELETE");
   const canCreateSubjects = permissions.includes("CLASS_CREATE");
   const canManageRows = canUpdateClasses || canDeleteClasses;
+  const canShowAttendanceAction = listOnly && permissions.includes("ATTENDANCE_VIEW");
+  const canShowRowActions = canManageRows || canShowAttendanceAction;
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [trainingPrograms, setTrainingPrograms] = useState<TrainingProgram[]>([]);
   const [options, setOptions] = useState<ClassOptions>({
@@ -900,7 +917,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               <div className="academic-form-grid">
                 <label>
                   Thao tác
-                  <select
+                  <SearchableSelect
                     value={studentActionForm.loaiThaoTac}
                     onChange={(event) =>
                       setStudentActionForm((current) => ({
@@ -913,7 +930,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     <option value="BaoLuu">Bảo lưu</option>
                     <option value="ChuyenLop">Chuyển lớp</option>
                     <option value="ThoiHoc">Thôi học</option>
-                  </select>
+                  </SearchableSelect>
                 </label>
                 <label>
                   Ngày hiệu lực
@@ -932,7 +949,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 {studentActionForm.loaiThaoTac === "ChuyenLop" && (
                   <label>
                     Lớp chuyển đến
-                    <select
+                    <SearchableSelect
                       required
                       value={studentActionForm.lopHocDichId}
                       onChange={(event) =>
@@ -958,7 +975,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                             {item.maLop} · {item.tenLop} ({item.siSoHienTai}/{item.siSoToiDa})
                           </option>
                         ))}
-                    </select>
+                    </SearchableSelect>
                   </label>
                 )}
                 <label className="academic-wide-field">
@@ -1301,7 +1318,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         <div className="academic-form-grid">
           <label>
             Chương trình đào tạo
-            <select
+            <SearchableSelect
               required={editingClassId === null}
               value={form.chuongTrinhId}
               onChange={(event) => {
@@ -1340,7 +1357,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                       : ""}
                   </option>
                 ))}
-            </select>
+            </SearchableSelect>
             {selectedProgram && (
               <small>
                 {selectedProgram.tongThoiLuong} giờ · Học phí chuẩn{" "}
@@ -1390,7 +1407,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </label>
           <label>
             Giảng viên chính mặc định
-            <select
+            <SearchableSelect
               value={form.giangVienId}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1409,7 +1426,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   {teacher.hoTen}
                 </option>
                 ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Ngày khai giảng dự kiến
@@ -1443,7 +1460,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </label>
           <label>
             Trạng thái lớp
-            <select
+            <SearchableSelect
               value={form.trangThai}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1465,7 +1482,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   {value}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Tiến độ buổi học (%)
@@ -1485,7 +1502,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </label>
           <label>
             Hình thức học
-            <select
+            <SearchableSelect
               value={form.hinhThuc}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1497,13 +1514,13 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               <option value="Trực tiếp">Trực tiếp</option>
               <option value="Trực tuyến">Trực tuyến</option>
               <option value="Kết hợp">Kết hợp</option>
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             {form.hinhThuc === "Trực tuyến"
               ? "Phòng học trực tuyến"
               : "Phòng học trực tiếp"}
-            <select
+            <SearchableSelect
               value={form.phongHocId}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1526,7 +1543,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     {room.maPhong} — {room.tenPhong} (sức chứa {room.sucChua})
                   </option>
                 ))}
-            </select>
+            </SearchableSelect>
           </label>
           {form.hinhThuc !== "Trực tiếp" && (
             <label>
@@ -1662,7 +1679,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                       <div className="class-subject-teachers">
                         <label>
                           Giảng viên chính
-                          <select
+                          <SearchableSelect
                             required={!primary && !form.giangVienId}
                             value={primary?.giangVienId ?? form.giangVienId}
                             onChange={(event) => {
@@ -1699,7 +1716,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                                   {teacher.hoTen}
                                 </option>
                               ))}
-                          </select>
+                          </SearchableSelect>
                         </label>
                         <div className="academic-student-field">
                           <span className="academic-field-label">Trợ giảng</span>
@@ -1858,7 +1875,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 </label>
                 <label>
                   Loại phòng
-                  <select
+                  <SearchableSelect
                     value={roomForm.loaiPhong}
                     onChange={(event) =>
                       setRoomForm((current) => ({
@@ -1871,7 +1888,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   >
                     <option value="Trực tiếp">Trực tiếp</option>
                     <option value="Trực tuyến">Trực tuyến</option>
-                  </select>
+                  </SearchableSelect>
                 </label>
                 <label>
                   Sức chứa
@@ -1931,6 +1948,18 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               Đóng hồ sơ
             </button>
           </div>
+          {(studentProfile.canhBaoVangs?.length ?? 0) > 0 && (
+            <div className="class-absence-warning student-profile-absence-warning" role="alert">
+              <strong>Cảnh báo tỷ lệ vắng vượt ngưỡng</strong>
+              {studentProfile.canhBaoVangs?.map((warning) => (
+                <p key={warning.programId}>
+                  {warning.programCode} · {warning.programName}: vắng không phép{" "}
+                  {warning.soBuoiVang}/{warning.tongBuoiDiemDanh} buổi (
+                  {warning.tiLeVang}%), ngưỡng cho phép {warning.nguongVang}%.
+                </p>
+              ))}
+            </div>
+          )}
           <h3>Quá trình lớp học</h3>
           {studentProfile.lopHocs.map((record) => {
             const student = record.hocViens.find(
@@ -2106,7 +2135,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
             </label>
             <label>
               Trạng thái
-              <select
+              <SearchableSelect
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
               >
@@ -2117,11 +2146,11 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 <option value="Hủy">Hủy</option>
                 <option value="Đang hoạt động">Đang hoạt động</option>
                 <option value="Ngừng hoạt động">Ngừng hoạt động</option>
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Chương trình
-              <select
+              <SearchableSelect
                 value={programFilter}
                 onChange={(event) => setProgramFilter(event.target.value)}
               >
@@ -2134,11 +2163,11 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     {program.maChuongTrinh} — {program.tenChuongTrinh}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Giảng viên
-              <select
+              <SearchableSelect
                 value={instructorFilter}
                 onChange={(event) => setInstructorFilter(event.target.value)}
               >
@@ -2148,7 +2177,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     {teacherName}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Khai giảng từ
@@ -2178,19 +2207,19 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 <th>Môn học</th>
                 <th>Tiến độ / phòng</th>
                 <th>Trạng thái</th>
-                {canManageRows && <th>Thao tác</th>}
+                {canShowRowActions && <th>Thao tác</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={canManageRows ? 8 : 7}>
+                  <td colSpan={canShowRowActions ? 8 : 7}>
                     Đang tải danh sách lớp...
                   </td>
                 </tr>
               ) : filteredClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageRows ? 8 : 7}>
+                  <td colSpan={canShowRowActions ? 8 : 7}>
                     {classes.length === 0
                       ? "Chưa có lớp học."
                       : "Không tìm thấy lớp phù hợp."}
@@ -2271,6 +2300,16 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                                   ? ` · ${student.nguoiGhiDanh}`
                                   : ""}
                               </small>
+                              {student.canhBaoVang && (
+                                <span
+                                  className="class-absence-warning"
+                                  role="status"
+                                  title={`Vắng không phép ${student.soBuoiVang}/${student.tongBuoiDiemDanh} buổi; ngưỡng ${student.nguongVang}%.`}
+                                >
+                                  Cảnh báo vắng {student.tiLeVang}% /{" "}
+                                  {student.nguongVang}%
+                                </span>
+                              )}
                               <span
                                 className={`student-enrollment-status ${
                                   student.trangThaiGhiDanh === "Đang học"
@@ -2393,8 +2432,21 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                         {record.trangThai}
                       </span>
                     </td>
-                    {canManageRows && (
+                    {canShowRowActions && (
                       <td className="academic-row-actions">
+                        {canShowAttendanceAction && (
+                          <button
+                            type="button"
+                            className="academic-secondary-button"
+                            onClick={() =>
+                              window.location.assign(
+                                `/quan-ly-diem-danh-lop?classId=${record.lopHocId}`,
+                              )
+                            }
+                          >
+                            Điểm danh
+                          </button>
+                        )}
                         {["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
                           record.trangThai,
                         ) && (

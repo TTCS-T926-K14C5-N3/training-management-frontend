@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
@@ -154,7 +155,7 @@ const AdmissionsInquiry = () => {
               </label>
               <label>
                 Chương trình quan tâm *
-                <select
+                <SearchableSelect
                   required
                   value={form.chuongTrinhId}
                   onChange={(event) =>
@@ -171,7 +172,7 @@ const AdmissionsInquiry = () => {
                       {program.tenChuongTrinh}
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
               </label>
               <label className="admissions-honeypot" aria-hidden="true">
                 Website

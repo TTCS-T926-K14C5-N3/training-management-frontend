@@ -419,8 +419,8 @@
   font-weight: 700;
 }
 
-.academic-program-select select,
-.academic-prerequisite select {
+.academic-program-select .searchable-select-trigger,
+.academic-prerequisite .searchable-select-trigger {
   min-height: 38px;
   padding: 7px 10px;
   border: 1px solid #cbd5e1;

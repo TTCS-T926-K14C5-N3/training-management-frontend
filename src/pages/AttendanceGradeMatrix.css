@@ -1,0 +1,42 @@
+.attendance-grade-page{display:grid;gap:18px;width:min(100%,1600px);margin:0 auto;padding:4px 0 36px;color:#172033}
+.attendance-grade-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 28px;border-radius:18px;background:linear-gradient(115deg,#0b1b47,#3157b8);color:#fff;box-shadow:0 12px 28px #14285b20}
+.attendance-grade-hero h1{margin:7px 0;font-size:clamp(1.55rem,3vw,2.25rem);letter-spacing:-.035em;color:#fff}
+.attendance-grade-hero p{margin:0;color:#e1eaff;line-height:1.55}
+.attendance-grade-kicker{font-size:.68rem;font-weight:800;letter-spacing:.15em;color:#a9f4f3}
+.attendance-grade-panel{display:grid;gap:18px;min-width:0;padding:22px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 7px 24px #10244d0c}
+.attendance-grade-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+.attendance-grade-toolbar label{display:grid;gap:6px;width:min(100%,520px);color:#46536b;font-size:.84rem;font-weight:700}
+.attendance-grade-toolbar .searchable-select-trigger{min-height:42px;padding:9px 11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#172033;font:inherit}
+.attendance-grade-button{display:inline-flex;min-height:40px;align-items:center;justify-content:center;padding:9px 14px;border:1px solid transparent;border-radius:9px;font:inherit;font-size:.85rem;font-weight:750;cursor:pointer}
+.attendance-grade-button:disabled{opacity:.55;cursor:not-allowed}
+.attendance-grade-button.primary{background:#4f46e5;color:#fff}
+.attendance-grade-button.secondary{border-color:#ffffff66;background:#ffffff16;color:#fff}
+.attendance-grade-error{padding:12px 14px;border-radius:10px;background:#fff1f2;color:#9f1239}
+.attendance-grade-state{margin:0;padding:28px 8px;text-align:center;color:#64748b}
+.attendance-grade-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.attendance-grade-summary div{display:grid;gap:5px;min-width:0;padding:13px;border-radius:12px;background:#f4f7ff}
+.attendance-grade-summary span{color:#64748b;font-size:.8rem}
+.attendance-grade-summary strong{overflow-wrap:anywhere;color:#172554}
+.attendance-grade-table-wrap{width:100%;overflow:auto;border:1px solid #e2e8f0;border-radius:10px}
+.attendance-grade-table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:.82rem}
+.attendance-grade-table th,.attendance-grade-table td{padding:10px 12px;border-bottom:1px solid #e8edf4;text-align:center}
+.attendance-grade-table th{position:sticky;top:0;z-index:1;background:#f4f7fb;color:#40516e;font-size:.75rem}
+.attendance-grade-table th small,.attendance-grade-table td small{display:block;margin-top:4px;color:#718096;font-size:.7rem;font-weight:500}
+.attendance-grade-table th:nth-child(1),.attendance-grade-table th:nth-child(2),.attendance-grade-table td:nth-child(1),.attendance-grade-table td:nth-child(2){position:sticky;left:0;z-index:2;background:#fff}
+.attendance-grade-table th:nth-child(1),.attendance-grade-table td:nth-child(1){left:0}
+.attendance-grade-table th:nth-child(2),.attendance-grade-table td:nth-child(2){left:100px;min-width:190px;text-align:left}
+.attendance-grade-table th:nth-child(1),.attendance-grade-table td:nth-child(1){min-width:100px}
+.attendance-grade-table th:nth-child(2){z-index:3;background:#f4f7fb}
+.attendance-grade-table td:nth-child(1){background:#fff}
+.attendance-grade-table tr:last-child td{border-bottom:0}
+.attendance-grade-table tbody tr:hover td{background:#f8faff}
+.attendance-grade-status{display:inline-flex;max-width:130px;justify-content:center;padding:5px 8px;border-radius:999px;font-size:.7rem;font-weight:700;white-space:normal}
+.attendance-grade-status.present{background:#dcfce7;color:#166534}
+.attendance-grade-status.late{background:#fef3c7;color:#92400e}
+.attendance-grade-status.excused{background:#dbeafe;color:#1d4ed8}
+.attendance-grade-status.unexcused{background:#fee2e2;color:#b91c1c}
+.attendance-grade-status.unmarked{background:#e2e8f0;color:#475569}
+.attendance-grade-status.not-applicable{background:#f8fafc;color:#94a3b8}
+.attendance-grade-sort{padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer}
+.attendance-grade-footnote{margin:0;color:#64748b;font-size:.8rem;line-height:1.5}
+@media(max-width:700px){.attendance-grade-page{gap:13px}.attendance-grade-hero{align-items:flex-start;flex-direction:column;padding:20px}.attendance-grade-panel{padding:15px}.attendance-grade-toolbar{align-items:stretch;flex-direction:column}.attendance-grade-toolbar label{width:100%}.attendance-grade-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.attendance-grade-table th:nth-child(2),.attendance-grade-table td:nth-child(2){left:85px;min-width:160px}.attendance-grade-table th:nth-child(1),.attendance-grade-table td:nth-child(1){min-width:85px}}

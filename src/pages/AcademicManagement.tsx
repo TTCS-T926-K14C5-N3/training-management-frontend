@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import api from "../services/api";
 import "./AcademicManagement.css";
 
@@ -520,14 +521,14 @@ export function GradeManagementPage() {
       <div className="academic-toolbar">
         <label className="academic-filter-field">
           Lớp học
-          <select value={filterClassId} onChange={(event) => setFilterClassId(event.target.value)}>
+          <SearchableSelect value={filterClassId} onChange={(event) => setFilterClassId(event.target.value)}>
             <option value="">Tất cả lớp</option>
             {options.classes.map((classOption) => (
               <option key={classOption.lopHocId} value={classOption.lopHocId}>
                 {classOption.maLop} — {classOption.tenLop}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
         </label>
         <button className="academic-secondary-button" onClick={() => void loadGrades()}>
           Làm mới
@@ -605,7 +606,7 @@ export function GradeManagementPage() {
             {error && <div className="academic-alert academic-alert-error" role="alert">{error}</div>}
             <label className="academic-field">
               Lớp học
-              <select
+              <SearchableSelect
                 required
                 value={form.lopHocId}
                 disabled={saving || Boolean(editingGrade)}
@@ -622,34 +623,34 @@ export function GradeManagementPage() {
                     {classOption.maLop} — {classOption.tenLop}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label className="academic-field">
               Học viên
-              <select required value={form.hocVienId} disabled={saving || Boolean(editingGrade)} onChange={(event) => setForm({ ...form, hocVienId: event.target.value })}>
+              <SearchableSelect required value={form.hocVienId} disabled={saving || Boolean(editingGrade)} onChange={(event) => setForm({ ...form, hocVienId: event.target.value })}>
                 <option value="">Chọn học viên</option>
                 {availableStudents.map((student) => (
                   <option key={student.nguoiDungId} value={student.nguoiDungId}>{student.hoTen} ({student.email})</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label className="academic-field">
               Môn học
-              <select required value={form.monHocId} disabled={saving || Boolean(editingGrade)} onChange={(event) => setForm({ ...form, monHocId: event.target.value })}>
+              <SearchableSelect required value={form.monHocId} disabled={saving || Boolean(editingGrade)} onChange={(event) => setForm({ ...form, monHocId: event.target.value })}>
                 <option value="">Chọn môn học</option>
                 {availableSubjects.map((subject) => (
                   <option key={subject.monHocId} value={subject.monHocId}>{subject.maMonHoc} — {subject.tenMonHoc}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <div className="academic-form-grid">
               <label className="academic-field">
                 Học kỳ
-                <select required value={form.hocKy} disabled={saving || Boolean(editingGrade)} onChange={(event) => setForm({ ...form, hocKy: event.target.value })}>
+                <SearchableSelect required value={form.hocKy} disabled={saving || Boolean(editingGrade)} onChange={(event) => setForm({ ...form, hocKy: event.target.value })}>
                   <option value="1">Học kỳ 1</option>
                   <option value="2">Học kỳ 2</option>
                   <option value="3">Học kỳ 3</option>
-                </select>
+                </SearchableSelect>
               </label>
               <label className="academic-field">
                 Năm học

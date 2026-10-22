@@ -27,7 +27,6 @@ interface MainLayoutProps {
   onScheduleManagement?: () => void;
   onClassAttendanceManagement?: () => void;
   onAssignments?: () => void;
-  onAbsenceRequest?: () => void;
   onAbsenceRequestList?: () => void;
   onProfile: () => void;
   onChangePassword: () => void;
@@ -52,10 +51,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onTrainingPrograms = () => {},
   onAdmissionsLeads,
   onScheduleManagement = () => window.location.assign("/quan-ly-lich-hoc"),
+  onClassAttendanceManagement,
   onAssignments = () => window.location.assign("/quan-ly-bai-tap"),
-  onAbsenceRequest = () => window.location.assign("/don-xin-phep"),
   onAbsenceRequestList = () =>
-    window.location.assign("/don-xin-phep/theo-doi"),
+    window.location.assign("/lich-su-diem-danh?tab=request-tracking"),
   onProfile,
   onChangePassword,
 
@@ -80,8 +79,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       onTrainingPrograms={onTrainingPrograms}
       onAdmissionsLeads={onAdmissionsLeads}
       onScheduleManagement={onScheduleManagement}
+      onClassAttendanceManagement={onClassAttendanceManagement}
       onAssignments={onAssignments}
-      onAbsenceRequest={onAbsenceRequest}
       onAbsenceRequestList={onAbsenceRequestList}
       onChangePassword={onChangePassword}
       onProfile={onProfile}

@@ -7,6 +7,23 @@
   color: #172033;
 }
 
+.absence-request-page-embedded {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.absence-request-page-embedded .absence-request-card {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.absence-request-page-embedded .absence-request-form {
+  padding-right: 0;
+  padding-left: 0;
+}
+
 .absence-request-hero {
   position: relative;
   display: flex;
@@ -129,7 +146,7 @@
   font-style: normal;
 }
 
-.absence-request-field select,
+.absence-request-field .searchable-select-trigger,
 .absence-request-field textarea {
   width: 100%;
   box-sizing: border-box;
@@ -141,7 +158,7 @@
   font-size: 0.9rem;
 }
 
-.absence-request-field select {
+.absence-request-field .searchable-select-trigger {
   min-height: 44px;
   padding: 9px 12px;
 }
@@ -153,13 +170,13 @@
   line-height: 1.55;
 }
 
-.absence-request-field select:focus,
+.absence-request-field .searchable-select-trigger:focus,
 .absence-request-field textarea:focus {
   border-color: #6366f1;
   outline: 3px solid rgba(99, 102, 241, 0.14);
 }
 
-.absence-request-field select[aria-invalid="true"],
+.absence-request-field .searchable-select-trigger[aria-invalid="true"],
 .absence-request-field textarea[aria-invalid="true"],
 .absence-request-file-picker[aria-invalid="true"] {
   border-color: #dc2626;
@@ -203,6 +220,12 @@
   background: #f8faff;
   color: #64748b;
   cursor: pointer;
+}
+
+.absence-request-field .absence-request-file-picker {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
 }
 
 .absence-request-file-picker input {
