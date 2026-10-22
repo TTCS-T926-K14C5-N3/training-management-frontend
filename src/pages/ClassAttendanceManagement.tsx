@@ -104,7 +104,19 @@ export default function ClassAttendanceManagement({
     try {
       const response = await api.get<AttendanceClass[]>("/attendance/classes");
       setClasses(response.data);
-      setClassId((previous) => previous || response.data[0]?.classId || 0);
+      const requestedClassId = Number(
+        new URLSearchParams(window.location.search).get("classId"),
+      );
+      if (requestedClassId) {
+        if (response.data.some((item) => item.classId === requestedClassId)) {
+          setClassId(requestedClassId);
+        } else {
+          setClassId(0);
+          setError("Lớp này không có trong danh sách lớp bạn được phép điểm danh.");
+        }
+      } else {
+        setClassId((previous) => previous || response.data[0]?.classId || 0);
+      }
     } catch (loadError) { setError(messageOf(loadError)); }
   }, []);
 

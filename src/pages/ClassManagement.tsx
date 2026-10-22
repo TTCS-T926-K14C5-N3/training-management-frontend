@@ -215,6 +215,8 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
   const canDeleteClasses = permissions.includes("CLASS_DELETE");
   const canCreateSubjects = permissions.includes("CLASS_CREATE");
   const canManageRows = canUpdateClasses || canDeleteClasses;
+  const canShowAttendanceAction = listOnly && permissions.includes("ATTENDANCE_VIEW");
+  const canShowRowActions = canManageRows || canShowAttendanceAction;
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [trainingPrograms, setTrainingPrograms] = useState<TrainingProgram[]>([]);
   const [options, setOptions] = useState<ClassOptions>({
@@ -2204,19 +2206,19 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 <th>Môn học</th>
                 <th>Tiến độ / phòng</th>
                 <th>Trạng thái</th>
-                {canManageRows && <th>Thao tác</th>}
+                {canShowRowActions && <th>Thao tác</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={canManageRows ? 8 : 7}>
+                  <td colSpan={canShowRowActions ? 8 : 7}>
                     Đang tải danh sách lớp...
                   </td>
                 </tr>
               ) : filteredClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageRows ? 8 : 7}>
+                  <td colSpan={canShowRowActions ? 8 : 7}>
                     {classes.length === 0
                       ? "Chưa có lớp học."
                       : "Không tìm thấy lớp phù hợp."}
@@ -2429,8 +2431,21 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                         {record.trangThai}
                       </span>
                     </td>
-                    {canManageRows && (
+                    {canShowRowActions && (
                       <td className="academic-row-actions">
+                        {canShowAttendanceAction && (
+                          <button
+                            type="button"
+                            className="academic-secondary-button"
+                            onClick={() =>
+                              window.location.assign(
+                                `/quan-ly-diem-danh-lop?classId=${record.lopHocId}`,
+                              )
+                            }
+                          >
+                            Điểm danh
+                          </button>
+                        )}
                         {["Chuẩn bị", "Đang học", "Đang hoạt động"].includes(
                           record.trangThai,
                         ) && (

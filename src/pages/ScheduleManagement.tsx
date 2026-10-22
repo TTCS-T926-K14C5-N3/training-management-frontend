@@ -862,12 +862,15 @@ function ScheduleManagement({
     try {
       const range = monthDateRange(month);
       const schedulesRequest = api.get<ScheduleRecord[]>("/academic/schedules", {
-        params: isStudent
-          ? {
+        params: {
+          excludeCompleted: true,
+          ...(isStudent
+            ? {
               startDate: range.start,
               endDate: range.end,
             }
-          : undefined,
+            : {}),
+        },
       });
       if (canCreate || canUpdate) {
         const [optionsResponse, schedulesResponse] = await Promise.all([
