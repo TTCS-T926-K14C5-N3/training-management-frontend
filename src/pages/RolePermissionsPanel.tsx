@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import axios from "axios";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
@@ -223,7 +224,7 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
         </div>
         <label className="role-permissions-role-select">
           Vai trò
-          <select
+          <SearchableSelect
             value={activeRoleId ?? ""}
             onChange={(event) => {
               setLoadingPermissions(true);
@@ -237,7 +238,7 @@ const RolePermissionsPanel: React.FC<RolePermissionsPanelProps> = ({
                 {role.tenVaiTro}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
         </label>
       </div>
 

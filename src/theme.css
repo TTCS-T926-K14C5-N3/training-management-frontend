@@ -41,7 +41,7 @@ body {
 
 button,
 input,
-select,
+.searchable-select-trigger,
 textarea {
   font-family: inherit;
 }
@@ -58,7 +58,7 @@ button {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible,
+.searchable-select-trigger:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
   outline: 3px solid rgba(163, 111, 63, 0.28);
@@ -335,27 +335,27 @@ h4,
 }
 
 .academic-form-grid input,
-.academic-form-grid select,
+.academic-form-grid .searchable-select-trigger,
 .academic-form-grid textarea,
 .academic-filters input,
-.academic-filters select,
+.academic-filters .searchable-select-trigger,
 .academic-page input:not([type="checkbox"]):not([type="radio"]),
-.academic-page select,
+.academic-page .searchable-select-trigger,
 .academic-page textarea,
 .users-page input:not([type="checkbox"]):not([type="radio"]),
-.users-page select,
+.users-page .searchable-select-trigger,
 .role-page input:not([type="checkbox"]):not([type="radio"]),
-.role-page select,
+.role-page .searchable-select-trigger,
 .role-page textarea,
 .profile-field input,
 .profile-field textarea,
 .lead-form-modal input,
-.lead-form-modal select,
+.lead-form-modal .searchable-select-trigger,
 .lead-form-modal textarea,
 .lead-history-form input,
-.lead-history-form select,
+.lead-history-form .searchable-select-trigger,
 .lead-interaction-form input,
-.lead-interaction-form select {
+.lead-interaction-form .searchable-select-trigger {
   border-color: var(--theme-border-strong);
   border-radius: 9px;
   background-color: #fffefa;
@@ -363,20 +363,20 @@ h4,
 }
 
 .academic-form-grid input:focus,
-.academic-form-grid select:focus,
+.academic-form-grid .searchable-select-trigger:focus,
 .academic-form-grid textarea:focus,
 .academic-page input:focus,
-.academic-page select:focus,
+.academic-page .searchable-select-trigger:focus,
 .academic-page textarea:focus,
 .users-page input:focus,
-.users-page select:focus,
+.users-page .searchable-select-trigger:focus,
 .role-page input:focus,
-.role-page select:focus,
+.role-page .searchable-select-trigger:focus,
 .role-page textarea:focus,
 .profile-field input:focus,
 .profile-field textarea:focus,
 .lead-form-modal input:focus,
-.lead-form-modal select:focus,
+.lead-form-modal .searchable-select-trigger:focus,
 .lead-form-modal textarea:focus {
   border-color: var(--theme-accent);
   outline: 3px solid rgba(163, 111, 63, 0.13);
@@ -683,13 +683,13 @@ textarea::placeholder {
 }
 
 .admissions-form input,
-.admissions-form select {
+.admissions-form .searchable-select-trigger {
   border-color: var(--theme-border-strong);
   border-radius: 9px;
 }
 
 .admissions-form input:focus,
-.admissions-form select:focus {
+.admissions-form .searchable-select-trigger:focus {
   border-color: var(--theme-accent);
   outline-color: rgba(163, 111, 63, 0.14);
 }
@@ -1658,29 +1658,29 @@ h4,
 }
 
 .academic-form-grid input,
-.academic-form-grid select,
+.academic-form-grid .searchable-select-trigger,
 .academic-form-grid textarea,
 .academic-filters input,
-.academic-filters select,
+.academic-filters .searchable-select-trigger,
 .academic-page input:not([type="checkbox"]):not([type="radio"]),
-.academic-page select,
+.academic-page .searchable-select-trigger,
 .academic-page textarea,
 .users-page input:not([type="checkbox"]):not([type="radio"]),
-.users-page select,
+.users-page .searchable-select-trigger,
 .role-page input:not([type="checkbox"]):not([type="radio"]),
-.role-page select,
+.role-page .searchable-select-trigger,
 .role-page textarea,
 .profile-field input,
 .profile-field textarea,
 .lead-form-modal input,
-.lead-form-modal select,
+.lead-form-modal .searchable-select-trigger,
 .lead-form-modal textarea,
 .lead-history-form input,
-.lead-history-form select,
+.lead-history-form .searchable-select-trigger,
 .lead-interaction-form input,
-.lead-interaction-form select,
+.lead-interaction-form .searchable-select-trigger,
 .admissions-form input,
-.admissions-form select,
+.admissions-form .searchable-select-trigger,
 .input-wrapper {
   border: 1px solid var(--theme-border-strong);
   border-radius: 10px;
@@ -1693,23 +1693,23 @@ h4,
 }
 
 .academic-form-grid input:focus,
-.academic-form-grid select:focus,
+.academic-form-grid .searchable-select-trigger:focus,
 .academic-form-grid textarea:focus,
 .academic-page input:focus,
-.academic-page select:focus,
+.academic-page .searchable-select-trigger:focus,
 .academic-page textarea:focus,
 .users-page input:focus,
-.users-page select:focus,
+.users-page .searchable-select-trigger:focus,
 .role-page input:focus,
-.role-page select:focus,
+.role-page .searchable-select-trigger:focus,
 .role-page textarea:focus,
 .profile-field input:focus,
 .profile-field textarea:focus,
 .lead-form-modal input:focus,
-.lead-form-modal select:focus,
+.lead-form-modal .searchable-select-trigger:focus,
 .lead-form-modal textarea:focus,
 .admissions-form input:focus,
-.admissions-form select:focus,
+.admissions-form .searchable-select-trigger:focus,
 .input-wrapper:focus-within {
   border-color: #6e7dff;
   outline: 3px solid rgba(89, 110, 255, 0.14);
@@ -1881,7 +1881,7 @@ textarea::placeholder {
 }
 
 .role-input-wrapper input,
-.role-field select,
+.role-field .searchable-select-trigger,
 .users-search-wrapper input,
 .users-filter-select {
   border-color: var(--theme-border-strong);
@@ -1984,7 +1984,7 @@ textarea::placeholder {
 }
 
 .admissions-form input,
-.admissions-form select {
+.admissions-form .searchable-select-trigger {
   border-color: var(--theme-border-strong);
   border-radius: 10px;
   background: #fbfcff;
@@ -1992,7 +1992,7 @@ textarea::placeholder {
 }
 
 .admissions-form input:focus,
-.admissions-form select:focus {
+.admissions-form .searchable-select-trigger:focus {
   border-color: #6e7dff;
   outline: 3px solid rgba(89, 110, 255, 0.14);
 }
@@ -2045,12 +2045,12 @@ textarea::placeholder {
   }
 
   .academic-form-grid input,
-  .academic-form-grid select,
+  .academic-form-grid .searchable-select-trigger,
   .academic-form-grid textarea,
   .academic-filters input,
-  .academic-filters select,
+  .academic-filters .searchable-select-trigger,
   .lead-form-modal input,
-  .lead-form-modal select,
+  .lead-form-modal .searchable-select-trigger,
   .lead-form-modal textarea {
     min-height: 42px;
     font-size: 14px;

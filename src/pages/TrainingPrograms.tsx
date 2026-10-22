@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -396,7 +397,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
               </label>
               <label>
                 Trạng thái
-                <select
+                <SearchableSelect
                   disabled={saving}
                   value={form.trangThai}
                   onChange={(event) =>
@@ -408,7 +409,7 @@ const TrainingPrograms: React.FC<TrainingProgramsProps> = ({ permissions }) => {
                 >
                   <option value="Đang áp dụng">Đang áp dụng</option>
                   <option value="Ngừng áp dụng">Ngừng áp dụng</option>
-                </select>
+                </SearchableSelect>
               </label>
               <label className="academic-program-description">
                 Mô tả

@@ -105,7 +105,7 @@
 }
 
 .schedule-history-search > div:focus-within,
-.schedule-history-filter select:focus {
+.schedule-history-filter .searchable-select-trigger:focus {
   border-color: #6366f1;
   outline: 3px solid rgba(99, 102, 241, 0.14);
 }
@@ -149,7 +149,7 @@
   cursor: pointer;
 }
 
-.schedule-history-filter select {
+.schedule-history-filter .searchable-select-trigger {
   width: 100%;
   min-height: 44px;
   padding: 8px 12px;

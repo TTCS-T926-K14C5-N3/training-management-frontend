@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -914,7 +915,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               <div className="academic-form-grid">
                 <label>
                   Thao tác
-                  <select
+                  <SearchableSelect
                     value={studentActionForm.loaiThaoTac}
                     onChange={(event) =>
                       setStudentActionForm((current) => ({
@@ -927,7 +928,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     <option value="BaoLuu">Bảo lưu</option>
                     <option value="ChuyenLop">Chuyển lớp</option>
                     <option value="ThoiHoc">Thôi học</option>
-                  </select>
+                  </SearchableSelect>
                 </label>
                 <label>
                   Ngày hiệu lực
@@ -946,7 +947,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 {studentActionForm.loaiThaoTac === "ChuyenLop" && (
                   <label>
                     Lớp chuyển đến
-                    <select
+                    <SearchableSelect
                       required
                       value={studentActionForm.lopHocDichId}
                       onChange={(event) =>
@@ -972,7 +973,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                             {item.maLop} · {item.tenLop} ({item.siSoHienTai}/{item.siSoToiDa})
                           </option>
                         ))}
-                    </select>
+                    </SearchableSelect>
                   </label>
                 )}
                 <label className="academic-wide-field">
@@ -1315,7 +1316,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
         <div className="academic-form-grid">
           <label>
             Chương trình đào tạo
-            <select
+            <SearchableSelect
               required={editingClassId === null}
               value={form.chuongTrinhId}
               onChange={(event) => {
@@ -1354,7 +1355,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                       : ""}
                   </option>
                 ))}
-            </select>
+            </SearchableSelect>
             {selectedProgram && (
               <small>
                 {selectedProgram.tongThoiLuong} giờ · Học phí chuẩn{" "}
@@ -1404,7 +1405,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </label>
           <label>
             Giảng viên chính mặc định
-            <select
+            <SearchableSelect
               value={form.giangVienId}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1423,7 +1424,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   {teacher.hoTen}
                 </option>
                 ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Ngày khai giảng dự kiến
@@ -1457,7 +1458,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </label>
           <label>
             Trạng thái lớp
-            <select
+            <SearchableSelect
               value={form.trangThai}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1479,7 +1480,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   {value}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Tiến độ buổi học (%)
@@ -1499,7 +1500,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
           </label>
           <label>
             Hình thức học
-            <select
+            <SearchableSelect
               value={form.hinhThuc}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1511,13 +1512,13 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               <option value="Trực tiếp">Trực tiếp</option>
               <option value="Trực tuyến">Trực tuyến</option>
               <option value="Kết hợp">Kết hợp</option>
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             {form.hinhThuc === "Trực tuyến"
               ? "Phòng học trực tuyến"
               : "Phòng học trực tiếp"}
-            <select
+            <SearchableSelect
               value={form.phongHocId}
               onChange={(event) =>
                 setForm((current) => ({
@@ -1540,7 +1541,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     {room.maPhong} — {room.tenPhong} (sức chứa {room.sucChua})
                   </option>
                 ))}
-            </select>
+            </SearchableSelect>
           </label>
           {form.hinhThuc !== "Trực tiếp" && (
             <label>
@@ -1676,7 +1677,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                       <div className="class-subject-teachers">
                         <label>
                           Giảng viên chính
-                          <select
+                          <SearchableSelect
                             required={!primary && !form.giangVienId}
                             value={primary?.giangVienId ?? form.giangVienId}
                             onChange={(event) => {
@@ -1713,7 +1714,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                                   {teacher.hoTen}
                                 </option>
                               ))}
-                          </select>
+                          </SearchableSelect>
                         </label>
                         <div className="academic-student-field">
                           <span className="academic-field-label">Trợ giảng</span>
@@ -1872,7 +1873,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 </label>
                 <label>
                   Loại phòng
-                  <select
+                  <SearchableSelect
                     value={roomForm.loaiPhong}
                     onChange={(event) =>
                       setRoomForm((current) => ({
@@ -1885,7 +1886,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                   >
                     <option value="Trực tiếp">Trực tiếp</option>
                     <option value="Trực tuyến">Trực tuyến</option>
-                  </select>
+                  </SearchableSelect>
                 </label>
                 <label>
                   Sức chứa
@@ -2132,7 +2133,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
             </label>
             <label>
               Trạng thái
-              <select
+              <SearchableSelect
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
               >
@@ -2143,11 +2144,11 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                 <option value="Hủy">Hủy</option>
                 <option value="Đang hoạt động">Đang hoạt động</option>
                 <option value="Ngừng hoạt động">Ngừng hoạt động</option>
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Chương trình
-              <select
+              <SearchableSelect
                 value={programFilter}
                 onChange={(event) => setProgramFilter(event.target.value)}
               >
@@ -2160,11 +2161,11 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     {program.maChuongTrinh} — {program.tenChuongTrinh}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Giảng viên
-              <select
+              <SearchableSelect
                 value={instructorFilter}
                 onChange={(event) => setInstructorFilter(event.target.value)}
               >
@@ -2174,7 +2175,7 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                     {teacherName}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Khai giảng từ

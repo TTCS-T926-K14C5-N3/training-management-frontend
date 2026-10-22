@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import "./ScrumTaskBoard.css";
 
@@ -144,7 +145,7 @@ const ScrumTaskBoard = () => {
                   <span>{task.id}</span>
                 </div>
                 <div className="scrum-task-meta">
-                  <select
+                  <SearchableSelect
                     aria-label={`Trạng thái ${task.id}`}
                     className={`scrum-status scrum-status-${task.status
                       .toLowerCase()
@@ -159,7 +160,7 @@ const ScrumTaskBoard = () => {
                     <option value="To Do">To Do</option>
                     <option value="In Progress">In Progress</option>
                     <option value="Done">Done</option>
-                  </select>
+                  </SearchableSelect>
                   <span className="scrum-assignee" title={`Người phụ trách ${task.assignee}`}>
                     {task.assignee}
                   </span>

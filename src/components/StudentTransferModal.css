@@ -184,7 +184,7 @@
   margin-left: 2px;
 }
 
-.transfer-field select,
+.transfer-field .searchable-select-trigger,
 .transfer-field input[type="date"],
 .transfer-field textarea {
   width: 100%;
@@ -199,7 +199,7 @@
   transition: all 0.15s ease;
 }
 
-.transfer-field select:focus,
+.transfer-field .searchable-select-trigger:focus,
 .transfer-field input[type="date"]:focus,
 .transfer-field textarea:focus {
   outline: none;
@@ -207,7 +207,7 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
-.transfer-field.danger select:focus,
+.transfer-field.danger .searchable-select-trigger:focus,
 .transfer-field.danger textarea:focus {
   border-color: #dc2626;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);

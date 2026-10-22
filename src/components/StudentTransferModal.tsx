@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import SearchableSelect from "./SearchableSelect";
 import api from "../services/api";
 import "./StudentTransferModal.css";
 
@@ -383,7 +384,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                   <label htmlFor="transfer-source-class">
                     Lớp học hiện tại (Lớp cũ) <span className="required">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
                     id="transfer-source-class"
                     value={sourceClassId}
                     disabled={Boolean(initialClassId) || loadingClasses}
@@ -401,7 +402,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                         {c.maLop} · {c.tenLop} ({c.siSoHienTai}/{c.siSoToiDa} HV)
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
 
                 {/* 2. Chọn học viên */}
@@ -409,7 +410,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                   <label htmlFor="transfer-student-select">
                     Học viên <span className="required">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
                     id="transfer-student-select"
                     value={selectedStudentId}
                     disabled={Boolean(initialStudentId) || !sourceClassId}
@@ -431,7 +432,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                         {s.trangThaiGhiDanh ? `· ${s.trangThaiGhiDanh}` : ""}
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                   {initialStudentName && initialStudentId && (
                     <small style={{ color: "#64748b", marginTop: "3px" }}>
                       Đang xử lý cho: <strong>{initialStudentName}</strong>
@@ -445,7 +446,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                     <label htmlFor="transfer-target-class">
                       Lớp chuyển đến (Lớp đích) <span className="required">*</span>
                     </label>
-                    <select
+                    <SearchableSelect
                       id="transfer-target-class"
                       value={targetClassId}
                       onChange={(e) =>
@@ -467,7 +468,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                           </option>
                         );
                       })}
-                    </select>
+                    </SearchableSelect>
                     {targetClass && (
                       <small style={{ color: "#059669", marginTop: "2px" }}>
                         ✓ Lớp đích: {targetClass.tenLop} (Giảng viên:{" "}

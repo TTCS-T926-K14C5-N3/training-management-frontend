@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -394,7 +395,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
               <div className="academic-form-grid">
             <label>
               Lớp
-              <select
+              <SearchableSelect
                 required
                 value={form.lopHocId || ""}
                 disabled={editingGradeId !== null}
@@ -416,7 +417,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
                     {item.maLop} — {item.tenLop}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <div className="academic-student-field">
               <span className="academic-field-label">Học viên</span>
@@ -466,7 +467,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
             </div>
             <label>
               Môn học
-              <select
+              <SearchableSelect
                 required
                 value={form.monHocId || ""}
                 disabled={editingGradeId !== null}
@@ -483,11 +484,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
                     {subject.maMonHoc} — {subject.tenMonHoc}
                   </option>
                 ))}
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Học kỳ
-              <select
+              <SearchableSelect
                 value={form.hocKy}
                 disabled={editingGradeId !== null}
                 onChange={(event) =>
@@ -500,7 +501,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
                 <option value={1}>Học kỳ 1</option>
                 <option value={2}>Học kỳ 2</option>
                 <option value={3}>Học kỳ 3</option>
-              </select>
+              </SearchableSelect>
             </label>
             <label>
               Năm học
@@ -610,7 +611,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
         <div className="academic-filters">
           <label>
             Lớp
-            <select
+            <SearchableSelect
               value={classFilter}
               onChange={(event) => {
                 setLoading(true);
@@ -624,11 +625,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
                   {item.maLop} — {item.tenLop}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Môn học
-            <select
+            <SearchableSelect
               value={subjectFilter}
               onChange={(event) => {
                 setLoading(true);
@@ -641,11 +642,11 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
                   {subject.maMonHoc} — {subject.tenMonHoc}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Học kỳ
-            <select
+            <SearchableSelect
               value={termFilter}
               onChange={(event) => {
                 setLoading(true);
@@ -656,7 +657,7 @@ const GradeManagement: React.FC<GradeManagementProps> = ({
               <option value="1">Học kỳ 1</option>
               <option value="2">Học kỳ 2</option>
               <option value="3">Học kỳ 3</option>
-            </select>
+            </SearchableSelect>
           </label>
           <label>
             Năm học

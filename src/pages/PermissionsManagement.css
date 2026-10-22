@@ -89,7 +89,7 @@
   font-weight: 700;
 }
 
-.role-permissions-role-select select {
+.role-permissions-role-select .searchable-select-trigger {
   display: block;
   width: 100%;
   height: 40px;

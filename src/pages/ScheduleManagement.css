@@ -277,7 +277,7 @@
   font-weight: 650;
 }
 
-.student-schedule-filter select {
+.student-schedule-filter .searchable-select-trigger {
   width: 100%;
   min-height: 38px;
   padding: 7px 30px 7px 10px;
@@ -761,7 +761,7 @@
   gap: 5px;
 }
 
-.manager-schedule-panel .schedule-filter select {
+.manager-schedule-panel .schedule-filter .searchable-select-trigger {
   width: 100%;
   min-width: 0;
 }
@@ -893,9 +893,9 @@
   font-weight: 600;
 }
 
-.schedule-filter select,
+.schedule-filter .searchable-select-trigger,
 .schedule-field input,
-.schedule-field select,
+.schedule-field .searchable-select-trigger,
 .schedule-field textarea {
   width: 100%;
   min-height: 42px;
@@ -908,27 +908,27 @@
   font-size: 0.91rem;
 }
 
-.schedule-filter select {
+.schedule-filter .searchable-select-trigger {
   width: auto;
   padding: 8px 32px 8px 10px;
 }
 
 .schedule-field input,
-.schedule-field select,
+.schedule-field .searchable-select-trigger,
 .schedule-field textarea {
   padding: 10px 12px;
 }
 
 .schedule-field input:focus,
-.schedule-field select:focus,
+.schedule-field .searchable-select-trigger:focus,
 .schedule-field textarea:focus,
-.schedule-filter select:focus {
+.schedule-filter .searchable-select-trigger:focus {
   border-color: #6366f1;
   outline: 3px solid rgba(99, 102, 241, 0.14);
 }
 
 .schedule-field input[aria-invalid="true"],
-.schedule-field select[aria-invalid="true"],
+.schedule-field .searchable-select-trigger[aria-invalid="true"],
 .schedule-field textarea[aria-invalid="true"] {
   border-color: #dc2626;
 }
@@ -1547,7 +1547,7 @@
     flex: 1 1 auto;
   }
 
-  .schedule-filter select {
+  .schedule-filter .searchable-select-trigger {
     width: 100%;
   }
 

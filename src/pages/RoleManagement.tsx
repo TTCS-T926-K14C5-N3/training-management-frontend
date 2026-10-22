@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import api from "../services/api";
 
 import ToastNotification from "../components/ToastNotification";
@@ -629,7 +630,7 @@ const RoleManagement: React.FC = () => {
             />
           </div>
 
-          <select
+          <SearchableSelect
             value={roleFilter}
             onChange={(event) => handleRoleFilterChange(event.target.value)}
             className="users-filter-select"
@@ -640,9 +641,9 @@ const RoleManagement: React.FC = () => {
                 {role.tenVaiTro}
               </option>
             ))}
-          </select>
+          </SearchableSelect>
 
-          <select
+          <SearchableSelect
             value={statusFilter}
             onChange={(event) => handleStatusFilterChange(event.target.value)}
             className="users-filter-select"
@@ -650,7 +651,7 @@ const RoleManagement: React.FC = () => {
             <option value="">Tất cả trạng thái</option>
             <option value="HoatDong">Hoạt động</option>
             <option value="BiKhoa">Bị khóa</option>
-          </select>
+          </SearchableSelect>
 
           <button
             type="button"

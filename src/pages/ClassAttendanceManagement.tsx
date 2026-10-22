@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import SearchableSelect from "../components/SearchableSelect";
 import api from "../services/api";
 import ToastNotification from "../components/ToastNotification";
 import AbsenceRequest from "./AbsenceRequest";
@@ -276,9 +277,9 @@ export default function ClassAttendanceManagement({
 
       {tab === "attendance" && !studentMode && <section className="attendance-panel">
         <div className="attendance-controls">
-          <label>Lớp<select value={classId || ""} onChange={(event) => setClassId(Number(event.target.value))}><option value="">Chọn lớp</option>{classes.map((item) => <option key={item.classId} value={item.classId}>{item.classCode} · {item.className}</option>)}</select></label>
+          <label>Lớp<SearchableSelect value={classId || ""} onChange={(event) => setClassId(Number(event.target.value))}><option value="">Chọn lớp</option>{classes.map((item) => <option key={item.classId} value={item.classId}>{item.classCode} · {item.className}</option>)}</SearchableSelect></label>
           <label>Ngày điểm danh<input type="date" value={day} max={today()} onChange={(event) => setDay(event.target.value)} /></label>
-          <label>Sắp xếp theo<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="name">Tên học viên</option><option value="status">Trạng thái điểm danh</option><option value="absent">Học viên vắng trước</option></select></label>
+          <label>Sắp xếp theo<SearchableSelect value={sort} onChange={(event) => setSort(event.target.value)}><option value="name">Tên học viên</option><option value="status">Trạng thái điểm danh</option><option value="absent">Học viên vắng trước</option></SearchableSelect></label>
         </div>
         {matrix && <>
           <div className="attendance-summary">
@@ -296,9 +297,9 @@ export default function ClassAttendanceManagement({
             <div className="student-name"><strong>{student.studentName}</strong><span>{student.email}</span>
               {student.aboveThreshold && <span className="attendance-alert warning">Vắng {student.unexcusedAbsences}/{student.totalMarked} buổi · {student.absencePercent}% / {student.absenceThreshold}%</span>}
             </div>
-            <label>Trạng thái<select value={draft[student.studentId] || student.status} onChange={(event) => setDraft((previous) => ({ ...previous, [student.studentId]: event.target.value as AttendanceStatus }))}>
+            <label>Trạng thái<SearchableSelect value={draft[student.studentId] || student.status} onChange={(event) => setDraft((previous) => ({ ...previous, [student.studentId]: event.target.value as AttendanceStatus }))}>
               <option value="unmarked">Chưa điểm danh</option><option value="present">Có mặt</option><option value="late">Đi muộn</option><option value="excused_absence">Vắng có phép</option><option value="unexcused_absence">Vắng không phép</option>
-            </select></label>{student.requestId && <span className="request-pending">Đang chờ duyệt đơn xin vắng</span>}
+            </SearchableSelect></label>{student.requestId && <span className="request-pending">Đang chờ duyệt đơn xin vắng</span>}
             <span className={`status-pill state-${draft[student.studentId] || student.status}`}>{statusLabels[draft[student.studentId] || student.status]}</span>
           </article>)}</div>
           <button className="attendance-link" onClick={async () => {
@@ -326,10 +327,10 @@ export default function ClassAttendanceManagement({
         <div className="attendance-section-heading">
           <div><h2>Lịch sử điểm danh</h2><p className="helper-text">Theo dõi trạng thái từng buổi và số buổi vắng còn lại trước ngưỡng cảnh báo.</p></div>
           <label className="history-class-filter">Lớp
-            <select value={historyClassId} onChange={(event) => setHistoryClassId(event.target.value)}>
+            <SearchableSelect value={historyClassId} onChange={(event) => setHistoryClassId(event.target.value)}>
               <option value="">Tất cả lớp</option>
               {attendanceSummaries.map((item) => <option key={item.classId} value={item.classId}>{item.classCode} · {item.className}</option>)}
-            </select>
+            </SearchableSelect>
           </label>
         </div>
         {warning && <div className="attendance-alert warning">{warning.message} Vui lòng liên hệ giảng viên hoặc quản lý đào tạo nếu cần kiểm tra lại.</div>}
@@ -359,10 +360,10 @@ export default function ClassAttendanceManagement({
         <div className="attendance-section-heading">
           <div><h2>Danh sách buổi học</h2><p className="helper-text">Các buổi học và trạng thái điểm danh của bạn.</p></div>
           <label className="history-class-filter">Lớp
-            <select value={historyClassId} onChange={(event) => setHistoryClassId(event.target.value)}>
+            <SearchableSelect value={historyClassId} onChange={(event) => setHistoryClassId(event.target.value)}>
               <option value="">Tất cả lớp</option>
               {attendanceSummaries.map((item) => <option key={item.classId} value={item.classId}>{item.classCode} · {item.className}</option>)}
-            </select>
+            </SearchableSelect>
           </label>
         </div>
         {!visibleHistory.length && <p>Chưa có dữ liệu điểm danh cho lớp này.</p>}

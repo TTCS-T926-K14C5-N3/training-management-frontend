@@ -103,7 +103,7 @@
 }
 
 .admissions-form input,
-.admissions-form select {
+.admissions-form .searchable-select-trigger {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
@@ -116,7 +116,7 @@
 }
 
 .admissions-form input:focus,
-.admissions-form select:focus {
+.admissions-form .searchable-select-trigger:focus {
   border-color: #3b82f6;
   outline: 3px solid rgba(59, 130, 246, 0.14);
 }
@@ -954,7 +954,7 @@
 }
 
 .lead-history-form input,
-.lead-history-form select {
+.lead-history-form .searchable-select-trigger {
   min-height: 36px;
   padding: 7px 9px;
   border: 1px solid #cbd5e1;
@@ -1009,7 +1009,7 @@
 }
 
 .lead-interaction-form input,
-.lead-interaction-form select {
+.lead-interaction-form .searchable-select-trigger {
   min-height: 36px;
   padding: 7px 9px;
   border: 1px solid #cbd5e1;
@@ -1233,7 +1233,7 @@
   cursor: pointer;
 }
 
-.lead-bulk-assign select {
+.lead-bulk-assign .searchable-select-trigger {
   min-height: 32px;
   padding: 4px 8px;
   border: 1px solid #cbd5e1;
