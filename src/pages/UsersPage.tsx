@@ -1606,7 +1606,11 @@ const UsersPage: React.FC<UsersPageProps> = ({ profileSection }) => {
 
             {createError && <div className="users-form-error">{createError}</div>}
             {createSuccess && (
-              <div className="users-form-success">✓ {createSuccess}</div>
+              <ToastNotification
+                type="success"
+                text={createSuccess}
+                onClose={() => setCreateSuccess("")}
+              />
             )}
 
             <div className="users-form-group">

@@ -221,6 +221,23 @@ body {
   opacity: 0.9;
 }
 
+.admin-menu-item.has-unread-assignment > span:nth-child(2) {
+  margin-left: 50px;
+}
+
+.assignment-unread-dot {
+  position: absolute;
+  top: 50%;
+  right: 17px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  transform: translateY(-50%);
+}
+
 /* =========================================================
    SIDEBAR FOOTER
    ========================================================= */

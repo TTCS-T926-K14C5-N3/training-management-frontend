@@ -22,7 +22,8 @@ interface ScheduleOption {
 }
 
 interface AbsenceRequestProps {
-  navigate: (path: string) => void;
+  navigate?: (path: string) => void;
+  embedded?: boolean;
 }
 
 interface FormErrors {
@@ -122,7 +123,10 @@ const fetchAvailableSchedules = async (
   );
 };
 
-function AbsenceRequest({ navigate }: AbsenceRequestProps) {
+function AbsenceRequest({
+  navigate,
+  embedded = false,
+}: AbsenceRequestProps) {
   const [schedules, setSchedules] = useState<ScheduleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -224,7 +228,7 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
   );
 
   return (
-    <main className="absence-request-page">
+    <main className={`absence-request-page${embedded ? " absence-request-page-embedded" : ""}`}>
       {toast && (
         <ToastNotification
           type={toast.type}
@@ -232,16 +236,18 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
           onClose={() => setToast(null)}
         />
       )}
-      <header className="absence-request-hero">
-        <div>
-          <span className="absence-request-eyebrow">HỌC TẬP CÁ NHÂN</span>
-          <h1>Gửi đơn xin phép vắng học</h1>
-          <p>
-            Chọn buổi học sắp tới, trình bày lý do và đính kèm minh chứng nếu có.
-          </p>
-        </div>
-        <span className="absence-request-hero-icon" aria-hidden="true">✉</span>
-      </header>
+      {!embedded && (
+        <header className="absence-request-hero">
+          <div>
+            <span className="absence-request-eyebrow">HỌC TẬP CÁ NHÂN</span>
+            <h1>Gửi đơn xin phép vắng học</h1>
+            <p>
+              Chọn buổi học sắp tới, trình bày lý do và đính kèm minh chứng nếu có.
+            </p>
+          </div>
+          <span className="absence-request-hero-icon" aria-hidden="true">✉</span>
+        </header>
+      )}
 
       <section className="absence-request-card">
         <div className="absence-request-card-heading">
@@ -424,13 +430,15 @@ function AbsenceRequest({ navigate }: AbsenceRequestProps) {
           )}
 
           <div className="absence-request-actions">
-            <button
-              className="absence-request-cancel"
-              type="button"
-              onClick={() => navigate("/quan-ly-lich-hoc")}
-            >
-              Hủy
-            </button>
+            {!embedded && (
+              <button
+                className="absence-request-cancel"
+                type="button"
+                onClick={() => navigate?.("/quan-ly-lich-hoc")}
+              >
+                Hủy
+              </button>
+            )}
             <button
               className="absence-request-submit"
               type="submit"

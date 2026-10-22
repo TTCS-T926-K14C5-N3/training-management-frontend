@@ -47,6 +47,11 @@ interface ClassRecord {
       nguoiGhiDanh: string | null;
       trangThaiGhiDanh: string;
       ngayHieuLuc: string | null;
+      soBuoiVang: number;
+      tongBuoiDiemDanh: number;
+      tiLeVang: number;
+      nguongVang: number;
+      canhBaoVang: boolean;
     }
   >;
   monHocIds: number[];
@@ -134,6 +139,15 @@ interface StudentProfile {
     trangThai: string;
   };
   lopHocs: ClassRecord[];
+  canhBaoVangs?: Array<{
+    programId: number;
+    programCode: string;
+    programName: string;
+    soBuoiVang: number;
+    tongBuoiDiemDanh: number;
+    tiLeVang: number;
+    nguongVang: number;
+  }>;
   thaoTacs: Array<{
     actionId: number;
     loaiThaoTac: "BaoLuu" | "ChuyenLop" | "ThoiHoc";
@@ -1931,6 +1945,18 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
               Đóng hồ sơ
             </button>
           </div>
+          {(studentProfile.canhBaoVangs?.length ?? 0) > 0 && (
+            <div className="class-absence-warning student-profile-absence-warning" role="alert">
+              <strong>Cảnh báo tỷ lệ vắng vượt ngưỡng</strong>
+              {studentProfile.canhBaoVangs?.map((warning) => (
+                <p key={warning.programId}>
+                  {warning.programCode} · {warning.programName}: vắng không phép{" "}
+                  {warning.soBuoiVang}/{warning.tongBuoiDiemDanh} buổi (
+                  {warning.tiLeVang}%), ngưỡng cho phép {warning.nguongVang}%.
+                </p>
+              ))}
+            </div>
+          )}
           <h3>Quá trình lớp học</h3>
           {studentProfile.lopHocs.map((record) => {
             const student = record.hocViens.find(
@@ -2271,6 +2297,16 @@ const ClassManagement: React.FC<ClassManagementProps> = ({
                                   ? ` · ${student.nguoiGhiDanh}`
                                   : ""}
                               </small>
+                              {student.canhBaoVang && (
+                                <span
+                                  className="class-absence-warning"
+                                  role="status"
+                                  title={`Vắng không phép ${student.soBuoiVang}/${student.tongBuoiDiemDanh} buổi; ngưỡng ${student.nguongVang}%.`}
+                                >
+                                  Cảnh báo vắng {student.tiLeVang}% /{" "}
+                                  {student.nguongVang}%
+                                </span>
+                              )}
                               <span
                                 className={`student-enrollment-status ${
                                   student.trangThaiGhiDanh === "Đang học"

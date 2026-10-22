@@ -6,11 +6,13 @@ import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AppStatusPage from "./components/AppStatusPage";
 import { ABSENCE_APPROVAL_ALERT_STORAGE_KEY } from "./components/AbsenceApprovalAlert";
+import ToastNotification from "./components/ToastNotification";
 
 import UsersPage from "./pages/UsersPage";
 import UserImportInvalidDataPage from "./pages/UserImportInvalidDataPage";
 
 import GradeManagement from "./pages/GradeManagement";
+import AttendanceGradeMatrix from "./pages/AttendanceGradeMatrix";
 import ClassManagement from "./pages/ClassManagement";
 import PermissionsManagement from "./pages/PermissionsManagement";
 import TrainingPrograms from "./pages/TrainingPrograms";
@@ -21,8 +23,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ScheduleManagement from "./pages/ScheduleManagement";
 import ScheduleArchive from "./pages/ScheduleArchive";
 import ScheduleHistory from "./pages/ScheduleHistory";
-import AbsenceRequest from "./pages/AbsenceRequest";
-import AbsenceRequestList from "./pages/AbsenceRequestList";
 import AttendanceManagement from "./pages/AttendanceManagement";
 import ClassAttendanceManagement from "./pages/ClassAttendanceManagement";
 import Assignments from "./pages/Assignments";
@@ -240,6 +240,7 @@ const ROUTE_ACCESS_RULES: Record<
   "/phan-quyen": { allOf: ["ROLE_VIEW", "ROLE_UPDATE"] },
   "/quan-ly-vai-tro": { allOf: ["ROLE_VIEW", "ROLE_UPDATE"] },
   "/quan-ly-diem": { allOf: ["GRADE_VIEW"] },
+  "/diem-chuyen-can": { allOf: ["ATTENDANCE_VIEW"] },
   "/quan-ly-lop": { allOf: ["CLASS_VIEW", "QUAN_LY_LOP"] },
   "/danh-sach-lop": { allOf: ["CLASS_VIEW"] },
   "/quan-ly-chuong-trinh": {
@@ -252,6 +253,7 @@ const ROUTE_ACCESS_RULES: Record<
   "/quan-ly-lich-hoc/thong-bao": { allOf: ["SCHEDULE_VIEW"] },
   "/don-xin-phep": { allOf: ["SCHEDULE_VIEW"] },
   "/don-xin-phep/theo-doi": { allOf: ["SCHEDULE_VIEW"] },
+  "/lich-su-diem-danh": { allOf: ["SCHEDULE_VIEW"] },
   "/quan-ly-diem-danh": { allOf: ["ATTENDANCE_VIEW"] },
   "/quan-ly-diem-danh-lop": {
     allOf: [],
@@ -533,15 +535,20 @@ function App() {
   // =========================================================
 
   const navigate = (path: string) => {
-    if (window.location.pathname === path) {
-      setCurrentPath(path);
+    const target = new URL(path, window.location.origin);
+    const targetUrl = `${target.pathname}${target.search}${target.hash}`;
+    if (
+      `${window.location.pathname}${window.location.search}${window.location.hash}` ===
+      targetUrl
+    ) {
+      setCurrentPath(target.pathname);
 
       return;
     }
 
-    window.history.pushState({}, "", path);
+    window.history.pushState({}, "", targetUrl);
 
-    setCurrentPath(path);
+    setCurrentPath(target.pathname);
   };
 
   // =========================================================
@@ -1246,22 +1253,6 @@ function App() {
     navigate("/quan-ly-lich-hoc");
   };
 
-  const handleAbsenceRequest = () => {
-    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
-      navigate("/");
-      return;
-    }
-    navigate("/don-xin-phep");
-  };
-
-  const handleAbsenceRequestList = () => {
-    if (!isStudentUser(user) || !hasPermission(user, "SCHEDULE_VIEW")) {
-      navigate("/");
-      return;
-    }
-    navigate("/don-xin-phep/theo-doi");
-  };
-
   const handleAttendanceManagement = () => {
     if (
       isStudentUser(user) ||
@@ -1274,8 +1265,15 @@ function App() {
   };
 
   const handleClassAttendanceManagement = () => {
+    if (isStudentUser(user)) {
+      if (!hasPermission(user, "SCHEDULE_VIEW")) {
+        navigate("/");
+        return;
+      }
+      navigate("/lich-su-diem-danh");
+      return;
+    }
     if (
-      isStudentUser(user) ||
       !hasAnyPermission(user, ["CLASS_VIEW", "ATTENDANCE_VIEW"])
     ) {
       navigate("/");
@@ -1447,13 +1445,20 @@ function App() {
 
             <p className="subtitle">Đăng nhập để tiếp tục sử dụng hệ thống</p>
 
-            {message && (
+            {message && messageType === "success" && (
+              <ToastNotification
+                type="success"
+                text={message}
+                onClose={() => {
+                  setMessage("");
+                  setMessageType("");
+                }}
+              />
+            )}
+
+            {message && messageType !== "success" && (
               <div
-                className={
-                  messageType === "success"
-                    ? "message success-message"
-                    : "message api-error-message"
-                }
+                className="message api-error-message"
               >
                 {message}
               </div>
@@ -1759,8 +1764,6 @@ function App() {
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
-            onAbsenceRequest={handleAbsenceRequest}
-            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1824,8 +1827,6 @@ function App() {
             onTrainingPrograms={handleTrainingPrograms}
             onTrainingCatalog={handleTrainingCatalog}
             onAdmissionsLeads={handleAdmissionsLeads}
-            onAbsenceRequest={handleAbsenceRequest}
-            onAbsenceRequestList={handleAbsenceRequestList}
             onProfile={handleProfile}
             onChangePassword={handleChangePassword}
           >
@@ -1882,8 +1883,6 @@ function App() {
         onTrainingPrograms={handleTrainingPrograms}
         onTrainingCatalog={handleTrainingCatalog}
         onAdmissionsLeads={handleAdmissionsLeads}
-        onAbsenceRequest={handleAbsenceRequest}
-        onAbsenceRequestList={handleAbsenceRequestList}
         onClassAttendanceManagement={handleClassAttendanceManagement}
         onAssignments={handleAssignments}
         onProfile={handleProfile}
@@ -2006,8 +2005,24 @@ function App() {
   if (currentPath === "/quan-ly-diem") {
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="GRADE_VIEW">
-        <GradeManagement permissions={currentPermissions} />
+        <GradeManagement
+          permissions={currentPermissions}
+          onOpenAttendanceMatrix={(classId) =>
+            navigate(`/diem-chuyen-can?classId=${classId}`)
+          }
+        />
       </ProtectedRoute>
+    );
+  }
+
+  if (currentPath === "/diem-chuyen-can") {
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="ATTENDANCE_VIEW">
+        <AttendanceGradeMatrix
+          isStudent={isStudent}
+          onBack={() => navigate(isStudent ? "/lich-su-diem-danh" : "/quan-ly-diem")}
+        />
+      </ProtectedRoute>,
     );
   }
 
@@ -2057,7 +2072,7 @@ function App() {
     if (!isStudent) return <AppStatusPage status="forbidden" />;
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
-        <AbsenceRequest navigate={navigate} />
+        <ClassAttendanceManagement initialTab="requests" />
       </ProtectedRoute>,
     );
   }
@@ -2066,7 +2081,7 @@ function App() {
     if (!isStudent) return <AppStatusPage status="forbidden" />;
     return renderAcademicLayout(
       <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
-        <AbsenceRequestList navigate={navigate} />
+        <ClassAttendanceManagement initialTab="request-tracking" />
       </ProtectedRoute>,
     );
   }
@@ -2089,6 +2104,15 @@ function App() {
     );
   }
 
+  if (currentPath === "/lich-su-diem-danh") {
+    if (!isStudent) return <AppStatusPage status="forbidden" />;
+    return renderAcademicLayout(
+      <ProtectedRoute requiredPermission="SCHEDULE_VIEW">
+        <ClassAttendanceManagement />
+      </ProtectedRoute>,
+    );
+  }
+
   if (currentPath === "/quan-ly-bai-tap") {
     const assignmentPermissions = [
       "ASSIGNMENT_VIEW",
@@ -2103,7 +2127,10 @@ function App() {
       <ProtectedRoute requiredAnyPermission={assignmentPermissions}>
         <Assignments
           studentOnly={studentOnly}
-          canSubmit={hasPermission(user, "ASSIGNMENT_SUBMIT")}
+          canSubmit={
+            isStudentUser(user) &&
+            hasPermission(user, "ASSIGNMENT_SUBMIT")
+          }
         />
       </ProtectedRoute>,
     );
@@ -2234,8 +2261,6 @@ function App() {
         onAdmissionsLeads={handleAdmissionsLeads}
         onClassAttendanceManagement={handleClassAttendanceManagement}
         onAssignments={handleAssignments}
-        onAbsenceRequest={handleAbsenceRequest}
-        onAbsenceRequestList={handleAbsenceRequestList}
         onProfile={handleProfile}
         onChangePassword={handleChangePassword}
       >

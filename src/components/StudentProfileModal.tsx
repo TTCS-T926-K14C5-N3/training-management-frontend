@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import api from "../services/api";
+import ToastNotification from "./ToastNotification";
 
 interface StudentSummary {
   nguoiDungId: number;
@@ -237,9 +238,11 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </div>
         )}
         {success && (
-          <div className="student-profile-message success" role="status">
-            {success}
-          </div>
+          <ToastNotification
+            type="success"
+            text={success}
+            onClose={() => setSuccess("")}
+          />
         )}
 
         {!profile && !error ? (

@@ -69,6 +69,7 @@ interface AttendanceResponse {
     ngayCapNhat: string | null;
   }>;
   coTheCapNhat: boolean;
+  canLyDoDieuChinhBatBuoc: boolean;
 }
 
 interface ScheduleRecord {
@@ -316,8 +317,8 @@ const schedulePayload = (form: ScheduleForm) => ({
 
 const sortSchedules = (items: ScheduleRecord[]): ScheduleRecord[] =>
   [...items].sort((left, right) =>
-    `${left.ngayHoc}T${left.gioBatDau}`.localeCompare(
-      `${right.ngayHoc}T${right.gioBatDau}`,
+    `${right.ngayHoc}T${right.gioBatDau}`.localeCompare(
+      `${left.ngayHoc}T${left.gioBatDau}`,
     ),
   );
 
@@ -798,6 +799,8 @@ function ScheduleManagement({
   const [attendanceStudents, setAttendanceStudents] = useState<AttendanceStudent[]>([]);
   const [attendanceReason, setAttendanceReason] = useState("");
   const [attendanceCanUpdate, setAttendanceCanUpdate] = useState(false);
+  const [attendanceReasonRequired, setAttendanceReasonRequired] =
+    useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [attendanceError, setAttendanceError] = useState("");
@@ -1237,6 +1240,9 @@ function ScheduleManagement({
       setAttendanceStudents(attendanceStudentsFromResponse(response.data));
       setAttendanceCanUpdate(
         canUpdateAttendance && response.data.coTheCapNhat,
+      );
+      setAttendanceReasonRequired(
+        response.data.canLyDoDieuChinhBatBuoc,
       );
       setAttendanceReason("");
     } catch (error) {
@@ -2270,9 +2276,10 @@ function ScheduleManagement({
                     </div>
                   ))}
                 </div>
-                {attendanceCanUpdate && (
+                {attendanceCanUpdate &&
+                  attendanceReasonRequired && (
                   <label className="schedule-field">
-                    <span>Lý do điều chỉnh (bắt buộc khi thay đổi điểm danh đã lưu)</span>
+                    <span>Lý do điều chỉnh (bắt buộc)</span>
                     <textarea
                       value={attendanceReason}
                       onChange={(event) => setAttendanceReason(event.target.value)}

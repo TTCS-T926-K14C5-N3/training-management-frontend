@@ -7,6 +7,23 @@
   color: #172033;
 }
 
+.absence-request-page-embedded {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.absence-request-page-embedded .absence-request-card {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.absence-request-page-embedded .absence-request-form {
+  padding-right: 0;
+  padding-left: 0;
+}
+
 .absence-request-hero {
   position: relative;
   display: flex;
@@ -203,6 +220,12 @@
   background: #f8faff;
   color: #64748b;
   cursor: pointer;
+}
+
+.absence-request-field .absence-request-file-picker {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
 }
 
 .absence-request-file-picker input {
